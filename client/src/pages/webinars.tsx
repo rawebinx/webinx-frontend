@@ -72,14 +72,19 @@ export default function WebinarsPage() {
   const data = await res.json();
 
   return data.map((e: any) => ({
-    id: e.id,
-    title: e.title,
-    start_time: e.start_time,
-    slug: e.slug,
-    host: "WebinX",
-    image: "",
-    description: ""
-  }));
+  id: e.id,
+  slug: e.slug,
+  title: e.title,
+
+  startTime: e.start_time,   // IMPORTANT FIX
+
+  description: "",
+  imageUrl: "",
+  host: {
+    name: "WebinX",
+    avatarUrl: ""
+  }
+}));
 }
 });
 
