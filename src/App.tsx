@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
 import WebinarsPage from "@/pages/webinars";
@@ -13,13 +14,13 @@ import HostPage from "@/pages/host";
 
 function Router() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/browse" element={<WebinarsPage />} />
-      <Route path="/webinars/:id" element={<WebinarDetailPage />} />
-      <Route path="/hosts/:id" element={<HostPage />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <Switch>
+      <Route path="/" component={HomePage} />
+      <Route path="/browse" component={WebinarsPage} />
+      <Route path="/webinars/:id" component={WebinarDetailPage} />
+      <Route path="/hosts/:id" component={HostPage} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
