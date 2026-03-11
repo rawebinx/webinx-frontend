@@ -71,30 +71,8 @@ export default function WebinarsPage() {
   const res = await fetch("https://webinx-backend.onrender.com/api/events");
   const data = await res.json();
 
-  return data.map((e: any) => ({
-  id: e.id,
-  slug: e.slug,
-  title: e.title,
-  startTime: e.start_time,
-
-  category: "Technology",
-  date: e.start_time,
-
-  attendees: 0,
-  maxAttendees: 100,
-
-  isFree: true,
-  price: 0,
-
-  isTrending: false,
-
-  host: {
-    id: "webinx",
-    name: "WebinX",
-    avatar: "",
-    company: "WebinX"
-  }
-}));
+  import { normalizeEvent } from "@/lib/normalizeEvent";
+  return data.map(normalizeEvent);
 
   const { data: externalEvents = [], isLoading: externalLoading, isError: externalError } = useQuery<ExternalEvent[]>({
     queryKey: ["/api/external/events"],
