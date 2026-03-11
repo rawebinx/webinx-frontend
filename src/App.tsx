@@ -16,7 +16,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
-      <Route path="/browse" component={WebinarsPage} />
+      <Route path="/webinars" component={WebinarsPage} />
       <Route path="/webinars/:id" component={WebinarDetailPage} />
       <Route path="/hosts/:id" component={HostPage} />
       <Route component={NotFound} />
