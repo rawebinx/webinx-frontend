@@ -145,7 +145,39 @@ export default function WebinarsPage() {
 
 
             {/* CURATED WEBINARS */}
+<div className="mb-10">
+  <h2 className="text-lg font-semibold mb-4">
+    Explore by Topic
+  </h2>
 
+  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+
+    <button className="p-4 rounded-lg border hover:bg-muted">
+      🚀 AI & Tech
+    </button>
+
+    <button className="p-4 rounded-lg border hover:bg-muted">
+      📈 Business
+    </button>
+
+    <button className="p-4 rounded-lg border hover:bg-muted">
+      🎨 Design
+    </button>
+
+    <button className="p-4 rounded-lg border hover:bg-muted">
+      💻 Programming
+    </button>
+
+    <button className="p-4 rounded-lg border hover:bg-muted">
+      🌍 Marketing
+    </button>
+
+    <button className="p-4 rounded-lg border hover:bg-muted">
+      🧠 Personal Growth
+    </button>
+
+  </div>
+</div>
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               🔥 Trending This Week
             </h2>
