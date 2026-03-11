@@ -75,18 +75,26 @@ export default function WebinarsPage() {
   id: e.id,
   slug: e.slug,
   title: e.title,
+  startTime: e.start_time,
 
-  startTime: e.start_time,   // IMPORTANT FIX
+  category: "Technology",
+  date: e.start_time,
 
-  description: "",
-  imageUrl: "",
+  attendees: 0,
+  maxAttendees: 100,
+
+  isFree: true,
+  price: 0,
+
+  isTrending: false,
+
   host: {
+    id: "webinx",
     name: "WebinX",
-    avatarUrl: ""
+    avatar: "",
+    company: "WebinX"
   }
 }));
-}
-});
 
   const { data: externalEvents = [], isLoading: externalLoading, isError: externalError } = useQuery<ExternalEvent[]>({
     queryKey: ["/api/external/events"],
