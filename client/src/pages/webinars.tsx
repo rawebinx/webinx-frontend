@@ -66,8 +66,12 @@ export default function WebinarsPage() {
   if (date && date !== "all") queryParams.set("date", date);
 
   const { data: webinars = [], isLoading } = useQuery<WebinarWithHost[]>({
-    queryKey: [`/api/webinars?${queryParams.toString()}`],
-  });
+  queryKey: ["events"],
+  queryFn: async () => {
+    const res = await fetch("https://webinx-backend.onrender.com/api/events");
+    return res.json();
+  }
+});
 
   const { data: externalEvents = [], isLoading: externalLoading, isError: externalError } = useQuery<ExternalEvent[]>({
     queryKey: ["/api/external/events"],
