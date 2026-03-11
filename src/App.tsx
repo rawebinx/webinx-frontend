@@ -13,13 +13,13 @@ import HostPage from "@/pages/host";
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={HomePage} />
-      <Route path="/webinars" component={WebinarsPage} />
-      <Route path="/webinars/:id" component={WebinarDetailPage} />
-      <Route path="/hosts/:id" component={HostPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/browse" element={<WebinarsPage />} />
+      <Route path="/webinars/:id" element={<WebinarDetailPage />} />
+      <Route path="/hosts/:id" element={<HostPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
