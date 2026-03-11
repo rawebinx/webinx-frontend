@@ -65,12 +65,22 @@ export default function WebinarsPage() {
   if (sector && sector !== "All") queryParams.set("sector", sector);
   if (date && date !== "all") queryParams.set("date", date);
 
-  const { data: webinars = [], isLoading } = useQuery<WebinarWithHost[]>({
+  const { data: webinars = [], isLoading } = useQuery({
   queryKey: ["events"],
   queryFn: async () => {
-    const res = await fetch("https://webinx-backend.onrender.com/api/events");
-    return res.json();
-  }
+  const res = await fetch("https://webinx-backend.onrender.com/api/events");
+  const data = await res.json();
+
+  return data.map((e: any) => ({
+    id: e.id,
+    title: e.title,
+    start_time: e.start_time,
+    slug: e.slug,
+    host: "WebinX",
+    image: "",
+    description: ""
+  }));
+}
 });
 
   const { data: externalEvents = [], isLoading: externalLoading, isError: externalError } = useQuery<ExternalEvent[]>({
@@ -296,7 +306,9 @@ export default function WebinarsPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {webinars.map(w => <WebinarCard key={w.id} webinar={w} />)}
+                  {webinars.map((w: any) => (
+                    <WebinarCard key={w.id} webinar={w} />
+                  ))}
                 </div>
               )}
             </div>
