@@ -42,7 +42,9 @@ export function WebinarCard({ webinar, size = "default" }: Props) {
   const gradient = IMAGE_GRADIENTS[webinar.category] ?? "from-blue-500 via-indigo-600 to-violet-700";
   const categoryColor = CATEGORY_COLORS[webinar.category] ?? "bg-muted text-muted-foreground";
   const attendeePct = Math.round((webinar.attendees / webinar.maxAttendees) * 100);
-  const dateObj = parseISO(webinar.date);
+  const dateObj = webinar.startTime
+  ? parseISO(webinar.startTime)
+  : new Date();
 
   return (
     <Card
