@@ -312,7 +312,9 @@ export default function WebinarsPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {webinars.map((w: any) => (
-                    <WebinarCard key={w.id} webinar={w} />
+                    <div key={w.id}>
+                      {w.title} — {w.startTime}
+                    </div>
                   ))}
                 </div>
               )}
