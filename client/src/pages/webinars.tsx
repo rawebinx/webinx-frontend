@@ -146,10 +146,9 @@ export default function WebinarsPage() {
 
             {/* CURATED WEBINARS */}
 
-            <h2 className="text-sm uppercase text-muted-foreground mb-4">
-              Curated Webinars
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              🔥 Trending This Week
             </h2>
-
 
             {isLoading ? (
 
