@@ -58,7 +58,13 @@ export default function WebinarsPage() {
 
       const data = await res.json();
 
-      return data.map(normalizeEvent);
+      return data
+        .map(normalizeEvent)
+        .sort(
+          (a, b) =>
+            new Date(a.startTime).getTime() -
+            new Date(b.startTime).getTime()
+      );
 
     },
   });
