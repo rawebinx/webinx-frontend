@@ -18,15 +18,12 @@ function Router() {
 
       <Route path="/" component={HomePage} />
 
-      {/* SEO Webinar Page */}
-      <Route path="/webinar/:slug">
-        {(params) => <Webinar params={params} />}
-      </Route>
-
-      {/* Main Listing */}
       <Route path="/webinars" component={WebinarsPage} />
 
-      {/* Old Detail Page */}
+      <Route path="/webinar/:slug">
+        {(params) => <Webinar {...params} />}
+      </Route>
+
       <Route path="/webinars/:id" component={WebinarDetailPage} />
 
       <Route path="/hosts/:id" component={HostPage} />
