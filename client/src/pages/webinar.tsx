@@ -8,9 +8,7 @@ type Webinar = {
   click_count: number
 }
 
-export default function WebinarPage(props:any) {
-
-  const slug = props.params.slug
+export default function WebinarPage({ slug }: any) {
 
   const { data, isLoading } = useQuery<Webinar>({
     queryKey: ["webinar", slug],
