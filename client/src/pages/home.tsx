@@ -69,9 +69,18 @@ function sortByDate(events: ExternalEvent[]) {
 }
 
 export default function HomePage() {
+  
   const [, setLocation] = useLocation();
   const [searchValue, setSearchValue] = useState("");
-
+  const trackClick = async (slug: string) => {
+  try {
+    await fetch(`https://webinx-backend.onrender.com/api/events/click/${slug}`, {
+      method: "POST"
+    });
+  } catch (err) {
+    console.error("Click tracking failed", err);
+  }
+};
   const { data: externalEvents, isLoading: externalLoading, isError: externalError } = useQuery<ExternalEvent[]>({
     queryKey: ["/api/external/events"],
     staleTime: 5 * 60 * 1000,
@@ -254,10 +263,16 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {trendingLoading
             ? Array.from({ length: 4 }).map((_, i) => <WebinarSkeleton key={i} />)
-            : trending.slice(0, 4).map(w => <WebinarCard key={w.id} webinar={w} />)
-          }
-        </div>
-
+            : trending.slice(0, 4).map(w => (
+              <div
+                key={w.id}
+                onClick={() => trackClick(w.slug)}
+              >
+                <WebinarCard webinar={w} />
+          </div>
+          ))
+        }
+      </div>
         <div className="mt-10 text-center">
           <Link href="/webinars">
             <Button size="default" variant="outline" className="gap-2" data-testid="button-explore-all">
