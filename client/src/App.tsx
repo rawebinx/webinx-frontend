@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import NotFound from "@/pages/not-found";
-import Webinar from "@/pages/webinar";
+import WebinarPage from "@/pages/webinar";
 import HomePage from "@/pages/home";
 import WebinarsPage from "@/pages/webinars";
 import WebinarDetailPage from "@/pages/webinar-detail";
@@ -21,7 +21,7 @@ function Router() {
       <Route path="/webinars" component={WebinarsPage} />
 
       <Route path="/webinar/:slug">
-        {(params) => <Webinar {...params} />}
+        {(params) => <WebinarPage {...params} />}
       </Route>
 
       <Route path="/webinars/:id" component={WebinarDetailPage} />
