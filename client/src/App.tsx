@@ -5,12 +5,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+
 import NotFound from "@/pages/not-found";
-import WebinarPage from "@/pages/webinar";
 import HomePage from "@/pages/home";
 import WebinarsPage from "@/pages/webinars";
 import WebinarDetailPage from "@/pages/webinar-detail";
 import HostPage from "@/pages/host";
+import WebinarPage from "@/pages/webinar";
 
 function Router() {
   return (
@@ -20,9 +21,7 @@ function Router() {
 
       <Route path="/webinars" component={WebinarsPage} />
 
-      <Route path="/webinar/:slug">
-        {(params) => <WebinarPage {...params} />}
-      </Route>
+      <Route path="/webinar/:slug" component={WebinarPage} />
 
       <Route path="/webinars/:id" component={WebinarDetailPage} />
 
@@ -34,7 +33,7 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -50,5 +49,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;
