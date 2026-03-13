@@ -15,12 +15,18 @@ import HostPage from "@/pages/host";
 function Router() {
   return (
     <Switch>
+
       <Route path="/" component={HomePage} />
+
+      {/* SEO PAGE FIRST */}
+      <Route path="/webinar/:slug" component={Webinar} />
+
       <Route path="/webinars" component={WebinarsPage} />
-       <Route path="/webinar/:slug" component={Webinar} />
       <Route path="/webinars/:id" component={WebinarDetailPage} />
       <Route path="/hosts/:id" component={HostPage} />
+
       <Route component={NotFound} />
+
     </Switch>
   );
 }
