@@ -8,18 +8,18 @@ type Webinar = {
   click_count: number;
 };
 
-export default function WebinarPage({ params }: any) {
+export default function WebinarPage({ slug }: any) {
 
-  const slug = params.slug;
-
-  const { data, isLoading } = useQuery<Webinar>({
+  const { data, isLoading, error } = useQuery<Webinar>({
     queryKey: ["webinar", slug],
     queryFn: async () => {
       const res = await fetch(
         `https://webinx-backend.onrender.com/api/events/${slug}`
       );
 
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        throw new Error("Failed to load webinar");
+      }
 
       return res.json();
     }
@@ -29,7 +29,7 @@ export default function WebinarPage({ params }: any) {
     return <div style={{ padding: "40px" }}>Loading webinar...</div>;
   }
 
-  if (!data) {
+  if (error || !data) {
     return <div style={{ padding: "40px" }}>Webinar not found</div>;
   }
 
