@@ -1,3 +1,4 @@
+import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
 type Webinar = {
@@ -8,22 +9,31 @@ type Webinar = {
   click_count: number
 }
 
-export default function WebinarPage({ slug }: any) {
+export default function WebinarPage() {
+
+  const [, params] = useRoute("/webinar/:slug");
+
+  const slug = params?.slug;
 
   const { data, isLoading } = useQuery<Webinar>({
     queryKey: ["webinar", slug],
+    enabled: !!slug,
     queryFn: async () => {
 
       const res = await fetch(
         `https://webinx-backend.onrender.com/api/events/${slug}`
-      )
+      );
 
-      if (!res.ok) throw new Error("Failed")
+      if (!res.ok) throw new Error("Webinar not found");
 
-      return res.json()
+      return res.json();
 
     }
-  })
+  });
+
+  if (!slug) {
+    return <div style={{padding:"40px"}}>Invalid URL</div>
+  }
 
   if (isLoading) {
     return <div style={{padding:"40px"}}>Loading webinar...</div>
@@ -66,5 +76,5 @@ export default function WebinarPage({ slug }: any) {
 
     </main>
 
-  )
+  );
 }
