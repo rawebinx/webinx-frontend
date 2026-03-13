@@ -18,11 +18,17 @@ function Router() {
 
       <Route path="/" component={HomePage} />
 
-      {/* SEO PAGE FIRST */}
-      <Route path="/webinar/:slug" component={Webinar} />
+      {/* SEO Webinar Page */}
+      <Route path="/webinar/:slug">
+        {(params) => <Webinar params={params} />}
+      </Route>
 
+      {/* Main Listing */}
       <Route path="/webinars" component={WebinarsPage} />
+
+      {/* Old Detail Page */}
       <Route path="/webinars/:id" component={WebinarDetailPage} />
+
       <Route path="/hosts/:id" component={HostPage} />
 
       <Route component={NotFound} />
