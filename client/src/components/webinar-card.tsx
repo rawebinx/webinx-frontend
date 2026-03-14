@@ -35,7 +35,7 @@ export function WebinarCard({ webinar, size = "default" }: Props) {
   return (
     <Card
       className="flex flex-col hover:shadow-md transition-all cursor-pointer"
-      data-testid={`card-webinar-${webinar.id}`}
+      data-testid={`card-webinar-${webinar.slug}`}
     >
 
       <Link href={`/webinars/${webinar.slug}`}>
