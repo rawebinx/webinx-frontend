@@ -14,12 +14,6 @@ import { ExternalEventCard, type ExternalEvent } from "@/components/external-eve
 
 import { Search, SlidersHorizontal, X, AlertCircle, Zap } from "lucide-react";
 
-import { normalizeEvent } from "@/lib/normalizeEvent";
-
-import type { WebinarWithHost } from "@shared/schema";
-import { CATEGORIES, SECTORS } from "@shared/schema";
-
-
 function WebinarSkeleton() {
   return (
     <div className="rounded-lg border border-card-border overflow-hidden">
@@ -50,20 +44,9 @@ export default function WebinarsPage() {
   */
 
   const { data: webinars = [], isLoading } = useQuery({
-    queryKey: ["events"],
-    queryFn: fetchEvents
+  queryKey: ["events"],
+  queryFn: fetchEvents,
 
-      const data = await res.json();
-
-      return data
-        .map(normalizeEvent)
-        .sort(
-          (a, b) =>
-            new Date(a.startTime).getTime() -
-            new Date(b.startTime).getTime()
-      );
-
-    },
   });
 
 
