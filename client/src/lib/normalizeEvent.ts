@@ -7,10 +7,10 @@ export function normalizeEvent(e: any) {
     startTime: e.start_time,
     date: e.start_time,
 
-    category: e.category ?? "Technology",
+    category: "Technology",
 
-    attendees: e.attendees ?? 0,
-    maxAttendees: e.max_attendees ?? 100,
+    attendees: 0,
+    maxAttendees: 100,
 
     isFree: true,
     price: 0,
