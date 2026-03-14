@@ -45,9 +45,12 @@ export default function WebinarsPage() {
 
   const { data: webinars = [], isLoading } = useQuery({
   queryKey: ["events"],
-  queryFn: fetchEvents,
-
-  });
+  queryFn: async () => {
+    const res = await fetch("https://webinx-backend.onrender.com/api/events");
+    const data = await res.json();
+    return data;
+  }
+});
 
 
   /*
