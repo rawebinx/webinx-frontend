@@ -159,7 +159,7 @@ function RegisterDialog({ webinar, open, onOpenChange }: {
 }
 
 export default function WebinarDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [registerOpen, setRegisterOpen] = useState(false);
 
   const { data: webinar, isLoading, isError } = useQuery<WebinarWithHost & { registrationCount: number }>({
