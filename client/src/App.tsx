@@ -18,13 +18,9 @@ function Router() {
     <Switch>
 
       <Route path="/" component={HomePage} />
-
       <Route path="/webinars" component={WebinarsPage} />
-
       <Route path="/webinars/:slug" component={WebinarDetailPage} />
-
       <Route path="/hosts/:id" component={HostPage} />
-
       <Route component={NotFound} />
 
     </Switch>
