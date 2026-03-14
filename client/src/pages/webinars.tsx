@@ -56,17 +56,9 @@ export default function WebinarsPage() {
   =========================
   */
 
-  const {
-    data: externalEvents = [],
-    isLoading: externalLoading,
-    isError: externalError
-  } = useQuery<ExternalEvent[]>({
-    queryKey: ["/api/external/events"],
-    staleTime: 5 * 60 * 1000
-  });
-
-
-
+  const externalEvents: ExternalEvent[] = [];
+  const externalLoading = false;
+  const externalError = false;
   const totalCount = webinars.length + externalEvents.length;
   const trending = webinars.slice(0, 4);
   const rest = webinars.slice(4);
