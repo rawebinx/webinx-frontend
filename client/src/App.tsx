@@ -21,8 +21,6 @@ function Router() {
 
       <Route path="/webinars" component={WebinarsPage} />
 
-      <Route path="/webinar/:slug" component={WebinarPage} />
-
       <Route path="/webinars/:slug" component={WebinarDetailPage} />
 
       <Route path="/hosts/:id" component={HostPage} />
