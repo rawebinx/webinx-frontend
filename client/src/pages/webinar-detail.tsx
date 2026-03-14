@@ -56,21 +56,36 @@ function RegisterDialog({ webinar, open, onOpenChange }: {
   });
 
   const mutation = useMutation({
-    mutationFn: (values: RegisterFormValues) =>
-      apiRequest("POST", `/api/webinars/${webinar.id}/register`, values),
-    onSuccess: () => {
-      setSuccess(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/webinars", webinar.id] });
-    },
-    onError: (err: any) => {
-      const msg = err?.message ?? "Something went wrong";
-      if (msg.includes("409") || msg.includes("Already")) {
-        toast({ title: "Already registered", description: "You're already registered for this webinar.", variant: "destructive" });
-      } else {
-        toast({ title: "Registration failed", description: "Please try again.", variant: "destructive" });
-      }
-    },
-  });
+  mutationFn: (values: RegisterFormValues) =>
+    apiRequest(
+      "POST",
+      `https://webinx-backend.onrender.com/api/events/${webinar.slug}/register`,
+      values
+    ),
+
+  onSuccess: () => {
+    setSuccess(true);
+    queryClient.invalidateQueries({ queryKey: ["event", webinar.slug] });
+  },
+
+  onError: (err: any) => {
+    const msg = err?.message ?? "Something went wrong";
+
+    if (msg.includes("409") || msg.includes("Already")) {
+      toast({
+        title: "Already registered",
+        description: "You're already registered for this webinar.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Registration failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  },
+});
 
   const onSubmit = (values: RegisterFormValues) => {
     mutation.mutate(values);
@@ -163,9 +178,9 @@ export default function WebinarDetailPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
 
   const { data: webinar, isLoading, isError } = useQuery<WebinarWithHost & { registrationCount: number }>({
-    queryKey: ["/api/webinars", id],
+    queryKey: ["event", slug],
     queryFn: async () => {
-      const res = await fetch(`/api/webinars/${id}`);
+      const res = await fetch(`https://webinx-backend.onrender.com/api/events/${slug}`);
       if (!res.ok) throw new Error("Not found");
       return res.json();
     },
