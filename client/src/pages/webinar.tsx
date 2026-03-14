@@ -1,68 +1,75 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useParams } from "wouter";
 
-type Webinar = {
-  id: string;
-  title: string;
-  slug: string;
-  start_time: string;
-  click_count: number;
-};
+export default function WebinarPage() {
 
-export default function WebinarPage({ slug }: any) {
+  const { slug } = useParams();
 
-  const { data, isLoading, error } = useQuery<Webinar>({
-    queryKey: ["webinar", slug],
-    queryFn: async () => {
-      const res = await fetch(
-        `https://webinx-backend.onrender.com/api/events/${slug}`
-      );
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-      if (!res.ok) {
-        throw new Error("Failed to load webinar");
+  useEffect(() => {
+
+    async function loadEvent() {
+      try {
+
+        const res = await fetch(
+          `https://webinx-backend.onrender.com/api/events/${slug}`
+        );
+
+        const data = await res.json();
+
+        setEvent(data);
+
+      } catch (err) {
+
+        console.error("Failed to load event", err);
+
+      } finally {
+
+        setLoading(false);
+
       }
-
-      return res.json();
     }
-  });
 
-  if (isLoading) {
-    return <div style={{ padding: "40px" }}>Loading webinar...</div>;
+    if (slug) {
+      loadEvent();
+    }
+
+  }, [slug]);
+
+  if (loading) {
+    return <div className="p-10">Loading webinar...</div>;
   }
 
-  if (error || !data) {
-    return <div style={{ padding: "40px" }}>Webinar not found</div>;
+  if (!event) {
+    return <div className="p-10">Webinar not found.</div>;
   }
 
   return (
-    <main style={{ maxWidth: "900px", margin: "40px auto", padding: "20px" }}>
+    <div className="max-w-3xl mx-auto p-10">
 
-      <h1 style={{ fontSize: "32px", fontWeight: "bold" }}>
-        {data.title}
+      <h1 className="text-3xl font-bold mb-4">
+        {event.title}
       </h1>
 
-      <p style={{ marginTop: "10px" }}>
-        Date: {new Date(data.start_time).toLocaleString()}
+      <p className="text-gray-600 mb-4">
+        {event.start_time}
       </p>
 
-      <p style={{ marginTop: "10px" }}>
-        Popularity score: {data.click_count}
+      <p className="mb-6">
+        {event.description}
       </p>
 
       <a
-        href="#"
-        style={{
-          display: "inline-block",
-          marginTop: "20px",
-          padding: "12px 20px",
-          background: "#2563eb",
-          color: "white",
-          borderRadius: "8px",
-          textDecoration: "none"
-        }}
+        href={event.registration_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-black text-white px-6 py-3 rounded"
       >
         Register for Webinar
       </a>
 
-    </main>
+    </div>
   );
 }
