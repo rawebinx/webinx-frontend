@@ -23,7 +23,7 @@ function Router() {
 
       <Route path="/webinar/:slug" component={WebinarPage} />
 
-      <Route path="/webinars/:id" component={WebinarDetailPage} />
+      <Route path="/webinars/:slug" component={WebinarDetailPage} />
 
       <Route path="/hosts/:id" component={HostPage} />
 
