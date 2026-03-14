@@ -38,7 +38,7 @@ export function WebinarCard({ webinar, size = "default" }: Props) {
       data-testid={`card-webinar-${webinar.id}`}
     >
 
-      <Link href={`/webinars/${webinar.id}`}>
+      <Link href={`/webinars/${webinar.slug}`}>
         <div className="relative h-40 bg-gradient-to-br from-blue-500 via-indigo-600 to-violet-700 rounded-t-lg overflow-hidden">
 
           <div className="absolute top-3 left-3 text-xs px-2 py-1 rounded-full bg-white/20 text-white">
@@ -62,7 +62,7 @@ export function WebinarCard({ webinar, size = "default" }: Props) {
 
       <CardContent className="flex flex-col gap-3 p-4 flex-1">
 
-        <Link href={`/webinars/${webinar.id}`}>
+        <Link href={`/webinars/${webinar.slug}`}>
           <h3 className="font-semibold text-sm line-clamp-2 hover:text-primary">
             {webinar.title}
           </h3>
@@ -124,7 +124,7 @@ export function WebinarCard({ webinar, size = "default" }: Props) {
 
       <CardFooter className="p-4 pt-0">
 
-        <Link href={`/webinars/${webinar.id}`} className="w-full">
+        <Link href={`/webinars/${webinar.slug}`} className="w-full">
 
           <Button
             className="w-full"
