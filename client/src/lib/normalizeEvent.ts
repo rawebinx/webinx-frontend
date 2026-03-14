@@ -12,16 +12,16 @@ export function normalizeEvent(e: any) {
     attendees: e.attendees ?? 0,
     maxAttendees: e.max_attendees ?? 100,
 
-    isFree: e.is_free ?? true,
-    price: e.price ?? 0,
+    isFree: true,
+    price: 0,
 
-    isTrending: e.is_trending ?? false,
+    isTrending: false,
 
     host: {
-      id: e.host_id ?? "webinx",
-      name: e.host_name ?? "WebinX",
-      avatar: e.host_avatar ?? "",
-      company: e.host_company ?? "WebinX"
+      id: "webinx",
+      name: "WebinX",
+      avatar: "",
+      company: "WebinX"
     }
   };
 }
