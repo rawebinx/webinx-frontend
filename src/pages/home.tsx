@@ -113,13 +113,13 @@ export default function HomePage() {
 
   const { data: externalEvents, isLoading: externalLoading, isError: externalError } =
     useQuery<ExternalEvent[]>({
-      queryKey: ["/api/external/events"]
+      queryKey: ["/api/events"]
     });
 
 
   const { data: trending = [], isLoading: trendingLoading } =
     useQuery<any[]>({
-      queryKey: ["/api/webinars/trending"]
+      queryKey: ["api/events/trending"]
     });
 
 
