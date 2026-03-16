@@ -8,18 +8,28 @@ export function FormField({ children }: { children: React.ReactNode }) {
   return <div className="space-y-2">{children}</div>;
 }
 
+export function FormItem({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-col gap-1">{children}</div>;
+}
+
 export function FormLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium">{children}</label>;
+  return (
+    <label className="text-sm font-medium text-gray-700">
+      {children}
+    </label>
+  );
 }
 
 export function FormControl({ children }: { children: React.ReactNode }) {
   return <div>{children}</div>;
 }
 
-export function FormDescription({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-gray-500">{children}</p>;
-}
+export function FormMessage({ children }: { children?: React.ReactNode }) {
+  if (!children) return null;
 
-export function FormMessage({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-red-500">{children}</p>;
+  return (
+    <p className="text-sm text-red-500">
+      {children}
+    </p>
+  );
 }
