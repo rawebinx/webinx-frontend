@@ -1,6 +1,14 @@
 import React from "react";
 
-export default function ExternalEventCard({ event }: any) {
+export type ExternalEvent = {
+  title?: string;
+  host?: string;
+  source?: string;
+  start_time?: string;
+  url?: string;
+};
+
+export function ExternalEventCard({ event }: { event: ExternalEvent }) {
   return (
     <div className="border rounded-lg p-4 hover:shadow-md transition">
       <h3 className="font-semibold text-lg">{event?.title}</h3>
