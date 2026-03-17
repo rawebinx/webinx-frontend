@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { WebinarCard } from "@/components/webinar-card";
-import { ExternalEventCard, type ExternalEvent } from "@/components/external-event-card";
 
 import {
   Search,
@@ -79,14 +78,16 @@ function WebinarSkeleton() {
 }
 
 
-function sortByDate(events: ExternalEvent[]) {
+function sortByDate(events: any[]) {
   const now = new Date();
 
-  const upcoming = events
+  const safeEvents = events.filter(e => e && e.start_time);
+
+  const upcoming = safeEvents
     .filter(e => new Date(e.start_time) >= now)
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-  const past = events
+  const past = safeEvents
     .filter(e => new Date(e.start_time) < now)
     .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
@@ -111,10 +112,10 @@ export default function HomePage() {
   };
 
 
-  const { data: externalEvents, isLoading: externalLoading, isError: externalError } =
-    useQuery<ExternalEvent[]>({
-      queryKey: ["/api/events"]
-    });
+  const { data: externalEvents = [], isLoading: externalLoading, isError: externalError } =
+  useQuery<any[]>({
+    queryKey: ["api/events"]
+  });
 
 
   const { data: trending = [], isLoading: trendingLoading } =
@@ -140,7 +141,7 @@ export default function HomePage() {
   };
 
 
-  const sorted = externalEvents ? sortByDate(externalEvents) : [];
+  const sorted = sortByDate(externalEvents);
 
 
   return (
@@ -242,7 +243,7 @@ export default function HomePage() {
               {externalLoading
                 ? Array.from({ length: 4 }).map((_, i) => <WebinarSkeleton key={i} />)
                 : sorted.slice(0, 4).map((e, i) =>
-                    <ExternalEventCard key={e.id} event={e} index={i} />
+                    <WebinarCard key={e.id} webinar={e} />
                   )
               }
 
