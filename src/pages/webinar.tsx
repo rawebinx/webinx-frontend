@@ -1,9 +1,6 @@
-import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
-export default function WebinarPage() {
-  const [, params] = useRoute("/webinar/:slug");
-  const slug = params?.slug;
+export default function WebinarPage({ slug }: { slug: string }) {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["webinar", slug],
