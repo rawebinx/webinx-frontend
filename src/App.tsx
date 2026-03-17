@@ -16,22 +16,14 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-
-      {/* Home */}
       <Route path="/" component={HomePage} />
-
-      {/* Webinars Listing */}
       <Route path="/webinars" component={WebinarsPage} />
 
-      {/* Webinar Detail (CRITICAL ROUTE) */}
+      {/* ✅ THIS IS THE CORRECT ONE */}
       <Route path="/webinar/:slug" component={WebinarPage} />
 
-      {/* Host Page */}
       <Route path="/hosts/:id" component={HostPage} />
-
-      {/* 404 */}
       <Route component={NotFound} />
-
     </Switch>
   );
 }
