@@ -20,7 +20,9 @@ function Router() {
       <Route path="/webinars" component={WebinarsPage} />
 
       {/* ✅ THIS IS THE CORRECT ONE */}
-      <Route path="/webinar/:slug" component={WebinarPage} />
+      <Route path="/webinar/:slug">
+        {(params) => <WebinarPage slug={params.slug} />}
+      </Route>
 
       <Route path="/hosts/:id" component={HostPage} />
       <Route component={NotFound} />
