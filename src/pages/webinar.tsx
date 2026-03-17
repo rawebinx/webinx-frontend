@@ -8,9 +8,11 @@ export default function WebinarPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["webinar", slug],
     queryFn: async () => {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/events/${slug}`
-      );
+      const API_BASE =
+        import.meta.env.VITE_API_BASE_URL ||
+        "https://webinx-backend.onrender.com";
+
+      const res = await fetch(`${API_BASE}/api/events/${slug}`);
 
       if (!res.ok) throw new Error("Failed to fetch");
 
@@ -25,7 +27,11 @@ export default function WebinarPage() {
     return <div className="p-6">Loading webinar...</div>;
   }
 
-  if (error || !data) {
+  if (error) {
+    return <div className="p-6">Error loading webinar</div>;
+  }
+
+  if (!data) {
     return <div className="p-6">Webinar not found</div>;
   }
 
@@ -37,16 +43,20 @@ export default function WebinarPage() {
         {new Date(data.start_time).toLocaleString()}
       </p>
 
-      <p className="mb-4">{data.description}</p>
+      <p className="mb-4">
+        {data.description || "No description available"}
+      </p>
 
-      <a
-        href={data.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-block bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        Register Now
-      </a>
+      {data.url && (
+        <a
+          href={data.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Register Now
+        </a>
+      )}
     </div>
   );
 }
