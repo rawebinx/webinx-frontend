@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "wouter";
 
-export default function WebinarPage({ slug }: { slug: string }) {
+export default function WebinarPage() {
+  const params = useParams();
+  const slug = params?.slug;
+
+  if (!slug) {
+    return <div className="p-6">Invalid webinar link</div>;
+  }
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["webinar", slug],
