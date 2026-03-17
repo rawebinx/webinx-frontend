@@ -6,21 +6,30 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
-import NotFound from "@/pages/not-found";
+// Pages
 import HomePage from "@/pages/home";
 import WebinarsPage from "@/pages/webinars";
-import WebinarDetailPage from "@/pages/webinar-detail";
-import HostPage from "@/pages/host";
 import WebinarPage from "@/pages/webinar";
+import HostPage from "@/pages/host";
+import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
 
+      {/* Home */}
       <Route path="/" component={HomePage} />
+
+      {/* Webinars Listing */}
       <Route path="/webinars" component={WebinarsPage} />
-      <Route path="/webinars/:slug" component={WebinarDetailPage} />
+
+      {/* Webinar Detail (CRITICAL ROUTE) */}
+      <Route path="/webinar/:slug" component={WebinarPage} />
+
+      {/* Host Page */}
       <Route path="/hosts/:id" component={HostPage} />
+
+      {/* 404 */}
       <Route component={NotFound} />
 
     </Switch>
@@ -32,12 +41,17 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="min-h-screen flex flex-col bg-background text-foreground">
+
           <Navbar />
+
           <div className="flex-1">
             <Router />
           </div>
+
           <Footer />
+
         </div>
+
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
