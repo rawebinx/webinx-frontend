@@ -2,7 +2,7 @@ import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
 export default function WebinarPage() {
-  const [match, params] = useRoute("/webinar/:slug");
+  const [, params] = useRoute("/webinar/:slug");
   const slug = params?.slug;
 
   const { data, isLoading, error } = useQuery({
@@ -20,8 +20,6 @@ export default function WebinarPage() {
     },
     enabled: !!slug,
   });
-
-  if (!match) return null;
 
   if (isLoading) {
     return <div className="p-6">Loading webinar...</div>;
