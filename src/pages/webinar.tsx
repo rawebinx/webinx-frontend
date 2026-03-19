@@ -41,9 +41,10 @@ export default function WebinarPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
 
-      {/* ✅ SEO TITLE + META */}
+      {/* ✅ SEO TITLE + META + SCHEMA */}
       <Helmet>
         <title>{data.title} Webinar | WebinX</title>
+
         <meta
           name="description"
           content={
@@ -51,6 +52,27 @@ export default function WebinarPage() {
             `${data.title} webinar. Join now to learn key insights.`
           }
         />
+
+        {/* ✅ SCHEMA (VERY IMPORTANT FOR GOOGLE) */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Event",
+            "name": data.title,
+            "startDate": data.start_time,
+            "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+            "eventStatus": "https://schema.org/EventScheduled",
+            "location": {
+              "@type": "VirtualLocation",
+              "url": data.event_url || "https://webinx.in"
+            },
+            "organizer": {
+              "@type": "Organization",
+              "name": "WebinX",
+              "url": "https://webinx.in"
+            }
+          })}
+        </script>
       </Helmet>
 
       <h1 className="text-2xl font-bold mb-4">{data.title}</h1>
