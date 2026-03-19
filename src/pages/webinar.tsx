@@ -46,12 +46,13 @@ export default function WebinarPage() {
       </p>
 
       <p className="mb-4">
-        {data.description || "No description available"}
+        {data.description ||
+          `${data.title} — Join this webinar to learn key insights and practical knowledge from industry experts.`}
       </p>
 
-      {data.url && (
+      {data.event_url && (
         <a
-          href={data.url}
+          href={data.event_url}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block bg-blue-600 text-white px-4 py-2 rounded"
