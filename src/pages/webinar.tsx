@@ -43,9 +43,10 @@ export default function WebinarPage() {
 
       <p className="text-gray-600 mb-2">
         {new Date(data.start_time).toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
           dateStyle: "medium",
           timeStyle: "short",
-})}
+        })}
       </p>
 
       <p className="mb-4">
