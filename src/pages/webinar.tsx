@@ -42,7 +42,10 @@ export default function WebinarPage() {
       <h1 className="text-2xl font-bold mb-4">{data.title}</h1>
 
       <p className="text-gray-600 mb-2">
-        {new Date(data.start_time).toLocaleString()}
+        {new Date(data.start_time).toLocaleString("en-IN", {
+          dateStyle: "medium",
+          timeStyle: "short",
+})}
       </p>
 
       <p className="mb-4">
