@@ -18,6 +18,7 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/webinars" component={WebinarsPage} />
+      <Route path="/browse" component={WebinarsPage} />
 
       {/* ✅ THIS IS THE CORRECT ONE */}
       <Route path="/webinar/:slug">
