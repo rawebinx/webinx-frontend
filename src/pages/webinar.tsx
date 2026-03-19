@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 
@@ -39,6 +40,19 @@ export default function WebinarPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+
+      {/* ✅ SEO TITLE + META */}
+      <Helmet>
+        <title>{data.title} Webinar | WebinX</title>
+        <meta
+          name="description"
+          content={
+            data.description ||
+            `${data.title} webinar. Join now to learn key insights.`
+          }
+        />
+      </Helmet>
+
       <h1 className="text-2xl font-bold mb-4">{data.title}</h1>
 
       <p className="text-gray-600 mb-2">
@@ -64,6 +78,23 @@ export default function WebinarPage() {
           Register Now
         </a>
       )}
+
+      {/* ✅ SIMPLE SEO CONTENT BLOCK */}
+      <div className="mt-10">
+        <h2 className="text-xl font-semibold mb-2">About this webinar</h2>
+        <p>
+          This webinar covers {data.title}. It is designed to help you understand
+          key concepts and practical applications in this field.
+        </p>
+
+        <h3 className="text-lg font-semibold mt-4">Who should attend?</h3>
+        <ul className="list-disc ml-6">
+          <li>Students</li>
+          <li>Working professionals</li>
+          <li>Anyone interested in this topic</li>
+        </ul>
+      </div>
+
     </div>
   );
 }
