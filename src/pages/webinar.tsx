@@ -3,12 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 
 export default function WebinarPage() {
-  const params = useParams();
-  const slug = params?.slug;
+  const { slug } = useParams();
 
-  if (!slug) {
-    return <div className="p-6">Invalid webinar link</div>;
-  }
+// ✅ Handle /webinar (no slug)
+if (!slug) {
+  return (
+    <div className="p-6">
+      <h1>Browse Webinars</h1>
+      <p>Please select a webinar from homepage.</p>
+    </div>
+  );
+}
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["webinar", slug],
@@ -37,13 +42,14 @@ return data;
     return <div className="p-6">Loading webinar...</div>;
   }
 
-  if (error) {
-    return <div className="p-6">Error loading webinar</div>;
-  }
-
-  if (!data) {
-    return <div className="p-6">Webinar not found</div>;
-  }
+  if (error || !data) {
+  return (
+    <div className="p-6">
+      <h1>Webinar not found</h1>
+      <p>This webinar may have expired or removed.</p>
+    </div>
+  );
+}
 
   return (
     <div className="max-w-4xl mx-auto p-6">
