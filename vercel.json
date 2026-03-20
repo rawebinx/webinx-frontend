@@ -1,12 +1,12 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/sitemap.xml",
-      "destination": "https://webinx-backend.onrender.com/sitemap.xml"
+      "src": "^/sitemap.xml$",
+      "dest": "https://webinx-backend.onrender.com/sitemap.xml"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
