@@ -21,7 +21,14 @@ export default function WebinarPage() {
 
       if (!res.ok) throw new Error("Failed to fetch");
 
-      return res.json();
+      const data = await res.json();
+
+// ✅ CRITICAL FIX: detect backend "not found"
+if (!data || data.error) {
+  throw new Error("Webinar not found");
+}
+
+return data;
     },
     enabled: !!slug,
   });
