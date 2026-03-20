@@ -15,19 +15,24 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={HomePage} />
-      <Route path="/webinars" component={WebinarsPage} />
-      <Route path="/browse" component={WebinarsPage} />
+   <Switch>
+  <Route path="/" component={HomePage} />
+  <Route path="/webinars" component={WebinarsPage} />
+  <Route path="/browse" component={WebinarsPage} />
 
-      {/* ✅ THIS IS THE CORRECT ONE */}
-      <Route path="/webinar/:slug">
-        {(params) => <WebinarPage slug={params.slug} />}
-      </Route>
+  {/* FIXED */}
+  <Route path="/webinar/:slug" component={WebinarPage} />
 
-      <Route path="/hosts/:id" component={HostPage} />
-      <Route component={NotFound} />
-    </Switch>
+  {/* REQUIRED */}
+  <Route path="/webinar">
+    <div className="p-6">
+      <h1>Browse Webinars</h1>
+    </div>
+  </Route>
+
+  <Route path="/hosts/:id" component={HostPage} />
+  <Route component={NotFound} />
+</Switch>
   );
 }
 
