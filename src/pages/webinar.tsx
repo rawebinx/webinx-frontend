@@ -1,9 +1,10 @@
 import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useRoute } from "wouter";
 
 export default function WebinarPage() {
-  const { slug } = useParams();
+  const [match, params] = useRoute("/webinar/:slug");
+  const slug = params?.slug;
 
 // ✅ Handle /webinar (no slug)
 if (!slug) {
@@ -22,19 +23,25 @@ if (!slug) {
         import.meta.env.VITE_API_BASE_URL ||
         "https://webinx-backend.onrender.com";
 
-      const res = await fetch(`${API_BASE}/api/events/${slug}`);
+  const res = await fetch(`${API_BASE}/api/events`);
 
-      if (!res.ok) throw new Error("Failed to fetch");
+  if (!res.ok) throw new Error("Failed to fetch");
+  const data = await res.json();
 
-      const data = await res.json();
-
-// ✅ CRITICAL FIX: detect backend "not found"
-if (!data || data.error) {
-  throw new Error("Webinar not found");
+if (!Array.isArray(data)) {
+  throw new Error("Invalid API response");
 }
+  const found = data.find((e: any) => {
+    const cleanSlug = e.slug?.toLowerCase().trim();
+    const urlSlug = slug?.toLowerCase().trim();
 
-return data;
-    },
+    return cleanSlug === urlSlug || cleanSlug?.includes(urlSlug);
+});
+
+  if (!found) throw new Error("Webinar not found");
+
+  return found;
+},
     enabled: !!slug,
   });
 
@@ -42,7 +49,8 @@ return data;
     return <div className="p-6">Loading webinar...</div>;
   }
 
-  if (error || !data) {
+ if (error || !data) {
+  console.error(error);
   return (
     <div className="p-6">
       <h1>Webinar not found</h1>
@@ -88,7 +96,7 @@ return data;
         </script>
       </Helmet>
 
-      <h1 className="text-2xl font-bold mb-4">{data.title}</h1>
+     <h1 className="text-2xl font-bold mb-4">{data?.title || "Webinar"}</h1>
 
       <p className="text-gray-600 mb-2">
         {new Date(data.start_time).toLocaleString("en-IN", {
