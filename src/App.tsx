@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import Contact from "@/pages/Contact";
 
 // Pages
 import HomePage from "@/pages/home";
@@ -19,6 +22,9 @@ function Router() {
   <Route path="/" component={HomePage} />
   <Route path="/webinars" component={WebinarsPage} />
   <Route path="/browse" component={WebinarsPage} />
+  <Route path="/privacy" component={Privacy} />
+  <Route path="/terms" component={Terms} />
+  <Route path="/contact" component={Contact} />
 
   {/* FIXED */}
   <Route path="/webinar/:slug" component={WebinarPage} />
