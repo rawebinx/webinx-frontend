@@ -23,7 +23,6 @@ function ThemeToggle() {
       size="icon"
       variant="ghost"
       onClick={() => setDark(d => !d)}
-      data-testid="button-theme-toggle"
       aria-label="Toggle theme"
     >
       {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -51,13 +50,17 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-          <Link href="/" data-testid="link-logo">
+
+          <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer">
               <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
                 <Video className="w-4 h-4 text-primary-foreground" />
               </div>
+
+              {/* ✅ FIXED BETA LABEL */}
               <span className="text-xl font-bold tracking-tight">
-                Webin<span className="text-primary">X</span> <span style={{fontSize:"12px"}}>(Beta)</span>
+                Webin<span className="text-primary">X</span>{" "}
+                <span style={{ fontSize: "12px" }}>(Beta)</span>
               </span>
             </div>
           </Link>
@@ -68,7 +71,6 @@ export function Navbar() {
                 <Button
                   variant={location === l.href ? "secondary" : "ghost"}
                   size="sm"
-                  data-testid={`link-nav-${l.label.toLowerCase()}`}
                 >
                   {l.label}
                 </Button>
@@ -83,7 +85,6 @@ export function Navbar() {
               variant="ghost"
               className="md:hidden"
               onClick={() => setMobileOpen(o => !o)}
-              data-testid="button-mobile-menu"
             >
               {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
@@ -98,7 +99,6 @@ export function Navbar() {
                   variant={location === l.href ? "secondary" : "ghost"}
                   size="sm"
                   className="w-full justify-start"
-                  data-testid={`link-mobile-${l.label.toLowerCase()}`}
                 >
                   {l.label}
                 </Button>

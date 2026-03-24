@@ -6,6 +6,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
+// Added pages (keep these)
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import Contact from "@/pages/Contact";
+
 // Pages
 import HomePage from "@/pages/home";
 import WebinarsPage from "@/pages/webinars";
@@ -15,24 +20,27 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
-   <Switch>
-  <Route path="/" component={HomePage} />
-  <Route path="/webinars" component={WebinarsPage} />
-  <Route path="/browse" component={WebinarsPage} />
+    <Switch>
+      <Route path="/" component={HomePage} />
+      <Route path="/webinars" component={WebinarsPage} />
+      <Route path="/browse" component={WebinarsPage} />
 
-  {/* FIXED */}
-  <Route path="/webinar/:slug" component={WebinarPage} />
+      {/* Added pages */}
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/contact" component={Contact} />
 
-  {/* REQUIRED */}
-  <Route path="/webinar">
-    <div className="p-6">
-      <h1>Browse Webinars</h1>
-    </div>
-  </Route>
+      <Route path="/webinar/:slug" component={WebinarPage} />
 
-  <Route path="/hosts/:id" component={HostPage} />
-  <Route component={NotFound} />
-</Switch>
+      <Route path="/webinar">
+        <div className="p-6">
+          <h1>Browse Webinars</h1>
+        </div>
+      </Route>
+
+      <Route path="/hosts/:id" component={HostPage} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
@@ -41,7 +49,6 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="min-h-screen flex flex-col bg-background text-foreground">
-
           <Navbar />
 
           <div className="flex-1">
@@ -49,7 +56,6 @@ export default function App() {
           </div>
 
           <Footer />
-
         </div>
 
         <Toaster />
