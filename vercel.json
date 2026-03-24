@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://webinx-backend.onrender.com/sitemap.xml"
+    },
+    {
+      "source": "/webinar/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/"
+    }
+  ]
+}
