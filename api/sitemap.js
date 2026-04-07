@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     };
 
     // -----------------------------
-    // STRICT CANONICAL DEDUP (FINAL FIX)
+    // STRICT CANONICAL DEDUP (FINAL)
     // -----------------------------
     const canonicalMap = {};
 
@@ -43,11 +43,14 @@ export default async function handler(req, res) {
       } else {
         const existing = canonicalMap[root];
 
-        const isExistingClean = !/-\d+$/.test(existing.slug);
-        const isCurrentClean = !/-\d+$/.test(event.slug);
+        const existingNum = existing.slug.match(/-(\d+)$/);
+        const currentNum = event.slug.match(/-(\d+)$/);
 
-        // Prefer clean slug
-        if (!isExistingClean && isCurrentClean) {
+        const existingIndex = existingNum ? parseInt(existingNum[1]) : 0;
+        const currentIndex = currentNum ? parseInt(currentNum[1]) : 0;
+
+        // ✅ Always prefer smallest suffix (clean = 0)
+        if (currentIndex < existingIndex) {
           canonicalMap[root] = event;
         }
       }
