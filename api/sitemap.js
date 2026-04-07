@@ -3,17 +3,25 @@ export default async function handler(req, res) {
     const API_URL = "https://webinx-backend.onrender.com/api/events";
 
     const response = await fetch(API_URL);
+
+    if (!response.ok) {
+      throw new Error("Backend API failed");
+    }
+
     const events = await response.json();
 
+    if (!Array.isArray(events)) {
+      throw new Error("Invalid API response");
+    }
+
     // -----------------------------
-    // STEP 1: Group by ROOT SLUG
+    // GROUP BY ROOT SLUG
     // -----------------------------
     const groups = {};
 
     for (const event of events) {
       if (!event.slug) continue;
 
-      // Remove numeric suffix (-1, -2, etc.)
       const rootSlug = event.slug.replace(/-\d+$/, "");
 
       if (!groups[rootSlug]) {
@@ -24,17 +32,15 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // STEP 2: Pick CANONICAL EVENT
+    // PICK CANONICAL
     // -----------------------------
     const uniqueEvents = [];
 
-    for (const rootSlug in groups) {
-      const group = groups[rootSlug];
+    for (const root in groups) {
+      const group = groups[root];
 
-      // Prefer clean slug (no suffix)
       let canonical = group.find(e => !/-\d+$/.test(e.slug));
 
-      // If no clean slug exists → fallback to shortest slug (more stable)
       if (!canonical) {
         canonical = group.sort((a, b) => a.slug.length - b.slug.length)[0];
       }
@@ -43,32 +49,33 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // STEP 3: Build XML
+    // BUILD XML
     // -----------------------------
     const baseUrl = "https://www.webinx.in";
 
-    const urls = uniqueEvents.map(event => {
-      return `
-        <url>
-          <loc>${baseUrl}/webinar/${event.slug}</loc>
-          <lastmod>${new Date(event.updated_at || event.created_at).toISOString()}</lastmod>
-          <changefreq>daily</changefreq>
-          <priority>0.8</priority>
-        </url>
-      `;
-    }).join("");
+    const urls = uniqueEvents.map(event => `
+      <url>
+        <loc>${baseUrl}/webinar/${event.slug}</loc>
+        <lastmod>${new Date(event.updated_at || event.created_at).toISOString()}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+      </url>
+    `).join("");
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-        ${urls}
-      </urlset>
-    `;
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    ${urls}
+    </urlset>`;
 
     res.setHeader("Content-Type", "application/xml");
     res.status(200).send(sitemap);
 
   } catch (error) {
-    console.error("Sitemap Error:", error);
-    res.status(500).send("Error generating sitemap");
+    console.error("SITEMAP ERROR:", error);
+
+    res.status(500).send(`
+      <h1>Sitemap Error</h1>
+      <pre>${error.message}</pre>
+    `);
   }
 }
