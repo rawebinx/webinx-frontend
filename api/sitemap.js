@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // SAFE DATE FUNCTION (FIXED)
+    // SAFE DATE FUNCTION
     // -----------------------------
     const getValidDate = (event) => {
       const rawDate = event.updated_at || event.created_at;
@@ -29,38 +29,31 @@ export default async function handler(req, res) {
     };
 
     // -----------------------------
-    // GROUP BY ROOT SLUG
+    // STRICT CANONICAL DEDUP (FINAL FIX)
     // -----------------------------
-    const groups = {};
+    const canonicalMap = {};
 
     for (const event of events) {
       if (!event.slug) continue;
 
-      const rootSlug = event.slug.replace(/-\d+$/, "");
+      const root = event.slug.replace(/-\d+$/, "");
 
-      if (!groups[rootSlug]) {
-        groups[rootSlug] = [];
+      if (!canonicalMap[root]) {
+        canonicalMap[root] = event;
+      } else {
+        const existing = canonicalMap[root];
+
+        const isExistingClean = !/-\d+$/.test(existing.slug);
+        const isCurrentClean = !/-\d+$/.test(event.slug);
+
+        // Prefer clean slug
+        if (!isExistingClean && isCurrentClean) {
+          canonicalMap[root] = event;
+        }
       }
-
-      groups[rootSlug].push(event);
     }
 
-    // -----------------------------
-    // PICK CANONICAL
-    // -----------------------------
-    const uniqueEvents = [];
-
-    for (const root in groups) {
-      const group = groups[root];
-
-      let canonical = group.find(e => !/-\d+$/.test(e.slug));
-
-      if (!canonical) {
-        canonical = group.sort((a, b) => a.slug.length - b.slug.length)[0];
-      }
-
-      uniqueEvents.push(canonical);
-    }
+    const uniqueEvents = Object.values(canonicalMap);
 
     // -----------------------------
     // BUILD XML
