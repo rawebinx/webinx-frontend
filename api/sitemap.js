@@ -3,31 +3,32 @@ export default async function handler(req, res) {
     const response = await fetch("https://webinx-backend.onrender.com/api/events");
     const data = await response.json();
 
-    const unique = new Map();
+    const grouped = {};
 
     const getRootSlug = (slug) => slug.replace(/-\d+$/, "");
-    const isDuplicateSlug = (slug) => /-\d+$/.test(slug);
+    const isDuplicate = (slug) => /-\d+$/.test(slug);
 
+    // STEP 1: GROUP BY ROOT
     data.forEach(event => {
       if (!event.slug) return;
 
       const root = getRootSlug(event.slug);
 
-      if (!unique.has(root)) {
-        unique.set(root, event);
-      } else {
-        const existing = unique.get(root);
-
-        // ✅ Prefer CLEAN slug over -1/-2
-        if (isDuplicateSlug(existing.slug) && !isDuplicateSlug(event.slug)) {
-          unique.set(root, event);
-        }
+      if (!grouped[root]) {
+        grouped[root] = [];
       }
+
+      grouped[root].push(event);
     });
 
-    const events = Array.from(unique.values());
+    // STEP 2: PICK BEST (CLEAN SLUG FIRST)
+    const finalEvents = Object.values(grouped).map(group => {
+      const clean = group.find(e => !isDuplicate(e.slug));
+      return clean || group[0]; // fallback if only duplicates exist
+    });
 
-    const urls = events.map(event => `
+    // STEP 3: BUILD XML
+    const urls = finalEvents.map(event => `
       <url>
         <loc>https://webinx.in/webinar/${event.slug}</loc>
         <lastmod>${new Date().toISOString().split("T")[0]}</lastmod>
