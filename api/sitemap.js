@@ -5,9 +5,21 @@ export default async function handler(req, res) {
 
     const unique = new Map();
 
-    // REMOVE DUPLICATES BY TITLE
+    const normalize = (title) => {
+      return title
+        .toLowerCase()
+        .replace(/webinar/g, "")
+        .replace(/workshop/g, "")
+        .replace(/masterclass/g, "")
+        .replace(/live/g, "")
+        .replace(/2026/g, "")
+        .replace(/[^a-z0-9 ]/g, "")
+        .trim();
+    };
+
     data.forEach(event => {
-      const key = event.title.toLowerCase();
+      const key = normalize(event.title);
+
       if (!unique.has(key)) {
         unique.set(key, event);
       }
