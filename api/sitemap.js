@@ -1,59 +1,74 @@
 export default async function handler(req, res) {
   try {
-    const response = await fetch("https://webinx-backend.onrender.com/api/events");
-    const data = await response.json();
+    const API_URL = "https://webinx-backend.onrender.com/api/events";
 
-    const grouped = {};
+    const response = await fetch(API_URL);
+    const events = await response.json();
 
-    const getRootSlug = (slug) => slug.replace(/-\d+$/, "");
-    const isDuplicate = (slug) => /-\d+$/.test(slug);
+    // -----------------------------
+    // STEP 1: Group by ROOT SLUG
+    // -----------------------------
+    const groups = {};
 
-    // STEP 1: GROUP BY ROOT
-    data.forEach(event => {
-      if (!event.slug) return;
+    for (const event of events) {
+      if (!event.slug) continue;
 
-      const root = getRootSlug(event.slug);
+      // Remove numeric suffix (-1, -2, etc.)
+      const rootSlug = event.slug.replace(/-\d+$/, "");
 
-      if (!grouped[root]) {
-        grouped[root] = [];
+      if (!groups[rootSlug]) {
+        groups[rootSlug] = [];
       }
 
-      grouped[root].push(event);
-    });
+      groups[rootSlug].push(event);
+    }
 
-    // STEP 2: PICK BEST (CLEAN SLUG FIRST)
-    const finalEvents = Object.values(grouped).map(group => {
-      const clean = group.find(e => !isDuplicate(e.slug));
-      return clean || group[0]; // fallback if only duplicates exist
-    });
+    // -----------------------------
+    // STEP 2: Pick CANONICAL EVENT
+    // -----------------------------
+    const uniqueEvents = [];
 
-    // STEP 3: BUILD XML
-    const urls = finalEvents.map(event => `
-      <url>
-        <loc>https://webinx.in/webinar/${event.slug}</loc>
-        <lastmod>${new Date().toISOString().split("T")[0]}</lastmod>
-        <priority>0.8</priority>
-      </url>
-    `).join("");
+    for (const rootSlug in groups) {
+      const group = groups[rootSlug];
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://webinx.in/</loc>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://webinx.in/browse</loc>
-    <priority>0.9</priority>
-  </url>
-  ${urls}
-</urlset>`;
+      // Prefer clean slug (no suffix)
+      let canonical = group.find(e => !/-\d+$/.test(e.slug));
+
+      // If no clean slug exists → fallback to shortest slug (more stable)
+      if (!canonical) {
+        canonical = group.sort((a, b) => a.slug.length - b.slug.length)[0];
+      }
+
+      uniqueEvents.push(canonical);
+    }
+
+    // -----------------------------
+    // STEP 3: Build XML
+    // -----------------------------
+    const baseUrl = "https://www.webinx.in";
+
+    const urls = uniqueEvents.map(event => {
+      return `
+        <url>
+          <loc>${baseUrl}/webinar/${event.slug}</loc>
+          <lastmod>${new Date(event.updated_at || event.created_at).toISOString()}</lastmod>
+          <changefreq>daily</changefreq>
+          <priority>0.8</priority>
+        </url>
+      `;
+    }).join("");
+
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        ${urls}
+      </urlset>
+    `;
 
     res.setHeader("Content-Type", "application/xml");
-    res.status(200).send(xml);
+    res.status(200).send(sitemap);
 
   } catch (error) {
-    console.error(error);
+    console.error("Sitemap Error:", error);
     res.status(500).send("Error generating sitemap");
   }
 }
