@@ -5,20 +5,15 @@ export default async function handler(req, res) {
 
     const unique = new Map();
 
-    const normalize = (title) => {
-      return title
-        .toLowerCase()
-        .replace(/webinar/g, "")
-        .replace(/workshop/g, "")
-        .replace(/masterclass/g, "")
-        .replace(/live/g, "")
-        .replace(/2026/g, "")
-        .replace(/[^a-z0-9 ]/g, "")
-        .trim();
+    // ✅ BEST: slug root deduplication
+    const getRootSlug = (slug) => {
+      return slug.replace(/-\d+$/, "");
     };
 
     data.forEach(event => {
-      const key = normalize(event.title);
+      if (!event.slug) return;
+
+      const key = getRootSlug(event.slug);
 
       if (!unique.has(key)) {
         unique.set(key, event);
@@ -36,22 +31,23 @@ export default async function handler(req, res) {
     `).join("");
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-        <url>
-          <loc>https://webinx.in/</loc>
-          <priority>1.0</priority>
-        </url>
-        <url>
-          <loc>https://webinx.in/browse</loc>
-          <priority>0.9</priority>
-        </url>
-        ${urls}
-      </urlset>`;
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://webinx.in/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://webinx.in/browse</loc>
+    <priority>0.9</priority>
+  </url>
+  ${urls}
+</urlset>`;
 
     res.setHeader("Content-Type", "application/xml");
     res.status(200).send(xml);
 
   } catch (error) {
+    console.error(error);
     res.status(500).send("Error generating sitemap");
   }
 }
