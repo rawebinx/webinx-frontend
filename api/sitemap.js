@@ -5,18 +5,23 @@ export default async function handler(req, res) {
 
     const unique = new Map();
 
-    // ✅ BEST: slug root deduplication
-    const getRootSlug = (slug) => {
-      return slug.replace(/-\d+$/, "");
-    };
+    const getRootSlug = (slug) => slug.replace(/-\d+$/, "");
+    const isDuplicateSlug = (slug) => /-\d+$/.test(slug);
 
     data.forEach(event => {
       if (!event.slug) return;
 
-      const key = getRootSlug(event.slug);
+      const root = getRootSlug(event.slug);
 
-      if (!unique.has(key)) {
-        unique.set(key, event);
+      if (!unique.has(root)) {
+        unique.set(root, event);
+      } else {
+        const existing = unique.get(root);
+
+        // ✅ Prefer CLEAN slug over -1/-2
+        if (isDuplicateSlug(existing.slug) && !isDuplicateSlug(event.slug)) {
+          unique.set(root, event);
+        }
       }
     });
 
