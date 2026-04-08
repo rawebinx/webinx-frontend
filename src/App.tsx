@@ -16,7 +16,11 @@ import About from "@/pages/about";
 import HomePage from "@/pages/home";
 import WebinarsPage from "@/pages/webinars";
 import WebinarPage from "@/pages/webinar";
-import HostPage from "@/pages/host";
+
+// ✅ FIXED IMPORTS
+import HostLanding from "@/pages/host";
+import HostPage from "@/pages/host-detail";
+
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -33,9 +37,14 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/contact" component={Contact} />
 
+      {/* ✅ HOST LANDING */}
+      <Route path="/host" component={HostLanding} />
+
+      {/* ✅ HOST PROFILE */}
+      <Route path="/hosts/:id" component={HostPage} />
+
       {/* Dynamic */}
       <Route path="/webinar/:slug" component={WebinarPage} />
-      <Route path="/hosts/:id" component={HostPage} />
 
       {/* Fallback */}
       <Route component={NotFound} />
