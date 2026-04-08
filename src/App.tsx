@@ -7,9 +7,9 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
 // Added pages (keep these)
-import Privacy from "@/pages/Privacy";
-import Terms from "@/pages/Terms";
-import Contact from "@/pages/Contact";
+import Privacy from "@/pages/privacy";
+import Terms from "@/pages/terms";
+import Contact from "@/pages/contact";
 
 // Pages
 import HomePage from "@/pages/home";
