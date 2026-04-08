@@ -29,34 +29,26 @@ export default async function handler(req, res) {
     };
 
     // -----------------------------
-    // STRICT CANONICAL DEDUP (FINAL)
+    // FORCE ROOT SLUG (CRITICAL FIX)
     // -----------------------------
-    const canonicalMap = {};
+    const seen = new Set();
+    const uniqueEvents = [];
 
     for (const event of events) {
       if (!event.slug) continue;
 
-      const root = event.slug.replace(/-\d+$/, "");
+      const rootSlug = event.slug.replace(/-\d+$/, "");
 
-      if (!canonicalMap[root]) {
-        canonicalMap[root] = event;
-      } else {
-        const existing = canonicalMap[root];
+      if (!seen.has(rootSlug)) {
+        seen.add(rootSlug);
 
-        const existingNum = existing.slug.match(/-(\d+)$/);
-        const currentNum = event.slug.match(/-(\d+)$/);
-
-        const existingIndex = existingNum ? parseInt(existingNum[1]) : 0;
-        const currentIndex = currentNum ? parseInt(currentNum[1]) : 0;
-
-        // ✅ Always prefer smallest suffix (clean = 0)
-        if (currentIndex < existingIndex) {
-          canonicalMap[root] = event;
-        }
+        // override slug → CLEAN VERSION
+        uniqueEvents.push({
+          ...event,
+          slug: rootSlug
+        });
       }
     }
-
-    const uniqueEvents = Object.values(canonicalMap);
 
     // -----------------------------
     // BUILD XML
