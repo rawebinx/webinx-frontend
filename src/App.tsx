@@ -8,10 +8,13 @@ import Contact from "./pages/contact";
 function App() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      {/* ✅ SPECIFIC ROUTES FIRST */}
       <Route path="/hosts/:slug" component={HostDetail} />
       <Route path="/about" component={About} />
       <Route path="/contact" component={Contact} />
+
+      {/* ✅ HOME MUST BE LAST */}
+      <Route path="/" component={Home} />
     </Switch>
   );
 }
