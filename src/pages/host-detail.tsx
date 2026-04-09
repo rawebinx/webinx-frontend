@@ -54,11 +54,6 @@ export default function HostDetail() {
         Webinars by this host
       </h2>
 
-      {/* DEBUG LINE (remove later) */}
-      <p style={{ color: "red", fontSize: "12px" }}>
-        DEBUG: {events.length} events loaded
-      </p>
-
       {events.length === 0 ? (
         <p>No webinars available</p>
       ) : (
