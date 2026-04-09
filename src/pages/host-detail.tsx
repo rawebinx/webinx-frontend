@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { useRoute } from "wouter";
+import { useParams } from "wouter";
 import { getHost, getHostEvents } from "../lib/api";
 
 export default function HostDetail() {
-  const [, params] = useRoute("/hosts/:slug");
-  const slug = params?.slug;
+  const { slug } = useParams();
 
   const [host, setHost] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
@@ -13,44 +12,49 @@ export default function HostDetail() {
   useEffect(() => {
     if (!slug) return;
 
-    getHost(slug).then(setHost);
+    async function loadData() {
+      try {
+        const hostData = await getHost(slug);
+        setHost(hostData);
 
-    getHostEvents(slug).then((data) => {
-  console.log("EVENTS API:", data); // DEBUG
+        const eventsData = await getHostEvents(slug);
+        console.log("EVENTS API:", eventsData);
 
-  if (data && data.events && data.events.length > 0) {
-    setEvents(data.events);
-  } else {
-    setEvents([]);
-  }
+        setEvents(eventsData.events || []);
+      } catch (err) {
+        console.error("Error loading host:", err);
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  setLoading(false);
-});
+    loadData();
   }, [slug]);
 
   if (loading) return <div className="p-10">Loading...</div>;
 
-  if (!host || host.error) {
-    return <div className="p-10">Host not found</div>;
-  }
-
   return (
-    <div className="max-w-3xl mx-auto p-10">
-      <h1 className="text-3xl font-bold mb-4">{host.name}</h1>
+    <div className="p-10">
+      <h1 className="text-3xl font-bold">{host?.name}</h1>
+      <p className="text-gray-500">Slug: {host?.slug}</p>
 
-      <h2 className="text-xl font-semibold mt-10 mb-4">
+      <h2 className="mt-6 text-xl font-semibold">
         Webinars by this host
       </h2>
 
       {events.length === 0 ? (
         <p>No webinars available</p>
       ) : (
-        <ul>
-          {events.map((e) => (
-            <li key={e.slug}>
-              <a href={`/webinar/${e.slug}`} className="text-blue-600 underline">
-                {e.title}
-              </a>
+        <ul className="mt-4 space-y-3">
+          {events.map((e, i) => (
+            <li key={i} className="border p-3 rounded">
+              <div className="font-medium">{e.title}</div>
+              <div className="text-sm text-gray-500">
+                {new Date(e.start_time).toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                })}
+              </div>
             </li>
           ))}
         </ul>
