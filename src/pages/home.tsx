@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WebinarCard } from "@/components/webinar-card";
 
 import {
-  Search,
   Cpu,
   TrendingUp,
   Palette,
@@ -19,12 +18,15 @@ import {
   BarChart2,
   Lightbulb,
   Rocket,
-  ChevronRight,
   Zap,
   ArrowRight,
   AlertCircle
 } from "lucide-react";
 
+
+// =========================
+// CATEGORY CONFIG
+// =========================
 
 const CATEGORY_META: Record<string, { icon: React.ElementType; color: string }> = {
   "Technology": { icon: Cpu, color: "text-blue-500" },
@@ -39,7 +41,6 @@ const CATEGORY_META: Record<string, { icon: React.ElementType; color: string }> 
   "Product": { icon: Lightbulb, color: "text-teal-500" }
 };
 
-
 const CATEGORY_GRADIENTS: Record<string, string> = {
   "Technology": "from-blue-50 to-blue-100 border-blue-200",
   "Marketing": "from-orange-50 to-orange-100 border-orange-200",
@@ -53,7 +54,6 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   "Product": "from-teal-50 to-teal-100 border-teal-200"
 };
 
-
 const CATEGORIES = [
   "Technology",
   "Marketing",
@@ -63,6 +63,10 @@ const CATEGORIES = [
   "Entrepreneurship"
 ];
 
+
+// =========================
+// SKELETON
+// =========================
 
 function WebinarSkeleton() {
   return (
@@ -77,6 +81,10 @@ function WebinarSkeleton() {
   );
 }
 
+
+// =========================
+// SORTING LOGIC
+// =========================
 
 function sortByDate(events: any[]) {
   const now = new Date();
@@ -95,12 +103,18 @@ function sortByDate(events: any[]) {
 }
 
 
+// =========================
+// MAIN COMPONENT
+// =========================
+
 export default function HomePage() {
 
   const [, setLocation] = useLocation();
   const [searchValue, setSearchValue] = useState("");
 
-
+  // =========================
+  // CLICK TRACKING
+  // =========================
   const trackClick = async (slug: string) => {
     try {
       await fetch(`https://webinx-backend.onrender.com/api/events/click/${slug}`, {
@@ -111,44 +125,42 @@ export default function HomePage() {
     }
   };
 
+  // =========================
+  // API CALLS (SAFE)
+  // =========================
 
   const { data: externalEvents = [], isLoading: externalLoading, isError: externalError } =
-  useQuery<any[]>({
-    queryKey: ["api/events"]
-  });
-
+    useQuery<any[]>({
+      queryKey: ["api/events"]
+    });
 
   const { data: trending = [], isLoading: trendingLoading } =
     useQuery<any[]>({
       queryKey: ["api/events/trending"]
     });
 
+  // =========================
+  // SEARCH (SAFE REDIRECT)
+  // =========================
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
 
-    if (searchValue.trim()) {
-      setLocation(`/webinars?search=${encodeURIComponent(searchValue)}`);
-    } else {
-      setLocation("/webinars");
-    }
+    // TEMP safe fallback (no broken routes)
+    setLocation("/");
+  }, [setLocation]);
 
-  }, [searchValue, setLocation]);
-
-
-  const handleCategoryClick = (category: string) => {
-    setLocation(`/webinars?category=${encodeURIComponent(category)}`);
+  const handleCategoryClick = () => {
+    // TEMP disable until /webinars page exists
+    setLocation("/");
   };
 
-
   const sorted = sortByDate(externalEvents);
-
 
   return (
     <main className="min-h-screen">
 
       {/* HERO */}
-
       <section className="border-b py-20">
         <div className="max-w-6xl mx-auto px-4 text-center space-y-6">
 
@@ -177,9 +189,7 @@ export default function HomePage() {
         </div>
       </section>
 
-
       {/* CATEGORIES */}
-
       <section className="max-w-6xl mx-auto px-4 py-16">
 
         <h2 className="text-2xl font-bold mb-6">
@@ -195,21 +205,14 @@ export default function HomePage() {
             const gradient = CATEGORY_GRADIENTS[cat] ?? "border";
 
             return (
-
               <button
                 key={cat}
-                onClick={() => handleCategoryClick(cat)}
+                onClick={handleCategoryClick}
                 className={`p-4 border rounded-lg bg-gradient-to-br ${gradient}`}
               >
-
                 <Icon className={`w-6 h-6 mb-2 ${meta?.color ?? "text-primary"}`} />
-
-                <div className="text-sm font-medium">
-                  {cat}
-                </div>
-
+                <div className="text-sm font-medium">{cat}</div>
               </button>
-
             );
 
           })}
@@ -218,9 +221,7 @@ export default function HomePage() {
 
       </section>
 
-
-      {/* LIVE EVENTS */}
-
+      {/* UPCOMING EVENTS */}
       <section className="bg-muted/30 border-y py-16">
 
         <div className="max-w-6xl mx-auto px-4">
@@ -230,34 +231,28 @@ export default function HomePage() {
           </h2>
 
           {externalError ? (
-
             <div className="flex items-center gap-2 text-muted-foreground">
               <AlertCircle className="w-4 h-4" />
               Could not load live events
             </div>
-
           ) : (
-
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
               {externalLoading
                 ? Array.from({ length: 4 }).map((_, i) => <WebinarSkeleton key={i} />)
-                : sorted.slice(0, 4).map((e, i) =>
+                : sorted.slice(0, 4).map((e) =>
                     <WebinarCard key={e.id} webinar={e} />
                   )
               }
 
             </div>
-
           )}
 
         </div>
 
       </section>
 
-
       {/* TRENDING */}
-
       <section className="max-w-6xl mx-auto px-4 py-16">
 
         <h2 className="text-2xl font-bold mb-6">
@@ -270,10 +265,7 @@ export default function HomePage() {
             ? Array.from({ length: 4 }).map((_, i) => <WebinarSkeleton key={i} />)
             : trending.slice(0, 4).map((w: any) => (
 
-              <div
-                key={w.id}
-                onClick={() => trackClick(w.slug)}
-              >
+              <div key={w.id} onClick={() => trackClick(w.slug)}>
                 <WebinarCard webinar={w} />
               </div>
 
@@ -282,16 +274,10 @@ export default function HomePage() {
         </div>
 
         <div className="text-center mt-10">
-
-          <Link href="/webinars">
-
-            <Button variant="outline">
-              Explore all webinars
-              <ArrowRight className="w-4 h-4 ml-2"/>
-            </Button>
-
-          </Link>
-
+          <Button variant="outline">
+            Explore all webinars
+            <ArrowRight className="w-4 h-4 ml-2"/>
+          </Button>
         </div>
 
       </section>
