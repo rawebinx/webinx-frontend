@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
 
 const API_BASE = "https://webinx-backend.onrender.com";
 
 export default function HostDetail() {
-  const params = useParams();
-  const slug = params?.slug;
+  // ✅ SAFE SLUG EXTRACTION (NO WOUTER DEPENDENCY)
+  const slug = window.location.pathname.split("/hosts/")[1];
 
   const [host, setHost] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
@@ -27,7 +26,6 @@ export default function HostDetail() {
         const eventsRes = await fetch(`${API_BASE}/api/hosts/${slug}/events`);
         const eventsData = await eventsRes.json();
 
-        // SAFE VALIDATION
         if (!hostData || !hostData.name) {
           setError("Host not found");
           return;
@@ -38,7 +36,6 @@ export default function HostDetail() {
         if (Array.isArray(eventsData)) {
           setEvents(eventsData);
         } else {
-          console.warn("Events API not array", eventsData);
           setEvents([]);
         }
 
@@ -53,8 +50,10 @@ export default function HostDetail() {
     fetchData();
   }, [slug]);
 
+  // ✅ ALWAYS RENDER SOMETHING
   if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
   if (error) return <div style={{ padding: 20 }}>{error}</div>;
+  if (!host) return <div style={{ padding: 20 }}>No data</div>;
 
   const now = new Date();
 
@@ -76,7 +75,7 @@ export default function HostDetail() {
     .filter((e) => !e.isUpcoming)
     .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
-  // SEO FIX
+  // ✅ SEO + SCHEMA
   useEffect(() => {
     if (!host?.name) return;
 
@@ -93,14 +92,35 @@ export default function HostDetail() {
       "content",
       `Explore ${host.name} webinars on WebinX. ${upcoming.length} upcoming sessions available.`
     );
-  }, [host, upcoming]);
+
+    // JSON-LD
+    const scriptId = "host-schema";
+    let script = document.getElementById(scriptId);
+
+    if (script) script.remove();
+
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: host.name,
+      url: `https://webinx.in/hosts/${slug}`,
+    };
+
+    const newScript = document.createElement("script");
+    newScript.id = scriptId;
+    newScript.type = "application/ld+json";
+    newScript.innerHTML = JSON.stringify(schema);
+
+    document.head.appendChild(newScript);
+
+  }, [host, upcoming, slug]);
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
       
       {/* HEADER */}
       <h1>{host.name} Webinars</h1>
-      <p>{events.length} total webinars hosted</p>
+      <p>{events.length} webinars hosted</p>
 
       {/* UPCOMING */}
       <h2>Upcoming Webinars</h2>
@@ -140,7 +160,7 @@ export default function HostDetail() {
       {/* INTERNAL LINKS */}
       <div style={{ marginTop: "40px" }}>
         <h2>Explore More Webinars</h2>
-        <a href="/browse">Browse All</a>
+        <a href="/browse">Browse All Webinars</a>
       </div>
 
     </div>
