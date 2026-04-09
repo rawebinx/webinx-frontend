@@ -16,9 +16,16 @@ export default function HostDetail() {
     getHost(slug).then(setHost);
 
     getHostEvents(slug).then((data) => {
-      setEvents(data.events || []);
-      setLoading(false);
-    });
+  console.log("EVENTS API:", data); // DEBUG
+
+  if (data && data.events && data.events.length > 0) {
+    setEvents(data.events);
+  } else {
+    setEvents([]);
+  }
+
+  setLoading(false);
+});
   }, [slug]);
 
   if (loading) return <div className="p-10">Loading...</div>;
