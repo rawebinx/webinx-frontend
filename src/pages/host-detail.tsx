@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 const API_BASE = "https://webinx-backend.onrender.com";
 
 export default function HostDetail() {
-  // ✅ SAFE SLUG EXTRACTION (NO WOUTER DEPENDENCY)
   const slug = window.location.pathname.split("/hosts/")[1];
 
   const [host, setHost] = useState<any>(null);
@@ -32,12 +31,7 @@ export default function HostDetail() {
         }
 
         setHost(hostData);
-
-        if (Array.isArray(eventsData)) {
-          setEvents(eventsData);
-        } else {
-          setEvents([]);
-        }
+        setEvents(Array.isArray(eventsData) ? eventsData : []);
 
       } catch (err) {
         console.error("API error", err);
@@ -50,32 +44,41 @@ export default function HostDetail() {
     fetchData();
   }, [slug]);
 
-  // ✅ ALWAYS RENDER SOMETHING
   if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
   if (error) return <div style={{ padding: 20 }}>{error}</div>;
   if (!host) return <div style={{ padding: 20 }}>No data</div>;
 
   const now = new Date();
 
-  const enhancedEvents = events.map((e) => ({
-    ...e,
-    isUpcoming: e?.start_time ? new Date(e.start_time) > now : false,
-    formattedDate: e?.start_time
-      ? new Date(e.start_time).toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-        })
-      : "Date TBD",
-  }));
+  // ✅ SAFE DATE PARSER
+  const safeDate = (dateStr: any) => {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  };
 
+  const enhancedEvents = events.map((e) => {
+    const parsedDate = safeDate(e?.start_time);
+
+    return {
+      ...e,
+      parsedDate,
+      isUpcoming: parsedDate ? parsedDate > now : false,
+      formattedDate: parsedDate
+        ? parsedDate.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+        : "Date TBD",
+    };
+  });
+
+  // ✅ SAFE SORT (NO CRASH POSSIBLE)
   const upcoming = enhancedEvents
-    .filter((e) => e.isUpcoming)
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    .filter((e) => e.isUpcoming && e.parsedDate)
+    .sort((a, b) => (a.parsedDate!.getTime() - b.parsedDate!.getTime()));
 
   const past = enhancedEvents
-    .filter((e) => !e.isUpcoming)
-    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+    .filter((e) => !e.isUpcoming && e.parsedDate)
+    .sort((a, b) => (b.parsedDate!.getTime() - a.parsedDate!.getTime()));
 
-  // ✅ SEO + SCHEMA
+  // SEO
   useEffect(() => {
     if (!host?.name) return;
 
@@ -92,28 +95,7 @@ export default function HostDetail() {
       "content",
       `Explore ${host.name} webinars on WebinX. ${upcoming.length} upcoming sessions available.`
     );
-
-    // JSON-LD
-    const scriptId = "host-schema";
-    let script = document.getElementById(scriptId);
-
-    if (script) script.remove();
-
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: host.name,
-      url: `https://webinx.in/hosts/${slug}`,
-    };
-
-    const newScript = document.createElement("script");
-    newScript.id = scriptId;
-    newScript.type = "application/ld+json";
-    newScript.innerHTML = JSON.stringify(schema);
-
-    document.head.appendChild(newScript);
-
-  }, [host, upcoming, slug]);
+  }, [host, upcoming]);
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
