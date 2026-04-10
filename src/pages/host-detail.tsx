@@ -10,6 +10,7 @@ export default function HostDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ ALL HOOKS FIRST
   useEffect(() => {
     if (!slug) {
       setError("Invalid host URL");
@@ -32,9 +33,8 @@ export default function HostDetail() {
 
         setHost(hostData);
         setEvents(Array.isArray(eventsData) ? eventsData : []);
-
       } catch (err) {
-        console.error("API error", err);
+        console.error(err);
         setError("Failed to load data");
       } finally {
         setLoading(false);
@@ -43,6 +43,26 @@ export default function HostDetail() {
 
     fetchData();
   }, [slug]);
+
+  useEffect(() => {
+    if (!host?.name) return;
+
+    document.title = `${host.name} Webinars | WebinX`;
+
+    let meta = document.querySelector("meta[name='description']");
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "description");
+      document.head.appendChild(meta);
+    }
+
+    meta.setAttribute(
+      "content",
+      `Explore ${host.name} webinars on WebinX.`
+    );
+  }, [host, slug]);
+
+  // ✅ AFTER HOOKS → SAFE TO RETURN
 
   if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
   if (error) return <div style={{ padding: 20 }}>{error}</div>;
@@ -75,25 +95,6 @@ export default function HostDetail() {
   const past = enhancedEvents
     .filter((e) => !e.isUpcoming && e.parsedDate)
     .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
-
-  // ✅ FIXED: removed "upcoming" from dependency
-  useEffect(() => {
-    if (!host?.name) return;
-
-    document.title = `${host.name} Webinars | WebinX`;
-
-    let meta = document.querySelector("meta[name='description']");
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.setAttribute("name", "description");
-      document.head.appendChild(meta);
-    }
-
-    meta.setAttribute(
-      "content",
-      `Explore ${host.name} webinars on WebinX.`
-    );
-  }, [host, slug]); // ✅ ONLY stable dependencies
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
