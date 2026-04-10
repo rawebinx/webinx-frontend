@@ -1,4 +1,4 @@
-import { Route, Switch } from "wouter";
+import { Route } from "wouter";
 
 import Home from "./pages/home";
 import HostDetail from "./pages/host-detail";
@@ -6,17 +6,17 @@ import About from "./pages/about";
 import Contact from "./pages/contact";
 
 function App() {
-  return (
-    <Switch>
-      {/* ✅ SPECIFIC ROUTES FIRST */}
-      <Route path="/hosts/:slug" component={HostDetail} />
-      <Route path="/about" component={About} />
-      <Route path="/contact" component={Contact} />
+  const path = window.location.pathname;
 
-      {/* ✅ HOME MUST BE LAST */}
-      <Route path="/" component={Home} />
-    </Switch>
-  );
+  // ✅ HARD ROUTING (NO WOUTER SWITCH BUG)
+  if (path.startsWith("/hosts/")) {
+    return <HostDetail />;
+  }
+
+  if (path === "/about") return <About />;
+  if (path === "/contact") return <Contact />;
+
+  return <Home />;
 }
 
 export default App;
