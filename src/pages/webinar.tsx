@@ -19,13 +19,12 @@ export default function WebinarDetail() {
 
   if (!event) return <div>Loading...</div>;
 
-  // ✅ SEO CORE
-  const title = `${event.title} | Free Webinar | WebinX`;
-  const description = `Join "${event.title}" webinar. Learn practical insights, real-world strategies, and expert knowledge. Register now on WebinX.`;
+  // SEO CORE
+  const title = `${event.title} Webinar (Free) | WebinX`;
+  const description = `Join ${event.title} webinar. Learn actionable strategies, real-world applications, and expert insights. Register free on WebinX.`;
   const url = `https://www.webinx.in/webinar/${event.slug}`;
   const image = "https://www.webinx.in/og-default.jpg";
 
-  // ✅ STRUCTURED DATA (GOOGLE RANKING BOOST)
   const schema = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -47,35 +46,23 @@ export default function WebinarDetail() {
   return (
     <>
       <Helmet>
-        {/* TITLE */}
         <title>{title}</title>
-
-        {/* META */}
         <meta name="description" content={description} />
-
-        {/* CANONICAL */}
         <link rel="canonical" href={url} />
 
-        {/* OPEN GRAPH */}
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={url} />
         <meta property="og:type" content="event" />
         <meta property="og:image" content={image} />
 
-        {/* TWITTER */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={title} />
-        <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={image} />
 
-        {/* SCHEMA */}
         <script type="application/ld+json">
           {JSON.stringify(schema)}
         </script>
       </Helmet>
 
-      {/* CONTENT (VERY IMPORTANT FOR SEO) */}
       <div style={{ padding: "20px", maxWidth: "900px", margin: "auto" }}>
         <h1>{event.title}</h1>
 
@@ -88,23 +75,41 @@ export default function WebinarDetail() {
 
         <p>{event.description}</p>
 
-        {/* SEO CONTENT BLOCK */}
+        {/* 🔥 SEO BOOST CONTENT */}
+
         <h2>About this webinar</h2>
         <p>
-          This webinar on <strong>{event.title}</strong> provides practical
-          insights, real-world applications, and expert knowledge to help you stay ahead.
+          The <strong>{event.title}</strong> webinar is designed to help you gain
+          deep insights, practical knowledge, and real-world applications in this domain.
+          Whether you are a beginner or experienced professional, this session will help you
+          improve your understanding and stay competitive.
         </p>
+
+        <h2>What you will learn</h2>
+        <ul>
+          <li>Core concepts and fundamentals</li>
+          <li>Real-world use cases and applications</li>
+          <li>Latest trends and industry practices</li>
+          <li>Expert tips and strategies</li>
+        </ul>
 
         <h2>Who should attend?</h2>
         <ul>
-          <li>Students</li>
-          <li>Professionals</li>
-          <li>Industry learners</li>
+          <li>Students looking to learn new skills</li>
+          <li>Professionals upgrading their knowledge</li>
+          <li>Entrepreneurs and business owners</li>
         </ul>
 
-        {/* INTERNAL LINKING (VERY IMPORTANT) */}
+        <h2>Why attend this webinar?</h2>
         <p>
-          <a href="/webinars">Browse more webinars</a>
+          This webinar provides actionable insights, expert knowledge, and practical learning
+          opportunities that can help you grow your career or business.
+        </p>
+
+        {/* 🔥 INTERNAL LINKING */}
+        <p>
+          Explore more related sessions on our{" "}
+          <a href="/webinars">webinar listings page</a>.
         </p>
       </div>
     </>
