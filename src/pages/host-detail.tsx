@@ -3,13 +3,14 @@ import { useParams } from "wouter";
 import { getHost, getHostEvents } from "../lib/api";
 
 export default function HostDetail() {
-  const { slug } = useParams();
+  const params = useParams();
+  const slug = params?.slug;
 
   const [host, setHost] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || slug === "undefined") return;
 
     // Fetch host
     getHost(slug).then((data) => {
