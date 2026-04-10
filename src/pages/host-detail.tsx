@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+const params = useParams();
+const slug = params?.slug;
 import { getHost, getHostEvents } from "../lib/api";
 
 export default function HostDetail() {
-  const params = useParams();
-  const slug = params?.slug;
-
+  const slug = window.location.pathname.split("/hosts/")[1];
+   
   const [host, setHost] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
 
