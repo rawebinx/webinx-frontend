@@ -16,50 +16,43 @@ export default function Home() {
 
   return (
     <>
-      {/* ================= SEO ================= */}
+      {/* SEO */}
       <Helmet>
-        <title>WebinX – Discover Webinars in India (AI, Marketing, Finance)</title>
+        <title>WebinX – Discover Webinars in India</title>
         <meta
           name="description"
-          content="Find and join top webinars in India across AI, marketing, business and finance. Updated daily on WebinX."
+          content="Discover top webinars across AI, marketing, finance and business."
         />
-        <link rel="canonical" href="https://www.webinx.in/" />
-
-        <meta property="og:title" content="WebinX – Discover Webinars" />
-        <meta property="og:description" content="Explore top webinars across AI, marketing and business." />
-        <meta property="og:image" content="https://www.webinx.in/og-default.jpg" />
-        <meta property="og:url" content="https://www.webinx.in/" />
       </Helmet>
 
-      {/* ================= HERO ================= */}
+      {/* HERO */}
       <div
         style={{
-          background: "linear-gradient(135deg, #4f46e5, #9333ea)",
-          padding: "100px 20px",
+          background: "linear-gradient(135deg,#4f46e5,#9333ea)",
+          padding: "110px 20px",
           textAlign: "center",
           color: "#fff",
         }}
       >
-        <h1 style={{ fontSize: "44px", fontWeight: "700" }}>
+        <h1 style={{ fontSize: "48px", fontWeight: 800 }}>
           Discover Top Webinars
         </h1>
 
-        <p style={{ fontSize: "18px", marginTop: "10px", opacity: 0.9 }}>
-          Learn AI, Marketing, Finance & Business from experts
+        <p style={{ marginTop: "10px", fontSize: "18px", opacity: 0.9 }}>
+          Learn from experts in AI, Marketing, Finance & Business
         </p>
 
         <Link href="/webinars">
           <a
             style={{
-              marginTop: "25px",
+              marginTop: "30px",
               display: "inline-block",
               background: "#facc15",
+              padding: "14px 30px",
+              borderRadius: "12px",
+              fontWeight: 700,
               color: "#000",
-              padding: "14px 28px",
-              borderRadius: "10px",
-              fontWeight: "600",
               textDecoration: "none",
-              fontSize: "16px",
             }}
           >
             Explore Webinars →
@@ -67,48 +60,31 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* ================= TRUST STRIP ================= */}
+      {/* TRUST BAR */}
       <div
         style={{
           textAlign: "center",
-          padding: "20px",
+          padding: "15px",
           fontSize: "14px",
           color: "#666",
+          borderBottom: "1px solid #eee",
         }}
       >
-        🔥 100+ webinars discovered • Updated daily • Free access
+        🔥 100+ webinars • Updated daily • Free learning
       </div>
 
-      {/* ================= MAIN ================= */}
-      <div style={{ maxWidth: "1100px", margin: "40px auto", padding: "20px" }}>
-        <h2 style={{ fontSize: "26px", marginBottom: "10px" }}>
+      {/* MAIN */}
+      <div style={{ maxWidth: "1100px", margin: "50px auto", padding: "20px" }}>
+        <h2 style={{ fontSize: "28px", marginBottom: "20px" }}>
           Latest Webinars
         </h2>
-
-        {/* CATEGORY TAGS */}
-        <div style={{ marginBottom: "20px" }}>
-          {["AI", "Marketing", "Finance", "Business"].map((cat) => (
-            <span
-              key={cat}
-              style={{
-                marginRight: "10px",
-                padding: "6px 14px",
-                background: "#eef2ff",
-                borderRadius: "20px",
-                fontSize: "12px",
-              }}
-            >
-              {cat}
-            </span>
-          ))}
-        </div>
 
         {/* GRID */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: "20px",
+            gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+            gap: "24px",
           }}
         >
           {events.map((event) => (
@@ -116,33 +92,44 @@ export default function Home() {
               key={event.id}
               style={{
                 background: "#fff",
-                borderRadius: "14px",
-                padding: "20px",
-                boxShadow: "0 10px 20px rgba(0,0,0,0.05)",
-                transition: "0.3s",
+                borderRadius: "16px",
+                padding: "22px",
+                boxShadow: "0 8px 25px rgba(0,0,0,0.06)",
+                transition: "all 0.25s ease",
+                border: "1px solid #f1f1f1",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-6px)";
+                e.currentTarget.style.transform = "translateY(-8px)";
+                e.currentTarget.style.boxShadow =
+                  "0 20px 40px rgba(0,0,0,0.12)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow =
+                  "0 8px 25px rgba(0,0,0,0.06)";
               }}
             >
-              <h3 style={{ fontSize: "18px", marginBottom: "8px" }}>
+              <div style={{ fontSize: "12px", color: "#888" }}>
+                {new Date(event.start_time).toLocaleDateString("en-IN")}
+              </div>
+
+              <h3
+                style={{
+                  fontSize: "18px",
+                  margin: "10px 0",
+                  lineHeight: "1.4",
+                }}
+              >
                 {event.title}
               </h3>
-
-              <p style={{ fontSize: "13px", color: "#666" }}>
-                {new Date(event.start_time).toLocaleDateString("en-IN")}
-              </p>
 
               <Link href={`/webinar/${event.slug}`}>
                 <a
                   style={{
-                    marginTop: "12px",
+                    marginTop: "10px",
                     display: "inline-block",
                     color: "#4f46e5",
-                    fontWeight: "600",
+                    fontWeight: 600,
                   }}
                 >
                   View Details →
@@ -153,21 +140,37 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ================= SEO CONTENT ================= */}
-      <div style={{ maxWidth: "900px", margin: "40px auto", padding: "20px" }}>
-        <h2>Find Webinars in India</h2>
-        <p>
-          WebinX helps you discover upcoming webinars in AI, marketing,
-          finance, and business. Stay ahead by joining expert-led sessions.
+      {/* BOTTOM CTA */}
+      <div
+        style={{
+          background: "#f9fafb",
+          padding: "50px 20px",
+          textAlign: "center",
+        }}
+      >
+        <h2 style={{ fontSize: "26px" }}>
+          Never miss a valuable webinar again
+        </h2>
+
+        <p style={{ color: "#666", marginTop: "10px" }}>
+          Explore curated webinars across industries
         </p>
 
-        <h2>Popular Webinar Topics</h2>
-        <ul>
-          <li>AI & Machine Learning</li>
-          <li>Digital Marketing</li>
-          <li>Stock Market & Finance</li>
-          <li>Startup Growth</li>
-        </ul>
+        <Link href="/webinars">
+          <a
+            style={{
+              marginTop: "20px",
+              display: "inline-block",
+              background: "#4f46e5",
+              color: "#fff",
+              padding: "12px 26px",
+              borderRadius: "10px",
+              textDecoration: "none",
+            }}
+          >
+            Browse All Webinars
+          </a>
+        </Link>
       </div>
     </>
   );
