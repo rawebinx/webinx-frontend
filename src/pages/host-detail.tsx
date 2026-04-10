@@ -13,13 +13,20 @@ export default function HostDetail() {
     if (!slug || slug === "undefined") return;
 
     // Fetch host
-    getHost(slug).then((data) => {
-      setHost(data);
-    });
+   getHost(slug).then((data) => {
+  console.log("Host API response:", data);
+
+  // Handle both formats safely
+  if (data?.host) {
+    setHost(data.host);
+  } else {
+    setHost(data);
+  }
+});
 
     // Fetch events
     getHostEvents(slug).then((data) => {
-      setEvents(data.events || []);
+      setEvents(data?.events || []);
     });
   }, [slug]);
 
@@ -56,7 +63,7 @@ export default function HostDetail() {
     };
   }, [host, slug]);
 
-  if (!host) return <div>Loading...</div>;
+  if (!host) return <div>Loading host data...</div>;
 
   return (
     <div className="container mx-auto px-4 py-6">
