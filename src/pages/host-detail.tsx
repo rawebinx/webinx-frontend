@@ -10,7 +10,6 @@ export default function HostDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ ALL HOOKS FIRST
   useEffect(() => {
     if (!slug) {
       setError("Invalid host URL");
@@ -32,7 +31,10 @@ export default function HostDetail() {
         }
 
         setHost(hostData);
-        setEvents(Array.isArray(eventsData) ? eventsData : []);
+
+        // ✅ FINAL FIX HERE
+        setEvents(Array.isArray(eventsData) ? eventsData : eventsData.events || []);
+
       } catch (err) {
         console.error(err);
         setError("Failed to load data");
@@ -61,8 +63,6 @@ export default function HostDetail() {
       `Explore ${host.name} webinars on WebinX.`
     );
   }, [host, slug]);
-
-  // ✅ AFTER HOOKS → SAFE TO RETURN
 
   if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
   if (error) return <div style={{ padding: 20 }}>{error}</div>;
