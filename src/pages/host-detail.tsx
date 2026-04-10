@@ -50,7 +50,6 @@ export default function HostDetail() {
 
   const now = new Date();
 
-  // ✅ SAFE DATE PARSER
   const safeDate = (dateStr: any) => {
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? null : d;
@@ -69,16 +68,15 @@ export default function HostDetail() {
     };
   });
 
-  // ✅ SAFE SORT (NO CRASH POSSIBLE)
   const upcoming = enhancedEvents
     .filter((e) => e.isUpcoming && e.parsedDate)
-    .sort((a, b) => (a.parsedDate!.getTime() - b.parsedDate!.getTime()));
+    .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
 
   const past = enhancedEvents
     .filter((e) => !e.isUpcoming && e.parsedDate)
-    .sort((a, b) => (b.parsedDate!.getTime() - a.parsedDate!.getTime()));
+    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
 
-  // SEO
+  // ✅ FIXED: removed "upcoming" from dependency
   useEffect(() => {
     if (!host?.name) return;
 
@@ -93,23 +91,21 @@ export default function HostDetail() {
 
     meta.setAttribute(
       "content",
-      `Explore ${host.name} webinars on WebinX. ${upcoming.length} upcoming sessions available.`
+      `Explore ${host.name} webinars on WebinX.`
     );
-  }, [host, upcoming]);
+  }, [host, slug]); // ✅ ONLY stable dependencies
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
       
-      {/* HEADER */}
       <h1>{host.name} Webinars</h1>
       <p>{events.length} webinars hosted</p>
 
-      {/* UPCOMING */}
       <h2>Upcoming Webinars</h2>
       {upcoming.length === 0 && <p>No upcoming webinars</p>}
 
       {upcoming.map((event) => (
-        <div key={event.id || event.slug} style={{ marginBottom: "20px" }}>
+        <div key={event.id || event.slug}>
           <a href={`/webinar/${event.slug}`}>
             <h3>{event.title || "Untitled Webinar"}</h3>
           </a>
@@ -117,12 +113,11 @@ export default function HostDetail() {
         </div>
       ))}
 
-      {/* PAST */}
       {past.length > 0 && (
         <>
           <h2>Past Webinars</h2>
           {past.slice(0, 10).map((event) => (
-            <div key={event.id || event.slug} style={{ marginBottom: "20px" }}>
+            <div key={event.id || event.slug}>
               <a href={`/webinar/${event.slug}`}>
                 <h3>{event.title || "Untitled Webinar"}</h3>
               </a>
@@ -132,17 +127,9 @@ export default function HostDetail() {
         </>
       )}
 
-      {/* CTA */}
-      <div style={{ marginTop: "40px", padding: "20px", border: "1px solid #ddd" }}>
-        <h2>Become a Webinar Host</h2>
-        <p>List your webinars and reach thousands of professionals.</p>
-        <a href="/">Get Started</a>
-      </div>
-
-      {/* INTERNAL LINKS */}
       <div style={{ marginTop: "40px" }}>
-        <h2>Explore More Webinars</h2>
-        <a href="/browse">Browse All Webinars</a>
+        <h2>Become a Webinar Host</h2>
+        <a href="/">Get Started</a>
       </div>
 
     </div>
