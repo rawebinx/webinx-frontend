@@ -21,12 +21,12 @@ export default function Home() {
         <title>WebinX – Discover Webinars in India (AI, Marketing, Finance)</title>
         <meta
           name="description"
-          content="Discover top webinars in India across AI, marketing, finance, business and more. Join free webinars and learn from industry experts on WebinX."
+          content="Find and join top webinars in India across AI, marketing, business and finance. Updated daily on WebinX."
         />
         <link rel="canonical" href="https://www.webinx.in/" />
 
         <meta property="og:title" content="WebinX – Discover Webinars" />
-        <meta property="og:description" content="Find and join top webinars across domains." />
+        <meta property="og:description" content="Explore top webinars across AI, marketing and business." />
         <meta property="og:image" content="https://www.webinx.in/og-default.jpg" />
         <meta property="og:url" content="https://www.webinx.in/" />
       </Helmet>
@@ -34,50 +34,35 @@ export default function Home() {
       {/* ================= HERO ================= */}
       <div
         style={{
-          position: "relative",
-          overflow: "hidden",
-          background:
-            "radial-gradient(circle at 20% 20%, #6366f1, #4f46e5 40%, #9333ea)",
-          color: "white",
+          background: "linear-gradient(135deg, #4f46e5, #9333ea)",
           padding: "100px 20px",
           textAlign: "center",
+          color: "#fff",
         }}
       >
-        {/* Glow effect */}
-        <div
-          style={{
-            position: "absolute",
-            width: "300px",
-            height: "300px",
-            background: "rgba(255,255,255,0.1)",
-            filter: "blur(100px)",
-            top: "-50px",
-            left: "-50px",
-          }}
-        />
-
-        <h1 style={{ fontSize: "42px", marginBottom: "10px" }}>
+        <h1 style={{ fontSize: "44px", fontWeight: "700" }}>
           Discover Top Webinars
         </h1>
 
-        <p style={{ fontSize: "18px", opacity: 0.9 }}>
-          Learn from experts in AI, Marketing, Business & Finance
+        <p style={{ fontSize: "18px", marginTop: "10px", opacity: 0.9 }}>
+          Learn AI, Marketing, Finance & Business from experts
         </p>
 
         <Link href="/webinars">
           <a
             style={{
-              marginTop: "20px",
+              marginTop: "25px",
               display: "inline-block",
               background: "#facc15",
               color: "#000",
-              padding: "12px 24px",
-              borderRadius: "8px",
+              padding: "14px 28px",
+              borderRadius: "10px",
+              fontWeight: "600",
               textDecoration: "none",
-              fontWeight: "bold",
+              fontSize: "16px",
             }}
           >
-            Explore Webinars
+            Explore Webinars →
           </a>
         </Link>
       </div>
@@ -88,30 +73,26 @@ export default function Home() {
           textAlign: "center",
           padding: "20px",
           fontSize: "14px",
-          color: "#555",
+          color: "#666",
         }}
       >
-        Trusted by learners across India • Growing webinar platform
+        🔥 100+ webinars discovered • Updated daily • Free access
       </div>
 
       {/* ================= MAIN ================= */}
       <div style={{ maxWidth: "1100px", margin: "40px auto", padding: "20px" }}>
-        <h2>Latest Webinars</h2>
+        <h2 style={{ fontSize: "26px", marginBottom: "10px" }}>
+          Latest Webinars
+        </h2>
 
-        {/* CATEGORY PILLS */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            flexWrap: "wrap",
-            marginBottom: "20px",
-          }}
-        >
+        {/* CATEGORY TAGS */}
+        <div style={{ marginBottom: "20px" }}>
           {["AI", "Marketing", "Finance", "Business"].map((cat) => (
             <span
               key={cat}
               style={{
-                padding: "6px 12px",
+                marginRight: "10px",
+                padding: "6px 14px",
                 background: "#eef2ff",
                 borderRadius: "20px",
                 fontSize: "12px",
@@ -126,7 +107,7 @@ export default function Home() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: "20px",
           }}
         >
@@ -134,36 +115,34 @@ export default function Home() {
             <div
               key={event.id}
               style={{
-                padding: "20px",
+                background: "#fff",
                 borderRadius: "14px",
-                background: "#ffffff",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
-                transition: "all 0.3s ease",
+                padding: "20px",
+                boxShadow: "0 10px 20px rgba(0,0,0,0.05)",
+                transition: "0.3s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-5px)";
-                e.currentTarget.style.boxShadow =
-                  "0 20px 40px rgba(0,0,0,0.1)";
+                e.currentTarget.style.transform = "translateY(-6px)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow =
-                  "0 10px 25px rgba(0,0,0,0.05)";
               }}
             >
-              <h3 style={{ fontSize: "18px" }}>{event.title}</h3>
+              <h3 style={{ fontSize: "18px", marginBottom: "8px" }}>
+                {event.title}
+              </h3>
 
-              <p style={{ fontSize: "14px", color: "#555" }}>
+              <p style={{ fontSize: "13px", color: "#666" }}>
                 {new Date(event.start_time).toLocaleDateString("en-IN")}
               </p>
 
               <Link href={`/webinar/${event.slug}`}>
                 <a
                   style={{
+                    marginTop: "12px",
                     display: "inline-block",
-                    marginTop: "10px",
                     color: "#4f46e5",
-                    fontWeight: "bold",
+                    fontWeight: "600",
                   }}
                 >
                   View Details →
@@ -176,19 +155,18 @@ export default function Home() {
 
       {/* ================= SEO CONTENT ================= */}
       <div style={{ maxWidth: "900px", margin: "40px auto", padding: "20px" }}>
-        <h2>Discover Webinars in India</h2>
+        <h2>Find Webinars in India</h2>
         <p>
-          WebinX is a webinar discovery platform helping users find upcoming
-          webinars across AI, marketing, finance, and business domains. Stay
-          updated and join expert-led sessions.
+          WebinX helps you discover upcoming webinars in AI, marketing,
+          finance, and business. Stay ahead by joining expert-led sessions.
         </p>
 
-        <h2>Popular Webinar Categories</h2>
+        <h2>Popular Webinar Topics</h2>
         <ul>
-          <li>AI & Technology Webinars</li>
-          <li>Marketing & Growth Webinars</li>
-          <li>Finance & Investment Webinars</li>
-          <li>Startup & Business Webinars</li>
+          <li>AI & Machine Learning</li>
+          <li>Digital Marketing</li>
+          <li>Stock Market & Finance</li>
+          <li>Startup Growth</li>
         </ul>
       </div>
     </>
