@@ -1,138 +1,107 @@
 import { useEffect, useState } from "react";
-
-const API_BASE = "https://webinx-backend.onrender.com";
+import { useParams } from "wouter";
+import { getHost, getHostEvents } from "../lib/api";
 
 export default function HostDetail() {
-  const slug = window.location.pathname.split("/hosts/")[1];
+  const { slug } = useParams();
 
   const [host, setHost] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slug) {
-      setError("Invalid host URL");
-      setLoading(false);
-      return;
-    }
+    if (!slug) return;
 
-    async function fetchData() {
-      try {
-        const hostRes = await fetch(`${API_BASE}/api/hosts/${slug}`);
-        const hostData = await hostRes.json();
+    // Fetch host
+    getHost(slug).then((data) => {
+      setHost(data);
+    });
 
-        const eventsRes = await fetch(`${API_BASE}/api/hosts/${slug}/events`);
-        const eventsData = await eventsRes.json();
-
-        if (!hostData || !hostData.name) {
-          setError("Host not found");
-          return;
-        }
-
-        setHost(hostData);
-
-        // ✅ FINAL FIX HERE
-        setEvents(Array.isArray(eventsData) ? eventsData : eventsData.events || []);
-
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
+    // Fetch events
+    getHostEvents(slug).then((data) => {
+      setEvents(data.events || []);
+    });
   }, [slug]);
 
+  // SEO META TAGS
   useEffect(() => {
-    if (!host?.name) return;
+    if (!host) return;
 
-    document.title = `${host.name} Webinars | WebinX`;
+    document.title = `${host.name} Webinars & Events | WebinX`;
 
-    let meta = document.querySelector("meta[name='description']");
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.setAttribute("name", "description");
-      document.head.appendChild(meta);
+    const metaDesc = document.querySelector("meta[name='description']");
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        "content",
+        `Explore all webinars and events hosted by ${host.name}. Discover upcoming sessions, workshops, and expert-led discussions on WebinX.`
+      );
     }
 
-    meta.setAttribute(
-      "content",
-      `Explore ${host.name} webinars on WebinX.`
-    );
+    // JSON-LD Schema
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: host.name,
+      url: `https://webinx.in/hosts/${slug}`,
+    };
+
+    script.innerHTML = JSON.stringify(schema);
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
   }, [host, slug]);
 
-  if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
-  if (error) return <div style={{ padding: 20 }}>{error}</div>;
-  if (!host) return <div style={{ padding: 20 }}>No data</div>;
-
-  const now = new Date();
-
-  const safeDate = (dateStr: any) => {
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  const enhancedEvents = events.map((e) => {
-    const parsedDate = safeDate(e?.start_time);
-
-    return {
-      ...e,
-      parsedDate,
-      isUpcoming: parsedDate ? parsedDate > now : false,
-      formattedDate: parsedDate
-        ? parsedDate.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-        : "Date TBD",
-    };
-  });
-
-  const upcoming = enhancedEvents
-    .filter((e) => e.isUpcoming && e.parsedDate)
-    .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
-
-  const past = enhancedEvents
-    .filter((e) => !e.isUpcoming && e.parsedDate)
-    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
+  if (!host) return <div>Loading...</div>;
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
-      
-      <h1>{host.name} Webinars</h1>
-      <p>{events.length} webinars hosted</p>
+    <div className="container mx-auto px-4 py-6">
 
-      <h2>Upcoming Webinars</h2>
-      {upcoming.length === 0 && <p>No upcoming webinars</p>}
+      {/* H1 */}
+      <h1 className="text-3xl font-bold mb-2">
+        {host.name} Webinars & Events
+      </h1>
 
-      {upcoming.map((event) => (
-        <div key={event.id || event.slug}>
-          <a href={`/webinar/${event.slug}`}>
-            <h3>{event.title || "Untitled Webinar"}</h3>
+      {/* SEO TEXT BLOCK */}
+      <p className="text-gray-600 mb-6">
+        Browse all upcoming and past webinars hosted by <strong>{host.name}</strong>.
+        Stay updated with expert sessions, industry insights, and professional learning opportunities.
+      </p>
+
+      {/* EVENTS LIST */}
+      <div className="grid gap-4">
+
+        {events.length === 0 && (
+          <p>No events available.</p>
+        )}
+
+        {events.map((event) => (
+          <a
+            key={event.id}
+            href={`/webinar/${event.slug}`}
+            className="block border p-4 rounded hover:shadow transition"
+          >
+            <h2 className="text-xl font-semibold">
+              {event.title}
+            </h2>
+
+            <p className="text-sm text-gray-500">
+              {new Date(event.start_time).toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+              })}
+            </p>
+
+            {/* Internal linking reinforcement */}
+            <p className="text-sm mt-2 text-blue-600">
+              Hosted by {host.name}
+            </p>
           </a>
-          <p>{event.formattedDate}</p>
-        </div>
-      ))}
+        ))}
 
-      {past.length > 0 && (
-        <>
-          <h2>Past Webinars</h2>
-          {past.slice(0, 10).map((event) => (
-            <div key={event.id || event.slug}>
-              <a href={`/webinar/${event.slug}`}>
-                <h3>{event.title || "Untitled Webinar"}</h3>
-              </a>
-              <p>{event.formattedDate}</p>
-            </div>
-          ))}
-        </>
-      )}
-
-      <div style={{ marginTop: "40px" }}>
-        <h2>Become a Webinar Host</h2>
-        <a href="/">Get Started</a>
       </div>
-
     </div>
   );
 }
