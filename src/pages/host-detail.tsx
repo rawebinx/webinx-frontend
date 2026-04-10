@@ -1,28 +1,26 @@
 import { useEffect, useState } from "react";
-const params = useParams();
-const slug = params?.slug;
 import { getHost, getHostEvents } from "../lib/api";
 
 export default function HostDetail() {
+  // ✅ Manual slug extraction (aligned with your App.tsx routing)
   const slug = window.location.pathname.split("/hosts/")[1];
-   
+
   const [host, setHost] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!slug || slug === "undefined") return;
+    if (!slug) return;
 
     // Fetch host
-   getHost(slug).then((data) => {
-  console.log("Host API response:", data);
+    getHost(slug).then((data) => {
+      console.log("Host API response:", data);
 
-  // Handle both formats safely
-  if (data?.host) {
-    setHost(data.host);
-  } else {
-    setHost(data);
-  }
-});
+      if (data?.host) {
+        setHost(data.host);
+      } else {
+        setHost(data);
+      }
+    });
 
     // Fetch events
     getHostEvents(slug).then((data) => {
@@ -73,13 +71,13 @@ export default function HostDetail() {
         {host.name} Webinars & Events
       </h1>
 
-      {/* SEO TEXT BLOCK */}
+      {/* SEO TEXT */}
       <p className="text-gray-600 mb-6">
         Browse all upcoming and past webinars hosted by <strong>{host.name}</strong>.
         Stay updated with expert sessions, industry insights, and professional learning opportunities.
       </p>
 
-      {/* EVENTS LIST */}
+      {/* EVENTS */}
       <div className="grid gap-4">
 
         {events.length === 0 && (
@@ -102,7 +100,6 @@ export default function HostDetail() {
               })}
             </p>
 
-            {/* Internal linking reinforcement */}
             <p className="text-sm mt-2 text-blue-600">
               Hosted by {host.name}
             </p>
