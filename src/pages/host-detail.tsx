@@ -13,8 +13,7 @@ export default function HostDetail() {
 
     // Fetch host
     getHost(slug).then((data) => {
-      console.log("Host API response:", data);
-
+      
       if (data?.host) {
         setHost(data.host);
       } else {
