@@ -1,24 +1,12 @@
 import Home from "./pages/home";
-import HostDetail from "./pages/host-detail";
-import About from "./pages/about";
-import Contact from "./pages/contact";
-import WebinarDetailPage from "./pages/webinar-detail";
+import WebinarDetailPage from "./pages/webinar";
+import CategoryPage from "./pages/category";
 
 function App() {
   const path = window.location.pathname;
 
-  // ✅ WEBINAR ROUTE (ADD THIS FIRST)
-  if (path.startsWith("/webinar/")) {
-    return <WebinarDetailPage />;
-  }
-
-  // ✅ HOST ROUTE
-  if (path.startsWith("/hosts/")) {
-    return <HostDetail />;
-  }
-
-  if (path === "/about") return <About />;
-  if (path === "/contact") return <Contact />;
+  if (path.startsWith("/webinar/")) return <WebinarDetailPage />;
+  if (path.startsWith("/category/")) return <CategoryPage />;
 
   return <Home />;
 }
