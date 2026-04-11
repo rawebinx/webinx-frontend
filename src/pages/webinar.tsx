@@ -1,72 +1,60 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
 import { Helmet } from "react-helmet";
-import RelatedWebinars from "../components/RelatedWebinars";
 
 const API_BASE = "https://webinx-backend.onrender.com";
 
-export default function WebinarDetail() {
-  const { slug } = useParams();
-  const [event, setEvent] = useState<any>(null);
+export default function WebinarDetailPage() {
+  const slug = window.location.pathname.replace("/webinar/", "");
+
+  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/events`)
+    fetch(`${API_BASE}/api/events/${slug}`)
       .then(res => res.json())
-      .then(data => {
-        const found = data.find((e: any) => e.slug === slug);
-        setEvent(found);
-      });
+      .then(setData)
+      .catch(() => setData(null));
   }, [slug]);
 
-  if (!event) return <div style={{ padding: "40px" }}>Loading...</div>;
-
-  const title = `${event.title} Webinar | WebinX`;
-  const url = `https://www.webinx.in/webinar/${event.slug}`;
-
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    name: event.title,
-    startDate: event.start_time,
-    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
-    eventStatus: "https://schema.org/EventScheduled",
-    url: url
-  };
+  if (!data) return <div style={{ padding: "40px" }}>Loading...</div>;
 
   return (
     <>
       <Helmet>
-        <title>{title}</title>
-        <link rel="canonical" href={url} />
-        <script type="application/ld+json">
-          {JSON.stringify(schema)}
-        </script>
+        <title>{data.title} | WebinX</title>
+        <meta
+          name="description"
+          content={`Join ${data.title}. Discover expert-led webinar on WebinX.`}
+        />
+        <link
+          rel="canonical"
+          href={`https://www.webinx.in/webinar/${slug}`}
+        />
       </Helmet>
 
-      <div style={{ padding: "40px", maxWidth: "900px", margin: "auto" }}>
-        <h1>{event.title}</h1>
+      <div style={{ maxWidth: "900px", margin: "auto", padding: "40px" }}>
+        <h1>{data.title}</h1>
 
-        <p>
-          {new Date(event.start_time).toLocaleString("en-IN", {
+        <p style={{ color: "#666", marginTop: "10px" }}>
+          {new Date(data.start_time).toLocaleString("en-IN", {
             timeZone: "Asia/Kolkata"
           })}
         </p>
 
-        <a
-          href={event.registration_url}
-          target="_blank"
-          style={{
-            background: "#4f46e5",
-            color: "#fff",
-            padding: "12px 24px",
-            display: "inline-block",
-            borderRadius: "8px"
-          }}
-        >
-          Register Now
-        </a>
-
-        <RelatedWebinars keyword={event.title.split(" ")[0]} />
+        <div style={{ marginTop: "20px" }}>
+          <a
+            href={data.url || "#"}
+            target="_blank"
+            style={{
+              background: "#2563EB",
+              color: "#fff",
+              padding: "12px 20px",
+              borderRadius: "8px",
+              textDecoration: "none"
+            }}
+          >
+            Join Webinar →
+          </a>
+        </div>
       </div>
     </>
   );
