@@ -59,11 +59,11 @@ export default function Home() {
           </a>
         </Link>
       </div>
-<div style={{ textAlign: "center", marginTop: "40px" }}>
-  <a href="/category/ai">AI</a> •
-  <a href="/category/marketing">Marketing</a> •
-  <a href="/category/finance">Finance</a> •
-  <a href="/category/business">Business</a>
+<div style={{ textAlign: "center", margin: "40px 0 20px" }}>
+  <Link href="/category/ai"><a>AI</a></Link> •
+  <Link href="/category/marketing"><a>Marketing</a></Link> •
+  <Link href="/category/finance"><a>Finance</a></Link> •
+  <Link href="/category/business"><a>Business</a></Link>
 </div>
       {/* TRUST BAR */}
       <div
