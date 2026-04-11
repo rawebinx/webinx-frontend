@@ -48,22 +48,28 @@ export default function WebinarPage() {
       </p>
 
       {/* CTA */}
-      <a
-        href={event.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          display: "inline-block",
-          background: "#6C5CE7",
-          color: "#fff",
-          padding: "12px 20px",
-          borderRadius: "8px",
-          textDecoration: "none",
-          marginTop: "20px",
-        }}
-      >
-        Register Now →
-      </a>
+     {event.url ? (
+  <a
+    href={event.url}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display: "inline-block",
+      background: "#6C5CE7",
+      color: "#fff",
+      padding: "12px 20px",
+      borderRadius: "8px",
+      textDecoration: "none",
+      marginTop: "20px",
+    }}
+  >
+    Register Now →
+  </a>
+) : (
+  <p style={{ color: "red", marginTop: "20px" }}>
+    Registration link not available
+  </p>
+)}
 
       {/* SEO CONTENT */}
       <div style={{ marginTop: "40px" }}>
