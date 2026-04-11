@@ -39,7 +39,7 @@ export default function Home() {
         </h1>
 
         <p style={{ marginTop: "10px", fontSize: "18px", opacity: 0.9 }}>
-          Learn from experts in AI, Marketing, Finance & Business
+          Discover & Join the Best Webinars in India
         </p>
 
         <Link href="/webinars">
