@@ -65,6 +65,11 @@ export default function Home() {
   <Link href="/category/finance"><a>Finance</a></Link> •
   <Link href="/category/business"><a>Business</a></Link>
 </div>
+<div style={{ textAlign: "center", marginTop: "10px" }}>
+  <a href="/ai-webinars-india">AI India</a> •
+  <a href="/free-marketing-webinars">Free Marketing</a> •
+  <a href="/finance-webinars-2026">Finance 2026</a>
+</div>
       {/* TRUST BAR */}
       <div
         style={{
