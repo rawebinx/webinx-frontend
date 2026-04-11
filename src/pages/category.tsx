@@ -1,56 +1,37 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
+import { getEvents } from "../lib/api";
 
-const API_BASE = "https://webinx-backend.onrender.com";
-
-export default function CategoryPage() {
-  const category = window.location.pathname.split("/")[2];
-  const [events, setEvents] = useState<any[]>([]);
+export default function Category() {
+  const [events, setEvents] = useState<any[] | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/category/${category}`)
-      .then(res => res.json())
-      .then(setEvents)
-      .catch(() => setEvents([]));
-  }, [category]);
+    getEvents("ai").then(setEvents);
+  }, []);
 
-  const title = `${category} Webinars (Free) | WebinX`;
-  const description = `Explore top ${category} webinars in India. Join free expert-led sessions.`;
-  const url = `https://www.webinx.in/category/${category}`;
+  if (!events) return <div>Loading...</div>;
+
+  if (events.length === 0) {
+    return <div>No webinars found</div>;
+  }
 
   return (
-    <>
-      <Helmet>
-        <title>{title}</title>
-        <meta name="description" content={description} />
-        <link rel="canonical" href={url} />
-      </Helmet>
+    <div>
+      <h1>AI Webinars in India</h1>
 
-      <div style={{ padding: "40px", maxWidth: "1100px", margin: "auto" }}>
-        <h1 style={{ fontSize: "32px" }}>
-          {category.toUpperCase()} Webinars
-        </h1>
+      {events.map((event) => (
+        <div key={event.slug}>
+          <h3>{event.title}</h3>
+          <p>{new Date(event.start_time).toLocaleString()}</p>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-          gap: "20px",
-          marginTop: "30px"
-        }}>
-          {events.map(event => (
-            <a key={event.slug} href={`/webinar/${event.slug}`}>
-              <div style={{
-                padding: "20px",
-                border: "1px solid #eee",
-                borderRadius: "12px"
-              }}>
-                <div>{new Date(event.start_time).toLocaleDateString("en-IN")}</div>
-                <h3>{event.title}</h3>
-              </div>
+          {event.registration_url ? (
+            <a href={event.registration_url} target="_blank">
+              Register Now
             </a>
-          ))}
+          ) : (
+            <span>Registration not available</span>
+          )}
         </div>
-      </div>
-    </>
+      ))}
+    </div>
   );
 }
