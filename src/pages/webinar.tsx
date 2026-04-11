@@ -49,7 +49,9 @@ export default function WebinarPage() {
 
       {/* CTA */}
       <a
-        href="#"
+        href={event.url}
+        target="_blank"
+        rel="noopener noreferrer"
         style={{
           display: "inline-block",
           background: "#6C5CE7",
