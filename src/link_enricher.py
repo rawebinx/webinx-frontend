@@ -59,7 +59,7 @@ def enrich_links():
     cur.execute("""
         SELECT id, title
         FROM events
-        WHERE url IS NULL
+        WHERE registration_url IS NULL
         LIMIT 50
     """)
 
@@ -81,7 +81,7 @@ def enrich_links():
 
             cur.execute("""
                 UPDATE events
-                SET url = %s
+                SET registration_url = %s
                 WHERE id = %s
             """, (final_link, event_id))
 
