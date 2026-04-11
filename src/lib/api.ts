@@ -1,8 +1,6 @@
 const API_BASE = "https://webinx-backend.onrender.com";
 
-// =======================
-// EVENTS (NEW - REQUIRED)
-// =======================
+// ✅ ADD THIS
 export async function getEvents(sector?: string) {
   try {
     const url = sector
@@ -17,9 +15,7 @@ export async function getEvents(sector?: string) {
   }
 }
 
-// =======================
-// HOST
-// =======================
+// EXISTING (keep)
 export async function getHost(slug: string) {
   try {
     const res = await fetch(`${API_BASE}/api/hosts/${slug}`);
@@ -30,9 +26,6 @@ export async function getHost(slug: string) {
   }
 }
 
-// =======================
-// HOST EVENTS
-// =======================
 export async function getHostEvents(slug: string) {
   try {
     const res = await fetch(`${API_BASE}/api/hosts/${slug}/events`);
