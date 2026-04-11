@@ -42,9 +42,11 @@ export default function WebinarPage() {
       <h1>{event.title}</h1>
 
       <p style={{ color: "#666", marginBottom: "20px" }}>
-        {new Date(event.start_time).toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-        })}
+        {event.start_time
+            ? new Date(event.start_time).toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+              })
+            : "Date not available"}
       </p>
 
       {/* CTA */}
