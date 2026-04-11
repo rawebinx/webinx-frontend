@@ -22,7 +22,7 @@ export default function SeoPage() {
     .join(" ");
 
   const title = `${formatted} | WebinX`;
-  const description = `Explore top ${formatted} webinars in India. Join free expert-led sessions.`;
+  const description = `Explore top ${formatted} webinars in India. Join free expert-led online events and upgrade your skills.`;
 
   return (
     <>
@@ -33,18 +33,22 @@ export default function SeoPage() {
       </Helmet>
 
       <div style={{ maxWidth: "1100px", margin: "auto", padding: "40px" }}>
-        <h1 style={{ fontSize: "32px" }}>
+        
+        {/* HERO */}
+        <h1 style={{ fontSize: "34px", marginBottom: "10px" }}>
           {formatted}
         </h1>
 
-        <p style={{ color: "#666" }}>
-          Discover top {formatted} webinars in India.
+        <p style={{ color: "#555", maxWidth: "700px" }}>
+          Looking for the best {formatted.toLowerCase()} webinars?  
+          Discover expert-led sessions, live training, and free online webinars across India.  
+          Stay ahead with the latest trends and insights.
         </p>
 
         {/* EMPTY STATE */}
         {data.events.length === 0 && (
           <p style={{ marginTop: "20px" }}>
-            No webinars found right now. Check back soon for updated listings.
+            No webinars found right now. Please check again later.
           </p>
         )}
 
@@ -64,18 +68,44 @@ export default function SeoPage() {
                   style={{
                     padding: "20px",
                     border: "1px solid #eee",
-                    borderRadius: "12px"
+                    borderRadius: "12px",
+                    background: "#fff",
+                    transition: "0.2s"
                   }}
                 >
-                  <div>
+                  <div style={{ fontSize: "12px", color: "#777" }}>
                     {new Date(event.start_time).toLocaleDateString("en-IN")}
                   </div>
-                  <h3>{event.title}</h3>
+
+                  <h3 style={{ marginTop: "8px" }}>
+                    {event.title}
+                  </h3>
                 </div>
               </a>
             ))}
           </div>
         )}
+
+        {/* SEO CONTENT BLOCK */}
+        <div style={{ marginTop: "50px" }}>
+          <h2>Why attend {formatted} webinars?</h2>
+
+          <ul>
+            <li>Learn from industry experts</li>
+            <li>Stay updated with latest trends</li>
+            <li>Gain practical knowledge</li>
+            <li>Improve career opportunities</li>
+          </ul>
+
+          <h2>Who should attend?</h2>
+
+          <ul>
+            <li>Students and beginners</li>
+            <li>Working professionals</li>
+            <li>Entrepreneurs and founders</li>
+          </ul>
+        </div>
+
       </div>
     </>
   );
