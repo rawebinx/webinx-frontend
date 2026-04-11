@@ -16,11 +16,22 @@ export default function SeoPage() {
 
   if (!data) return <div style={{ padding: "40px" }}>Loading...</div>;
 
-  const title = `${data.keyword} | WebinX`;
+  const formatted = data.keyword
+  .split(" ")
+  .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+  .join(" ");
+
+const title = `${formatted} | WebinX`;
+const description = `Explore top ${formatted} webinars in India. Join free expert-led sessions.`;
   const description = `Explore ${data.keyword}. Join free webinars in India.`;
 
   return (
     <>
+      {data.events.length === 0 && (
+  <p style={{ marginTop: "20px" }}>
+    No webinars found right now. Check back soon for updated listings.
+  </p>
+)}
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
