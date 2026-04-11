@@ -35,7 +35,7 @@ export default function Home() {
         }}
       >
         <h1 style={{ fontSize: "48px", fontWeight: 800 }}>
-          Discover Top Webinars
+          Discover & Join Top Webinars in India
         </h1>
 
         <p style={{ marginTop: "10px", fontSize: "18px", opacity: 0.9 }}>
