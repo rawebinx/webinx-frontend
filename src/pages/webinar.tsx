@@ -51,9 +51,10 @@ export default function WebinarDetail() {
   return (
     <div className="max-w-3xl mx-auto p-6">
       {/* ✅ SEO Schema Injection */}
-      <script type="application/ld+json">
-        {JSON.stringify(schemaData)}
-      </script>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: schemaJson }}
+      />
 
       <h1 className="text-2xl font-bold mb-4">{event.title}</h1>
 
