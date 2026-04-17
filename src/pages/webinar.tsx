@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
 import { useParams } from "wouter";
+import { Helmet } from "react-helmet-async";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://webinx-backend.onrender.com";
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "https://webinx-backend.onrender.com";
 
 export default function WebinarDetail() {
   const { slug } = useParams();
-
   const [event, setEvent] = useState<any>(null);
 
   useEffect(() => {
     async function fetchEvent() {
-      const res = await fetch(`${API_BASE}/api/events/${slug}`);
-      const data = await res.json();
-      setEvent(data);
+      try {
+        const res = await fetch(`${API_BASE}/api/events/${slug}`);
+        const data = await res.json();
+        setEvent(data);
+      } catch (err) {
+        console.error("Error fetching event:", err);
+      }
     }
 
     fetchEvent();
@@ -22,6 +27,7 @@ export default function WebinarDetail() {
     return <div className="p-6">Loading...</div>;
   }
 
+  // ✅ SAFE DATE FIX
   let formattedDate = "Date not available";
 
   if (event.start_time) {
@@ -33,7 +39,7 @@ export default function WebinarDetail() {
     }
   }
 
-  // ✅ SCHEMA (IMPORTANT)
+  // ✅ SCHEMA
   const schemaData = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -41,7 +47,8 @@ export default function WebinarDetail() {
     startDate: event.start_time,
     endDate: event.end_time || event.start_time,
     eventStatus: "https://schema.org/EventScheduled",
-    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    eventAttendanceMode:
+      "https://schema.org/OnlineEventAttendanceMode",
     location: {
       "@type": "VirtualLocation",
       url: event.registration_url || event.event_url,
@@ -57,13 +64,17 @@ export default function WebinarDetail() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      {/* ✅ SEO Schema Injection */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: schemaJson }}
-      />
 
-      <h1 className="text-2xl font-bold mb-4">{event.title}</h1>
+      {/* ✅ SEO SCHEMA IN HEAD */}
+      <Helmet>
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
+      </Helmet>
+
+      <h1 className="text-2xl font-bold mb-4">
+        {event.title}
+      </h1>
 
       <p className="text-gray-600 mb-2">
         📅 {formattedDate}
@@ -73,7 +84,7 @@ export default function WebinarDetail() {
         {event.description || "Join this webinar to learn more."}
       </p>
 
-      {/* ✅ CTA (VERY IMPORTANT FOR CONVERSION) */}
+      {/* ✅ CTA */}
       <a
         href={event.registration_url || event.event_url}
         target="_blank"
