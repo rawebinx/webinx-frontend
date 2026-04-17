@@ -22,9 +22,16 @@ export default function WebinarDetail() {
     return <div className="p-6">Loading...</div>;
   }
 
-  const formattedDate = new Date(event.start_time).toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-  });
+  let formattedDate = "Date not available";
+
+  if (event.start_time) {
+    const d = new Date(event.start_time);
+    if (!isNaN(d.getTime())) {
+      formattedDate = d.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+      });
+    }
+  }
 
   // ✅ SCHEMA (IMPORTANT)
   const schemaData = {
