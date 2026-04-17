@@ -1,87 +1,79 @@
 import { useEffect, useState } from "react";
-import { useRoute } from "wouter";
+import { useParams } from "wouter";
 
-export default function WebinarPage() {
-  const [match, params] = useRoute("/webinar/:slug");
-  const slug = params?.slug;
+const API_BASE = import.meta.env.VITE_API_BASE || "https://webinx-backend.onrender.com";
+
+export default function WebinarDetail() {
+  const { slug } = useParams();
 
   const [event, setEvent] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) return;
+    async function fetchEvent() {
+      const res = await fetch(`${API_BASE}/api/events/${slug}`);
+      const data = await res.json();
+      setEvent(data);
+    }
 
-    fetch(`https://webinx-backend.onrender.com/api/events/${slug}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setEvent(data);
-        setLoading(false);
-
-        // ✅ SEO TITLE
-        document.title = `${data.title} | WebinX`;
-
-        // ✅ META DESCRIPTION
-        const desc = document.querySelector("meta[name='description']");
-        if (desc) {
-          desc.setAttribute(
-            "content",
-            `Join ${data.title}. Discover expert-led webinar on WebinX.`
-          );
-        }
-      })
-      .catch(() => setLoading(false));
+    fetchEvent();
   }, [slug]);
 
-  if (loading) return <p style={{ padding: "40px" }}>Loading...</p>;
+  if (!event) {
+    return <div className="p-6">Loading...</div>;
+  }
 
-  if (!event) return <p style={{ padding: "40px" }}>Event not found</p>;
+  const formattedDate = new Date(event.start_time).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+  });
+
+  // ✅ SCHEMA (IMPORTANT)
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    startDate: event.start_time,
+    endDate: event.end_time || event.start_time,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    location: {
+      "@type": "VirtualLocation",
+      url: event.registration_url || event.event_url,
+    },
+    organizer: {
+      "@type": "Organization",
+      name: event.host || "Webinar Organizer",
+      url: event.event_url,
+    },
+    isAccessibleForFree: true,
+    url: `https://webinx.in/webinar/${event.slug}`,
+  };
 
   return (
-    <div style={{ maxWidth: "900px", margin: "40px auto", padding: "20px" }}>
-      
-      <h1>{event.title}</h1>
+    <div className="max-w-3xl mx-auto p-6">
+      {/* ✅ SEO Schema Injection */}
+      <script type="application/ld+json">
+        {JSON.stringify(schemaData)}
+      </script>
 
-      <p style={{ color: "#666", marginBottom: "20px" }}>
-        {event.start_time
-            ? new Date(event.start_time).toLocaleString("en-IN", {
-                timeZone: "Asia/Kolkata",
-              })
-            : "Date not available"}
+      <h1 className="text-2xl font-bold mb-4">{event.title}</h1>
+
+      <p className="text-gray-600 mb-2">
+        📅 {formattedDate}
       </p>
 
-      {/* CTA */}
-     {event.url ? (
-  <a
-    href={event.url}
-    target="_blank"
-    rel="noopener noreferrer"
-    style={{
-      display: "inline-block",
-      background: "#6C5CE7",
-      color: "#fff",
-      padding: "12px 20px",
-      borderRadius: "8px",
-      textDecoration: "none",
-      marginTop: "20px",
-    }}
-  >
-    Register Now →
-  </a>
-) : (
-  <p style={{ color: "red", marginTop: "20px" }}>
-    Registration link not available
-  </p>
-)}
+      <p className="mb-4">
+        {event.description || "Join this webinar to learn more."}
+      </p>
 
-      {/* SEO CONTENT */}
-      <div style={{ marginTop: "40px" }}>
-        <h2>About this webinar</h2>
-        <p>
-          Join {event.title} and learn from industry experts. Stay updated with
-          latest trends and insights.
-        </p>
-      </div>
-
+      {/* ✅ CTA (VERY IMPORTANT FOR CONVERSION) */}
+      <a
+        href={event.registration_url || event.event_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold"
+      >
+        Register Now
+      </a>
     </div>
   );
 }
