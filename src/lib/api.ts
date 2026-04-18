@@ -26,9 +26,6 @@ export async function getEvents(sector?: string) {
 export async function getEventBySlug(slug: string) {
   try {
     const res = await fetch(`${API_BASE}/api/events/${slug}`);
-
-    if (!res.ok) throw new Error("Event not found");
-
     return await res.json();
   } catch (err) {
     console.error("Event API error:", err);
