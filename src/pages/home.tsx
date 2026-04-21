@@ -1,186 +1,39 @@
-import { useEffect, useState } from "react";
-import { Link } from "wouter";
-import { Helmet } from "react-helmet";
-
-const API_BASE = "https://webinx-backend.onrender.com";
+import { Helmet } from "react-helmet-async";
 
 export default function Home() {
-  const [events, setEvents] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/api/events`)
-      .then((res) => res.json())
-      .then((data) => setEvents(data.slice(0, 6)))
-      .catch(() => setEvents([]));
-  }, []);
-
   return (
     <>
-      {/* SEO */}
       <Helmet>
-        <title>WebinX – Discover Webinars in India</title>
+        <title>WebinX – Discover Top Webinars in India</title>
         <meta
           name="description"
-          content="Discover top webinars across AI, marketing, finance and business."
+          content="Discover and join the best webinars in India across AI, marketing, finance, and business."
         />
       </Helmet>
 
-      {/* HERO */}
-      <div
-        style={{
-          background: "linear-gradient(135deg,#4f46e5,#9333ea)",
-          padding: "110px 20px",
-          textAlign: "center",
-          color: "#fff",
-        }}
-      >
-        <h1 style={{ fontSize: "48px", fontWeight: 800 }}>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-center px-4">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4">
           Discover & Join Top Webinars in India
         </h1>
 
-        <p style={{ marginTop: "10px", fontSize: "18px", opacity: 0.9 }}>
+        <p className="text-lg md:text-xl mb-6">
           Discover & Join the Best Webinars in India
         </p>
 
-        <Link href="/webinars">
-          <a
-            style={{
-              marginTop: "30px",
-              display: "inline-block",
-              background: "#facc15",
-              padding: "14px 30px",
-              borderRadius: "12px",
-              fontWeight: 700,
-              color: "#000",
-              textDecoration: "none",
-            }}
-          >
-            Explore Webinars →
-          </a>
-        </Link>
-      </div>
-<div style={{ textAlign: "center", margin: "40px 0 20px" }}>
-  <Link href="/category/ai"><a>AI</a></Link> •
-  <Link href="/category/marketing"><a>Marketing</a></Link> •
-  <Link href="/category/finance"><a>Finance</a></Link> •
-  <Link href="/category/business"><a>Business</a></Link>
-</div>
-<div style={{ textAlign: "center", marginTop: "10px" }}>
-  <a href="/ai-webinars-india">AI India</a> •
-  <a href="/free-marketing-webinars">Free Marketing</a> •
-  <a href="/finance-webinars-2026">Finance 2026</a>
-</div>
-      {/* TRUST BAR */}
-      <div
-        style={{
-          textAlign: "center",
-          padding: "15px",
-          fontSize: "14px",
-          color: "#666",
-          borderBottom: "1px solid #eee",
-        }}
-      >
-        🔥 100+ webinars • Updated daily • Free learning
-      </div>
-
-      {/* MAIN */}
-      <div style={{ maxWidth: "1100px", margin: "50px auto", padding: "20px" }}>
-        <h2 style={{ fontSize: "28px", marginBottom: "20px" }}>
-          Latest Webinars
-        </h2>
-
-        {/* GRID */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-            gap: "24px",
-          }}
+        <a
+          href="/webinars"
+          className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition"
         >
-          {events.map((event) => (
-            <div
-              key={event.id}
-              style={{
-                background: "#fff",
-                borderRadius: "16px",
-                padding: "22px",
-                boxShadow: "0 8px 25px rgba(0,0,0,0.06)",
-                transition: "all 0.25s ease",
-                border: "1px solid #f1f1f1",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-8px)";
-                e.currentTarget.style.boxShadow =
-                  "0 20px 40px rgba(0,0,0,0.12)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow =
-                  "0 8px 25px rgba(0,0,0,0.06)";
-              }}
-            >
-              <div style={{ fontSize: "12px", color: "#888" }}>
-                {new Date(event.start_time).toLocaleDateString("en-IN")}
-              </div>
+          Explore Webinars →
+        </a>
 
-              <h3
-                style={{
-                  fontSize: "18px",
-                  margin: "10px 0",
-                  lineHeight: "1.4",
-                }}
-              >
-                {event.title}
-              </h3>
-
-              <Link href={`/webinar/${event.slug}`}>
-                <a
-                  style={{
-                    marginTop: "10px",
-                    display: "inline-block",
-                    color: "#4f46e5",
-                    fontWeight: 600,
-                  }}
-                >
-                  View Details →
-                </a>
-              </Link>
-            </div>
-          ))}
+        <div className="mt-6 text-sm opacity-90">
+          AI • Marketing • Finance • Business
         </div>
-      </div>
 
-      {/* BOTTOM CTA */}
-      <div
-        style={{
-          background: "#f9fafb",
-          padding: "50px 20px",
-          textAlign: "center",
-        }}
-      >
-        <h2 style={{ fontSize: "26px" }}>
-          Never miss a valuable webinar again
-        </h2>
-
-        <p style={{ color: "#666", marginTop: "10px" }}>
-          Explore curated webinars across industries
-        </p>
-
-        <Link href="/webinars">
-          <a
-            style={{
-              marginTop: "20px",
-              display: "inline-block",
-              background: "#4f46e5",
-              color: "#fff",
-              padding: "12px 26px",
-              borderRadius: "10px",
-              textDecoration: "none",
-            }}
-          >
-            Browse All Webinars
-          </a>
-        </Link>
+        <div className="mt-2 text-sm opacity-75">
+          100+ webinars • Updated daily • Free learning
+        </div>
       </div>
     </>
   );
