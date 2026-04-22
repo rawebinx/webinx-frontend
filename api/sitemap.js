@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     };
 
     // -----------------------------
-    // FORCE ROOT SLUG (CRITICAL FIX)
+    // DEDUP USING EXACT FULL SLUG
     // -----------------------------
     const seen = new Set();
     const uniqueEvents = [];
@@ -37,16 +37,9 @@ export default async function handler(req, res) {
     for (const event of events) {
       if (!event.slug) continue;
 
-      const rootSlug = event.slug.replace(/-\d+$/, "");
-
-      if (!seen.has(rootSlug)) {
-        seen.add(rootSlug);
-
-        // override slug → CLEAN VERSION
-        uniqueEvents.push({
-          ...event,
-          slug: rootSlug
-        });
+      if (!seen.has(event.slug)) {
+        seen.add(event.slug);
+        uniqueEvents.push(event);
       }
     }
 
