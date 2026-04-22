@@ -18,14 +18,14 @@ export default async function handler(req, res) {
     // SAFE DATE FUNCTION
     // -----------------------------
     const getValidDate = (event) => {
-      const rawDate = event.updated_at || event.created_at;
+      const rawDate = event.updated_at || event.created_at || event.start_time;
       const date = new Date(rawDate);
 
       if (!rawDate || isNaN(date.getTime())) {
-        return new Date().toISOString();
+        return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
       }
 
-      return date.toISOString();
+      return date.toISOString().replace(/\.\d{3}Z$/, "Z");
     };
 
     // -----------------------------
