@@ -46,11 +46,18 @@ export default async function handler(req, res) {
     // -----------------------------
     // BUILD XML
     // -----------------------------
+    const escapeXml = (str) => String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+
     const baseUrl = "https://www.webinx.in";
 
     const urls = uniqueEvents.map(event => `
       <url>
-        <loc>${baseUrl}/webinar/${event.slug}</loc>
+        <loc>${baseUrl}/webinar/${escapeXml(event.slug)}</loc>
         <lastmod>${getValidDate(event)}</lastmod>
         <changefreq>daily</changefreq>
         <priority>0.8</priority>
