@@ -25,8 +25,9 @@ export default function WebinarDetail() {
       setLoading(true);
       setError(null);
       try {
+        // Use the full slug exactly as extracted from the URL — no manipulation.
         const res = await fetch(
-          `${API_BASE}/api/events/${encodeURIComponent(slug)}`
+          `${API_BASE}/api/events/${slug}`
         );
 
         // FIX: Check res.ok — previously a 404 would silently set event to
