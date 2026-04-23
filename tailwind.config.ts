@@ -10,6 +10,7 @@ const config: Config = {
         md: ".375rem",  // 6px
         sm: ".1875rem", // 3px
       },
+
       colors: {
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
@@ -119,8 +120,8 @@ const config: Config = {
     },
   },
 
-  // ✅ SAFE plugins only (no missing packages)
-  plugins: [require("@tailwindcss/typography")],
+  // ✅ NO plugins → ZERO dependency issues
+  plugins: [],
 };
 
 export default config;
