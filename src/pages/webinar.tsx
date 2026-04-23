@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
-import {
-  getEventBySlug,
-  getRelatedEvents,
-  WebinarEvent,
-} from "../lib/api";
+import { getEventBySlug, getRelatedEvents } from "../lib/api";
+import type { WebinarEvent } from "../lib/api";
 
 export default function WebinarPage() {
   const [match, params] = useRoute("/webinar/:slug");
@@ -58,7 +55,7 @@ export default function WebinarPage() {
 
       <p className="mb-4">{event.description}</p>
 
-      <a
+      
         href={event.url}
         target="_blank"
         className="bg-purple-600 text-white px-4 py-2 rounded"

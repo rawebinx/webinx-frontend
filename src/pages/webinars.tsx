@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getEvents, WebinarEvent } from "../lib/api";
+import { getEvents } from "../lib/api";
+import type { WebinarEvent } from "../lib/api";
 import { WebinarCard } from "../components/webinar-card";
 
 export default function WebinarsPage() {
