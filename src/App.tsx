@@ -6,7 +6,7 @@ import Home from "./pages/home";
 import WebinarsPage from "./pages/webinars";
 import WebinarDetailPage from "./pages/webinar";
 import CategoryPage from "./pages/category";
-import SectorPage from "./pages/sector-page";
+import SectorPage from "./pages/sector";
 import SeoPage from "./pages/seo";
 import HostPage from "./pages/host";
 import HostDetailPage from "./pages/host-detail";
