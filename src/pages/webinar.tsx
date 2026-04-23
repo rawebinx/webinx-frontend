@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { Link } from "wouter";
+import { getRelatedEvents, WebinarEvent } from "../lib/api";
+import { WebinarCard } from "../components/webinar-card";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE || "https://webinx-backend.onrender.com";
 
 export default function WebinarDetail() {
-  // FIX: App.tsx uses a custom router (window.location.pathname), not wouter.
-  // useParams() from wouter returns {} here — slug was always undefined.
-  // Extract slug directly from the pathname: /webinar/<slug>
   const slug = window.location.pathname.replace(/^\/webinar\//, "").trim();
 
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Related webinars state (Phase 4 addition — does not affect main event load)
+  const [related, setRelated] = useState<WebinarEvent[]>([]);
 
   useEffect(() => {
     if (!slug) {
@@ -25,13 +28,8 @@ export default function WebinarDetail() {
       setLoading(true);
       setError(null);
       try {
-        // Use the full slug exactly as extracted from the URL — no manipulation.
-        const res = await fetch(
-          `${API_BASE}/api/events/${slug}`
-        );
+        const res = await fetch(`${API_BASE}/api/events/${slug}`);
 
-        // FIX: Check res.ok — previously a 404 would silently set event to
-        // the error JSON body ({ error: "Event not found" }) and render garbage.
         if (!res.ok) {
           if (res.status === 404) {
             setError("Webinar not found. It may have been removed or the URL is incorrect.");
@@ -49,6 +47,13 @@ export default function WebinarDetail() {
         }
 
         setEvent(data);
+
+        // Fetch related events after main event loads — non-blocking, silent on error
+        if (data.sector_slug || data.sector_name) {
+          getRelatedEvents(slug, data.sector_slug || data.sector_name, 4)
+            .then(setRelated)
+            .catch(() => {}); // silent — related section is non-critical
+        }
       } catch (err) {
         console.error("[WebinX] Error fetching event:", err);
         setError("Network error. Please check your connection and try again.");
@@ -94,7 +99,6 @@ export default function WebinarDetail() {
     );
   }
 
-  // ── Null guard (should not reach here after loading/error, but satisfies TS)
   if (!event) return null;
 
   // ── Safe date formatting ──────────────────────────────────────────────────
@@ -140,6 +144,7 @@ export default function WebinarDetail() {
         </script>
       </Helmet>
 
+      {/* ── Existing UI — unchanged ─────────────────────────────────────── */}
       <h1 className="text-2xl font-bold mb-4">{event.title}</h1>
 
       <p className="text-gray-600 mb-2">📅 {formattedDate}</p>
@@ -160,6 +165,28 @@ export default function WebinarDetail() {
       >
         Register Now
       </a>
+
+      {/* ── Related webinars (Phase 4 addition) ────────────────────────── */}
+      {related.length > 0 && (
+        <div className="mt-12 border-t border-gray-100 pt-8">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">
+            You might also like
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {related.map((ev) => (
+              <WebinarCard key={ev.slug} webinar={ev} />
+            ))}
+          </div>
+          {event.sector_slug && (
+            <Link
+              href={`/sector/${event.sector_slug}`}
+              className="inline-block mt-4 text-sm text-purple-600 hover:underline"
+            >
+              See all {event.sector_name || "sector"} webinars →
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }
