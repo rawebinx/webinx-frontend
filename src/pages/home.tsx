@@ -1,40 +1,54 @@
-import { Helmet } from "react-helmet-async";
+import { useEffect, useState } from "react";
+import { getTrendingEvents, WebinarEvent } from "../lib/api";
+import { WebinarCard } from "../components/webinar-card";
 
-export default function Home() {
+export default function HomePage() {
+  const [events, setEvents] = useState<WebinarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setError(false);
+
+    try {
+      const data = await getTrendingEvents(12);
+      setEvents(data || []);
+    } catch {
+      setError(true);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
   return (
-    <>
-      <Helmet>
-        <title>WebinX – Discover Top Webinars in India</title>
-        <meta
-          name="description"
-          content="Discover and join the best webinars in India across AI, marketing, finance, and business."
-        />
-      </Helmet>
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-6">
+        Discover & Join Top Webinars
+      </h1>
 
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-center px-4">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          Discover & Join Top Webinars in India
-        </h1>
+      {loading && <p>Loading webinars...</p>}
 
-        <p className="text-lg md:text-xl mb-6">
-          Discover & Join the Best Webinars in India
-        </p>
-
-        <a
-          href="/webinars"
-          className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition"
-        >
-          Explore Webinars →
-        </a>
-
-        <div className="mt-6 text-sm opacity-90">
-          AI • Marketing • Finance • Business
+      {error && (
+        <div>
+          <p>Failed to load webinars</p>
+          <button onClick={load}>Retry</button>
         </div>
+      )}
 
-        <div className="mt-2 text-sm opacity-75">
-          100+ webinars • Updated daily • Free learning
-        </div>
+      {!loading && !error && events.length === 0 && (
+        <p>No webinars found</p>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {events.map((e) => (
+          <WebinarCard key={e.id} webinar={e} />
+        ))}
       </div>
-    </>
+    </div>
   );
 }
