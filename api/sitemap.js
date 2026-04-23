@@ -1,83 +1,81 @@
 export default async function handler(req, res) {
+  const BASE_URL = "https://www.webinx.in";
+  const BACKEND  = "https://webinx-backend.onrender.com";
+
+  const escapeXml = (str) =>
+    String(str)
+      .replace(/&/g,  "&amp;")
+      .replace(/</g,  "&lt;")
+      .replace(/>/g,  "&gt;")
+      .replace(/"/g,  "&quot;")
+      .replace(/'/g,  "&apos;");
+
+  const toIso = (val) => {
+    if (!val) return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+    const d = new Date(val);
+    return isNaN(d.getTime())
+      ? new Date().toISOString().replace(/\.\d{3}Z$/, "Z")
+      : d.toISOString().replace(/\.\d{3}Z$/, "Z");
+  };
+
+  // Static pages — always included
+  const staticPages = [
+    { loc: BASE_URL,           priority: "1.0", changefreq: "daily"   },
+    { loc: `${BASE_URL}/webinars`, priority: "0.9", changefreq: "daily"   },
+    { loc: `${BASE_URL}/about`,    priority: "0.5", changefreq: "monthly" },
+    { loc: `${BASE_URL}/contact`,  priority: "0.5", changefreq: "monthly" },
+  ];
+
+  let eventPages = [];
+
   try {
-    const API_URL = "https://webinx-backend.onrender.com/api/events";
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
 
-    const response = await fetch(API_URL);
+    const response = await fetch(`${BACKEND}/api/sitemap/events`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
 
-    if (!response.ok) {
-      throw new Error("Backend API failed");
-    }
-
-    const events = await response.json();
-
-    if (!Array.isArray(events)) {
-      throw new Error("Invalid API response");
-    }
-
-    // -----------------------------
-    // SAFE DATE FUNCTION
-    // -----------------------------
-    const getValidDate = (event) => {
-      const rawDate = event.updated_at || event.created_at || event.start_time;
-      const date = new Date(rawDate);
-
-      if (!rawDate || isNaN(date.getTime())) {
-        return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-      }
-
-      return date.toISOString().replace(/\.\d{3}Z$/, "Z");
-    };
-
-    // -----------------------------
-    // DEDUP USING EXACT FULL SLUG
-    // -----------------------------
-    const seen = new Set();
-    const uniqueEvents = [];
-
-    for (const event of events) {
-      if (!event.slug) continue;
-
-      if (!seen.has(event.slug)) {
-        seen.add(event.slug);
-        uniqueEvents.push(event);
+    if (response.ok) {
+      const events = await response.json();
+      if (Array.isArray(events)) {
+        const seen = new Set();
+        for (const event of events) {
+          if (!event.slug || seen.has(event.slug)) continue;
+          seen.add(event.slug);
+          eventPages.push({
+            loc: `${BASE_URL}/webinar/${escapeXml(event.slug)}`,
+            lastmod: toIso(event.updated_at || event.start_time),
+            priority: "0.8",
+            changefreq: "daily",
+          });
+        }
       }
     }
+  } catch (err) {
+    // Backend unavailable — sitemap still returns static pages, never 500
+    console.error("Sitemap backend fetch failed:", err?.message);
+  }
 
-    // -----------------------------
-    // BUILD XML
-    // -----------------------------
-    const escapeXml = (str) => String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;");
+  const allPages = [...staticPages, ...eventPages];
 
-    const baseUrl = "https://www.webinx.in";
+  const urlTags = allPages
+    .map((p) => `
+  <url>
+    <loc>${p.loc}</loc>
+    ${p.lastmod ? `<lastmod>${p.lastmod}</lastmod>` : ""}
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`)
+    .join("");
 
-    const urls = uniqueEvents.map(event => `
-      <url>
-        <loc>${baseUrl}/webinar/${escapeXml(event.slug)}</loc>
-        <lastmod>${getValidDate(event)}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.8</priority>
-      </url>
-    `).join("");
-
-    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls}
+${urlTags}
 </urlset>`;
 
-    res.setHeader("Content-Type", "application/xml");
-    res.status(200).send(sitemap);
-
-  } catch (error) {
-    console.error("SITEMAP ERROR:", error);
-
-    res.status(500).send(`
-      <h1>Sitemap Error</h1>
-      <pre>${error.message}</pre>
-    `);
-  }
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600");
+  res.status(200).send(xml);
 }
