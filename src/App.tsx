@@ -6,7 +6,6 @@ import Home from "./pages/home";
 import WebinarsPage from "./pages/webinars";
 import WebinarDetailPage from "./pages/webinar";
 import CategoryPage from "./pages/category";
-import SectorPage from "./pages/sector";
 import SeoPage from "./pages/seo";
 import HostPage from "./pages/host";
 import HostDetailPage from "./pages/host-detail";
@@ -38,7 +37,6 @@ export default function App() {
             <Route path="/webinars"        component={WebinarsPage} />
             <Route path="/webinar/:slug"   component={WebinarDetailPage} />
             <Route path="/category/:slug"  component={CategoryPage} />
-            <Route path="/sector/:slug"    component={SectorPage} />
             <Route path="/host"            component={HostPage} />
             <Route path="/hosts/:slug"     component={HostDetailPage} />
 
