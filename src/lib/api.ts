@@ -6,9 +6,8 @@
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE ?? "https://webinx-backend.onrender.com";
 
-const CACHE_TTL_MS = 60_000; // 1 minute
+const CACHE_TTL_MS = 60_000;
 
-// ── Simple in-memory cache ────────────────────────────────────────────────────
 const _cache = new Map<string, { data: unknown; ts: number }>();
 
 function cacheGet<T>(key: string): T | null {
@@ -25,7 +24,6 @@ function cacheSet(key: string, data: unknown): void {
   _cache.set(key, { data, ts: Date.now() });
 }
 
-// ── Core Types ────────────────────────────────────────────────────────────────
 export interface WebinarEvent {
   id: string;
   slug: string;
@@ -92,34 +90,33 @@ export interface LeadPayload {
   utm_medium?: string;
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
 function normalizeEvent(e: Record<string, unknown>): WebinarEvent {
   return {
-    id:              String(e.id ?? ""),
-    slug:            String(e.slug ?? ""),
-    title:           String(e.title ?? "Untitled"),
-    description:     String(e.description ?? ""),
-    host_name:       String(e.host_name ?? ""),
-    start_time:      (e.start_time as string) ?? null,
-    end_time:        (e.end_time as string) ?? null,
-    event_url:       String(e.event_url ?? ""),
-    registration_url:String(e.registration_url ?? ""),
-    url:             String(e.url ?? e.registration_url ?? e.event_url ?? "#"),
-    tags:            Array.isArray(e.tags) ? (e.tags as string[]) : [],
-    sub_sector:      String(e.sub_sector ?? ""),
-    relevance_score: Number(e.relevance_score ?? 0),
-    quality_score:   Number(e.quality_score ?? 0),
-    is_featured:     Boolean(e.is_featured),
-    is_sponsored:    Boolean(e.is_sponsored),
-    sponsor_name:    String(e.sponsor_name ?? ""),
-    sponsor_url:     String(e.sponsor_url ?? ""),
-    sponsor_cta:     String(e.sponsor_cta ?? "Register Now"),
-    intent_label:    String(e.intent_label ?? "learn"),
-    sector_name:     String(e.sector_name ?? "General"),
-    sector_slug:     String(e.sector_slug ?? ""),
-    category_name:   String(e.category_name ?? ""),
-    category_slug:   String(e.category_slug ?? ""),
-    source_name:     String(e.source_name ?? ""),
+    id:               String(e.id ?? ""),
+    slug:             String(e.slug ?? ""),
+    title:            String(e.title ?? "Untitled"),
+    description:      String(e.description ?? ""),
+    host_name:        String(e.host_name ?? ""),
+    start_time:       (e.start_time as string) ?? null,
+    end_time:         (e.end_time as string) ?? null,
+    event_url:        String(e.event_url ?? ""),
+    registration_url: String(e.registration_url ?? ""),
+    url:              String(e.url ?? e.registration_url ?? e.event_url ?? "#"),
+    tags:             Array.isArray(e.tags) ? (e.tags as string[]) : [],
+    sub_sector:       String(e.sub_sector ?? ""),
+    relevance_score:  Number(e.relevance_score ?? 0),
+    quality_score:    Number(e.quality_score ?? 0),
+    is_featured:      Boolean(e.is_featured),
+    is_sponsored:     Boolean(e.is_sponsored),
+    sponsor_name:     String(e.sponsor_name ?? ""),
+    sponsor_url:      String(e.sponsor_url ?? ""),
+    sponsor_cta:      String(e.sponsor_cta ?? "Register Now"),
+    intent_label:     String(e.intent_label ?? "learn"),
+    sector_name:      String(e.sector_name ?? "General"),
+    sector_slug:      String(e.sector_slug ?? ""),
+    category_name:    String(e.category_name ?? ""),
+    category_slug:    String(e.category_slug ?? ""),
+    source_name:      String(e.source_name ?? ""),
   };
 }
 
@@ -130,7 +127,7 @@ async function apiFetch<T>(
 ): Promise<T | null> {
   for (let attempt = 0; attempt < retries; attempt++) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20_000); // 20s hard timeout
+    const timer = setTimeout(() => controller.abort(), 20_000);
     try {
       const res = await fetch(`${API_BASE}${path}`, {
         ...options,
@@ -151,7 +148,6 @@ async function apiFetch<T>(
       clearTimeout(timer);
       const isLast = attempt === retries - 1;
       if (!isLast) {
-        // Exponential backoff: 1s, 2s — covers Render cold-start (20-30s total window)
         await new Promise((r) => setTimeout(r, 1_000 * (attempt + 1)));
         console.warn(`[WebinX] ${path} attempt ${attempt + 1} failed, retrying…`);
         continue;
@@ -163,13 +159,11 @@ async function apiFetch<T>(
   return null;
 }
 
-// ── Events ────────────────────────────────────────────────────────────────────
 export async function getEvents(
   filterOrSector: EventsFilter | string = {},
   legacyLimit = 20,
   legacyOffset = 0
 ): Promise<WebinarEvent[]> {
-  // Backward-compat: sector.tsx, seo.tsx, category.tsx call getEvents("sector-slug")
   const filter: EventsFilter =
     typeof filterOrSector === "string"
       ? { sector: filterOrSector, limit: legacyLimit, offset: legacyOffset }
@@ -213,33 +207,39 @@ export async function getEventBySlug(slug: string): Promise<WebinarEvent | null>
   return result;
 }
 
+// ✅ FIXED: /api/events/trending returns 404 — falls back to /api/events sorted by relevance_score
 export async function getTrendingEvents(limit = 9): Promise<WebinarEvent[]> {
   const cacheKey = `trending:${limit}`;
   const cached = cacheGet<WebinarEvent[]>(cacheKey);
   if (cached) return cached;
 
-  const data = await apiFetch<unknown[]>(`/api/events/trending?limit=${limit}`);
+  const data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
   if (!Array.isArray(data)) return [];
 
   const result = data
     .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
+    .map(normalizeEvent)
+    .sort((a, b) => b.relevance_score - a.relevance_score)
+    .slice(0, limit);
 
   cacheSet(cacheKey, result);
   return result;
 }
 
+// ✅ FIXED: same pattern — /api/events/featured likely also 404
 export async function getFeaturedEvents(limit = 6): Promise<WebinarEvent[]> {
   const cacheKey = `featured:${limit}`;
   const cached = cacheGet<WebinarEvent[]>(cacheKey);
   if (cached) return cached;
 
-  const data = await apiFetch<unknown[]>(`/api/events/featured?limit=${limit}`);
+  const data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
   if (!Array.isArray(data)) return [];
 
   const result = data
     .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
+    .map(normalizeEvent)
+    .filter((e) => e.is_featured || e.quality_score > 0 || e.relevance_score >= 2)
+    .slice(0, limit);
 
   cacheSet(cacheKey, result);
   return result;
@@ -268,7 +268,6 @@ export async function searchEvents(q: string, limit = 20): Promise<WebinarEvent[
     .map(normalizeEvent);
 }
 
-// ── Sectors & Categories ──────────────────────────────────────────────────────
 export async function getSectors(): Promise<Sector[]> {
   const cached = cacheGet<Sector[]>("sectors");
   if (cached) return cached;
@@ -289,7 +288,6 @@ export async function getCategories(): Promise<Category[]> {
   return result;
 }
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
 export async function getPlatformStats(): Promise<PlatformStats> {
   const fallback: PlatformStats = {
     total_events: 500,
@@ -319,7 +317,6 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   return result;
 }
 
-// ── Hosts ─────────────────────────────────────────────────────────────────────
 export async function getHost(slug: string) {
   return apiFetch<{ host: Record<string, unknown> }>(`/api/hosts/${encodeURIComponent(slug)}`);
 }
@@ -332,7 +329,6 @@ export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
     .map(normalizeEvent);
 }
 
-// ── Lead Capture ──────────────────────────────────────────────────────────────
 export async function captureLead(
   payload: LeadPayload
 ): Promise<{ status: "ok" | "error"; message: string }> {
@@ -345,7 +341,6 @@ export async function captureLead(
     : { status: "error", message: "Failed to subscribe. Please try again." };
 }
 
-// ── Sponsor click tracking ────────────────────────────────────────────────────
 export async function trackSponsorClick(slug: string): Promise<string | null> {
   const data = await apiFetch<{ url: string }>(`/api/sponsor/click/${slug}`, {
     method: "POST",
@@ -353,7 +348,6 @@ export async function trackSponsorClick(slug: string): Promise<string | null> {
   return data?.url ?? null;
 }
 
-// ── Date utilities ────────────────────────────────────────────────────────────
 export function formatEventDate(isoString: string | null | undefined): string {
   if (!isoString) return "Date TBA";
   try {
