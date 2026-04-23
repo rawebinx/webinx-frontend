@@ -24,6 +24,7 @@ function cacheSet(key: string, data: unknown): void {
   _cache.set(key, { data, ts: Date.now() });
 }
 
+// ── Types ──────────────────────────────────────────────────────────
 export interface WebinarEvent {
   id: string;
   slug: string;
@@ -50,6 +51,8 @@ export interface WebinarEvent {
   category_name: string;
   category_slug: string;
   source_name: string;
+  click_count: number;
+  view_count: number;
 }
 
 export interface Sector {
@@ -90,6 +93,7 @@ export interface LeadPayload {
   utm_medium?: string;
 }
 
+// ── Normalize ──────────────────────────────────────────────────────
 function normalizeEvent(e: Record<string, unknown>): WebinarEvent {
   return {
     id:               String(e.id ?? ""),
@@ -117,9 +121,12 @@ function normalizeEvent(e: Record<string, unknown>): WebinarEvent {
     category_name:    String(e.category_name ?? ""),
     category_slug:    String(e.category_slug ?? ""),
     source_name:      String(e.source_name ?? ""),
+    click_count:      Number(e.click_count ?? 0),
+    view_count:       Number(e.view_count ?? 0),
   };
 }
 
+// ── Core fetch with retry + timeout ───────────────────────────────
 async function apiFetch<T>(
   path: string,
   options?: RequestInit,
@@ -159,9 +166,10 @@ async function apiFetch<T>(
   return null;
 }
 
+// ── Events ────────────────────────────────────────────────────────
 export async function getEvents(
   filterOrSector: EventsFilter | string = {},
-  legacyLimit = 20,
+  legacyLimit = 24,
   legacyOffset = 0
 ): Promise<WebinarEvent[]> {
   const filter: EventsFilter =
@@ -199,7 +207,9 @@ export async function getEventBySlug(slug: string): Promise<WebinarEvent | null>
   const cached = cacheGet<WebinarEvent>(cacheKey);
   if (cached) return cached;
 
-  const data = await apiFetch<Record<string, unknown>>(`/api/events/${encodeURIComponent(slug)}`);
+  const data = await apiFetch<Record<string, unknown>>(
+    `/api/events/${encodeURIComponent(slug)}`
+  );
   if (!data?.title) return null;
 
   const result = normalizeEvent(data);
@@ -207,40 +217,58 @@ export async function getEventBySlug(slug: string): Promise<WebinarEvent | null>
   return result;
 }
 
-// ✅ FIXED: /api/events/trending returns 404 — falls back to /api/events sorted by relevance_score
+// Trending: backend route now exists; frontend fallback kept as safety net
 export async function getTrendingEvents(limit = 9): Promise<WebinarEvent[]> {
   const cacheKey = `trending:${limit}`;
   const cached = cacheGet<WebinarEvent[]>(cacheKey);
   if (cached) return cached;
 
-  const data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
-  if (!Array.isArray(data)) return [];
+  // Try proper endpoint first
+  let data = await apiFetch<unknown[]>(`/api/events/trending?limit=${limit}`);
+
+  // Fallback: if endpoint missing/broken, use /api/events sorted by relevance
+  if (!Array.isArray(data) || data.length === 0) {
+    data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
+    if (!Array.isArray(data)) return [];
+    const result = data
+      .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
+      .map(normalizeEvent)
+      .sort((a, b) => b.relevance_score - a.relevance_score)
+      .slice(0, limit);
+    cacheSet(cacheKey, result);
+    return result;
+  }
 
   const result = data
     .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent)
-    .sort((a, b) => b.relevance_score - a.relevance_score)
-    .slice(0, limit);
-
+    .map(normalizeEvent);
   cacheSet(cacheKey, result);
   return result;
 }
 
-// ✅ FIXED: same pattern — /api/events/featured likely also 404
+// Featured: backend route now exists; frontend fallback kept as safety net
 export async function getFeaturedEvents(limit = 6): Promise<WebinarEvent[]> {
   const cacheKey = `featured:${limit}`;
   const cached = cacheGet<WebinarEvent[]>(cacheKey);
   if (cached) return cached;
 
-  const data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
-  if (!Array.isArray(data)) return [];
+  let data = await apiFetch<unknown[]>(`/api/events/featured?limit=${limit}`);
+
+  if (!Array.isArray(data) || data.length === 0) {
+    data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
+    if (!Array.isArray(data)) return [];
+    const result = data
+      .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
+      .map(normalizeEvent)
+      .filter((e) => e.is_featured || e.relevance_score >= 2)
+      .slice(0, limit);
+    cacheSet(cacheKey, result);
+    return result;
+  }
 
   const result = data
     .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent)
-    .filter((e) => e.is_featured || e.quality_score > 0 || e.relevance_score >= 2)
-    .slice(0, limit);
-
+    .map(normalizeEvent);
   cacheSet(cacheKey, result);
   return result;
 }
@@ -271,7 +299,6 @@ export async function searchEvents(q: string, limit = 20): Promise<WebinarEvent[
 export async function getSectors(): Promise<Sector[]> {
   const cached = cacheGet<Sector[]>("sectors");
   if (cached) return cached;
-
   const data = await apiFetch<Sector[]>("/api/sectors");
   const result = Array.isArray(data) ? data : [];
   cacheSet("sectors", result);
@@ -281,7 +308,6 @@ export async function getSectors(): Promise<Sector[]> {
 export async function getCategories(): Promise<Category[]> {
   const cached = cacheGet<Category[]>("categories");
   if (cached) return cached;
-
   const data = await apiFetch<Category[]>("/api/categories");
   const result = Array.isArray(data) ? data : [];
   cacheSet("categories", result);
@@ -290,20 +316,13 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getPlatformStats(): Promise<PlatformStats> {
   const fallback: PlatformStats = {
-    total_events: 500,
-    upcoming_events: 120,
-    this_week: 30,
-    sectors: 10,
-    categories: 20,
-    hosts: 200,
+    total_events: 500, upcoming_events: 120,
+    this_week: 30, sectors: 10, categories: 20, hosts: 200,
   };
-
   const cached = cacheGet<PlatformStats>("stats");
   if (cached) return cached;
-
   const data = await apiFetch<PlatformStats>("/api/stats");
   if (!data || typeof data !== "object") return fallback;
-
   const result: PlatformStats = {
     total_events:    Number(data.total_events    ?? fallback.total_events),
     upcoming_events: Number(data.upcoming_events ?? fallback.upcoming_events),
@@ -312,17 +331,20 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     categories:      Number(data.categories      ?? fallback.categories),
     hosts:           Number(data.hosts           ?? fallback.hosts),
   };
-
   cacheSet("stats", result);
   return result;
 }
 
 export async function getHost(slug: string) {
-  return apiFetch<{ host: Record<string, unknown> }>(`/api/hosts/${encodeURIComponent(slug)}`);
+  return apiFetch<{ host: Record<string, unknown> }>(
+    `/api/hosts/${encodeURIComponent(slug)}`
+  );
 }
 
 export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
-  const data = await apiFetch<{ events: unknown[] }>(`/api/hosts/${encodeURIComponent(slug)}/events`);
+  const data = await apiFetch<{ events: unknown[] }>(
+    `/api/hosts/${encodeURIComponent(slug)}/events`
+  );
   if (!data?.events || !Array.isArray(data.events)) return [];
   return data.events
     .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
@@ -348,6 +370,7 @@ export async function trackSponsorClick(slug: string): Promise<string | null> {
   return data?.url ?? null;
 }
 
+// ── Date utils ─────────────────────────────────────────────────────
 export function formatEventDate(isoString: string | null | undefined): string {
   if (!isoString) return "Date TBA";
   try {
@@ -355,16 +378,10 @@ export function formatEventDate(isoString: string | null | undefined): string {
     if (isNaN(d.getTime())) return "Date TBA";
     return d.toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
+      day: "numeric", month: "short", year: "numeric",
+      hour: "numeric", minute: "2-digit", hour12: true,
     });
-  } catch {
-    return "Date TBA";
-  }
+  } catch { return "Date TBA"; }
 }
 
 export function formatShortDate(isoString: string | null | undefined): string {
@@ -373,22 +390,14 @@ export function formatShortDate(isoString: string | null | undefined): string {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return "TBA";
     return d.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "numeric",
-      month: "short",
+      timeZone: "Asia/Kolkata", day: "numeric", month: "short",
     });
-  } catch {
-    return "TBA";
-  }
+  } catch { return "TBA"; }
 }
 
 export function isUpcoming(isoString: string | null | undefined): boolean {
   if (!isoString) return false;
-  try {
-    return new Date(isoString) >= new Date();
-  } catch {
-    return false;
-  }
+  try { return new Date(isoString) >= new Date(); } catch { return false; }
 }
 
 export function daysUntil(isoString: string | null | undefined): number | null {
@@ -397,7 +406,5 @@ export function daysUntil(isoString: string | null | undefined): number | null {
     const diff = new Date(isoString).getTime() - Date.now();
     if (diff < 0) return null;
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
