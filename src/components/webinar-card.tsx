@@ -8,15 +8,15 @@ import { formatShortDate, daysUntil, isUpcoming, isWishlisted, toggleWishlist } 
 
 // ── Sector accent colours ──────────────────────────────────────────
 const SECTOR_COLOR: Record<string, string> = {
-  ai:         "#6366f1",  // indigo
-  technology: "#3b82f6",  // blue
-  finance:    "#10b981",  // emerald
-  marketing:  "#f97316",  // orange
-  startup:    "#8b5cf6",  // violet
-  hr:         "#f43f5e",  // rose
-  healthcare: "#14b8a6",  // teal
-  education:  "#f59e0b",  // amber
-  general:    "#94a3b8",  // slate
+  ai:         "#6366f1",
+  technology: "#3b82f6",
+  finance:    "#10b981",
+  marketing:  "#f97316",
+  startup:    "#8b5cf6",
+  hr:         "#f43f5e",
+  healthcare: "#14b8a6",
+  education:  "#f59e0b",
+  general:    "#94a3b8",
 };
 
 function sectorColor(slug: string): string {
@@ -141,23 +141,25 @@ interface WebinarCardProps {
 }
 
 export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
-  const title        = webinar.title       || "Untitled Webinar";
-  const slug         = webinar.slug        || "";
-  const hostName     = webinar.host_name   || "Unknown Host";
-  const startTime    = webinar.start_time  ?? null;
-  const url          = webinar.registration_url || webinar.url || webinar.event_url || "#";
-  const sectorName   = webinar.sector_name || "General";
-  const sectorSlug   = webinar.sector_slug || "general";
-  const isFeatured   = Boolean(webinar.is_featured);
-  const isSponsored  = Boolean(webinar.is_sponsored);
-  const isVerified   = Boolean((webinar as any).is_verified);
-  const saveCount    = Number((webinar as any).save_count ?? 0);
-  const sponsorCta   = webinar.sponsor_cta || "Register Now";
-  const accent       = sectorColor(sectorSlug);
-  const dateStr      = formatShortDate(startTime);
-  const upcoming     = isUpcoming(startTime);
+  const title       = webinar.title       || "Untitled Webinar";
+  const slug        = webinar.slug        || "";
+  const hostName    = webinar.host_name   || "Unknown Host";
+  const startTime   = webinar.start_time  ?? null;
+  const sectorName  = webinar.sector_name || "General";
+  const sectorSlug  = webinar.sector_slug || "general";
+  const isFeatured  = Boolean(webinar.is_featured);
+  const isSponsored = Boolean(webinar.is_sponsored);
+  const isVerified  = Boolean((webinar as any).is_verified);
+  const saveCount   = Number((webinar as any).save_count ?? 0);
+  const sponsorCta  = webinar.sponsor_cta || "Register Now";
+  const accent      = sectorColor(sectorSlug);
+  const dateStr     = formatShortDate(startTime);
+  const upcoming    = isUpcoming(startTime);
 
-  // Clean tags — strip any HTML artifacts that slipped past pipeline
+  // Prefer url (already sanitized by normalizeEvent), then registration_url, then event_url
+  // All three have passed through safeExternalUrl — no webinx.in URLs will appear here
+  const externalUrl = webinar.url || webinar.registration_url || webinar.event_url || "";
+
   const cleanTags = (webinar.tags || [])
     .filter((t) => t && typeof t === "string" && !t.startsWith("<") && !t.includes("="))
     .slice(0, 3);
@@ -184,7 +186,7 @@ export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
         </div>
       )}
 
-      {/* Wishlist heart — always visible top-right */}
+      {/* Wishlist heart */}
       {slug && (
         <div className="absolute top-3 right-3">
           <WishlistButton slug={slug} />
@@ -258,40 +260,39 @@ export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
       </div>
 
       {/* CTA footer */}
-      {url && url !== "#" && (
-        <div className="px-4 pb-4">
-          {isSponsored ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center text-sm font-semibold py-2 px-3 rounded-lg transition-colors text-white"
-              style={{ background: accent }}
-            >
-              {sponsorCta}
-            </a>
-          ) : slug ? (
-            <Link href={`/webinar/${slug}`}>
-              <span
-                className="block w-full text-center text-sm font-medium py-2 px-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50"
-                style={{ borderColor: `${accent}60`, color: accent }}
-              >
-                {upcoming ? "View & Register →" : "View Details →"}
-              </span>
-            </Link>
-          ) : (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center text-sm font-medium py-2 px-3 rounded-lg border transition-colors hover:bg-gray-50"
+      <div className="px-4 pb-4">
+        {isSponsored && externalUrl ? (
+          <a
+            href={externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center text-sm font-semibold py-2 px-3 rounded-lg transition-colors text-white"
+            style={{ background: accent }}
+          >
+            {sponsorCta}
+          </a>
+        ) : slug ? (
+          // Always navigate to detail page — that page shows the real external CTA
+          <Link href={`/webinar/${slug}`}>
+            <span
+              className="block w-full text-center text-sm font-medium py-2 px-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50"
               style={{ borderColor: `${accent}60`, color: accent }}
             >
-              {upcoming ? "Register →" : "View Details →"}
-            </a>
-          )}
-        </div>
-      )}
+              {upcoming ? "View & Register →" : "View Details →"}
+            </span>
+          </Link>
+        ) : externalUrl ? (
+          <a
+            href={externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center text-sm font-medium py-2 px-3 rounded-lg border transition-colors hover:bg-gray-50"
+            style={{ borderColor: `${accent}60`, color: accent }}
+          >
+            {upcoming ? "Register →" : "View Details →"}
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }
