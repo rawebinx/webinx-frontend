@@ -335,18 +335,46 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   return result;
 }
 
-export async function getHost(slug: string) {
-  return apiFetch<{ host: Record<string, unknown> }>(
+export interface Host {
+  id?: string;
+  slug: string;
+  name: string;
+  org_name?: string;
+  bio?: string;
+  website?: string;
+  linkedin?: string;
+  is_verified?: boolean;
+  event_count?: number;
+}
+
+export async function getHost(slug: string): Promise<Host | null> {
+  if (!slug) return null;
+  // Backend returns flat host object directly (not wrapped in {host:{}})
+  const data = await apiFetch<Record<string, unknown>>(
     `/api/hosts/${encodeURIComponent(slug)}`
   );
+  if (!data || typeof data !== "object" || !data.slug) return null;
+  return {
+    id:         String(data.id ?? ""),
+    slug:       String(data.slug ?? ""),
+    name:       String(data.name ?? ""),
+    org_name:   String(data.org_name ?? ""),
+    bio:        String(data.bio ?? ""),
+    website:    String(data.website ?? ""),
+    linkedin:   String(data.linkedin ?? ""),
+    is_verified: Boolean(data.is_verified),
+    event_count: Number(data.event_count ?? 0),
+  };
 }
 
 export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
-  const data = await apiFetch<{ events: unknown[] }>(
+  if (!slug) return [];
+  // Backend returns raw array directly (not wrapped in {events:[]})
+  const data = await apiFetch<unknown[]>(
     `/api/hosts/${encodeURIComponent(slug)}/events`
   );
-  if (!data?.events || !Array.isArray(data.events)) return [];
-  return data.events
+  if (!Array.isArray(data)) return [];
+  return data
     .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
     .map(normalizeEvent);
 }
@@ -368,6 +396,52 @@ export async function trackSponsorClick(slug: string): Promise<string | null> {
     method: "POST",
   });
   return data?.url ?? null;
+}
+
+// ── Alerts ────────────────────────────────────────────────────────
+export interface AlertPayload {
+  email: string;
+  event_slug?: string;
+  topic_query?: string;
+}
+
+export async function postAlert(
+  payload: AlertPayload
+): Promise<{ status: "ok" | "error"; message: string }> {
+  const data = await apiFetch<{ status: string; message: string }>("/api/alerts", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return data
+    ? { status: "ok", message: data.message ?? "Alert set!" }
+    : { status: "error", message: "Failed to set alert. Please try again." };
+}
+
+// ── Calendar URL builder (no API key needed) ───────────────────────
+export function buildCalendarUrl(event: WebinarEvent): string {
+  const toCalDate = (iso: string | null | undefined): string => {
+    if (!iso) return "";
+    try {
+      return new Date(iso)
+        .toISOString()
+        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}/, "");
+    } catch { return ""; }
+  };
+
+  const start = toCalDate(event.start_time);
+  const end   = toCalDate(event.end_time || event.start_time);
+  if (!start) return "";
+
+  const params = new URLSearchParams({
+    action:  "TEMPLATE",
+    text:    event.title,
+    details: `${event.description?.slice(0, 300) ?? ""}\n\nRegister: ${event.url || event.registration_url}`,
+    location: event.url || event.registration_url || "Online",
+    dates:   `${start}/${end}`,
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 // ── Date utils ─────────────────────────────────────────────────────
