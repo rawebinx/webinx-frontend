@@ -24,6 +24,22 @@ function cacheSet(key: string, data: unknown): void {
   _cache.set(key, { data, ts: Date.now() });
 }
 
+// ── URL guard: strip any URL that points back to our own domain ────
+const OWN_HOSTNAMES = new Set(["webinx.in", "www.webinx.in"]);
+
+function safeExternalUrl(val: unknown): string {
+  const s = String(val ?? "").trim();
+  if (!s || s === "#") return "";
+  try {
+    const host = new URL(s).hostname.toLowerCase();
+    if (OWN_HOSTNAMES.has(host)) return "";
+    if (host === "example.com" || host === "localhost") return "";
+  } catch {
+    return "";
+  }
+  return s;
+}
+
 // ── Types ──────────────────────────────────────────────────────────
 export interface WebinarEvent {
   id: string;
@@ -95,6 +111,10 @@ export interface LeadPayload {
 
 // ── Normalize ──────────────────────────────────────────────────────
 function normalizeEvent(e: Record<string, unknown>): WebinarEvent {
+  const eventUrl        = safeExternalUrl(e.event_url);
+  const registrationUrl = safeExternalUrl(e.registration_url);
+  const resolvedUrl     = safeExternalUrl(e.url) || registrationUrl || eventUrl || "";
+
   return {
     id:               String(e.id ?? ""),
     slug:             String(e.slug ?? ""),
@@ -103,9 +123,9 @@ function normalizeEvent(e: Record<string, unknown>): WebinarEvent {
     host_name:        String(e.host_name ?? ""),
     start_time:       (e.start_time as string) ?? null,
     end_time:         (e.end_time as string) ?? null,
-    event_url:        String(e.event_url ?? ""),
-    registration_url: String(e.registration_url ?? ""),
-    url:              String(e.url ?? e.registration_url ?? e.event_url ?? "#"),
+    event_url:        eventUrl,
+    registration_url: registrationUrl,
+    url:              resolvedUrl,
     tags:             Array.isArray(e.tags) ? (e.tags as string[]) : [],
     sub_sector:       String(e.sub_sector ?? ""),
     relevance_score:  Number(e.relevance_score ?? 0),
@@ -113,7 +133,7 @@ function normalizeEvent(e: Record<string, unknown>): WebinarEvent {
     is_featured:      Boolean(e.is_featured),
     is_sponsored:     Boolean(e.is_sponsored),
     sponsor_name:     String(e.sponsor_name ?? ""),
-    sponsor_url:      String(e.sponsor_url ?? ""),
+    sponsor_url:      safeExternalUrl(e.sponsor_url),
     sponsor_cta:      String(e.sponsor_cta ?? "Register Now"),
     intent_label:     String(e.intent_label ?? "learn"),
     sector_name:      String(e.sector_name ?? "General"),
@@ -217,16 +237,13 @@ export async function getEventBySlug(slug: string): Promise<WebinarEvent | null>
   return result;
 }
 
-// Trending: backend route now exists; frontend fallback kept as safety net
 export async function getTrendingEvents(limit = 9): Promise<WebinarEvent[]> {
   const cacheKey = `trending:${limit}`;
   const cached = cacheGet<WebinarEvent[]>(cacheKey);
   if (cached) return cached;
 
-  // Try proper endpoint first
   let data = await apiFetch<unknown[]>(`/api/events/trending?limit=${limit}`);
 
-  // Fallback: if endpoint missing/broken, use /api/events sorted by relevance
   if (!Array.isArray(data) || data.length === 0) {
     data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
     if (!Array.isArray(data)) return [];
@@ -246,7 +263,6 @@ export async function getTrendingEvents(limit = 9): Promise<WebinarEvent[]> {
   return result;
 }
 
-// Featured: backend route now exists; frontend fallback kept as safety net
 export async function getFeaturedEvents(limit = 6): Promise<WebinarEvent[]> {
   const cacheKey = `featured:${limit}`;
   const cached = cacheGet<WebinarEvent[]>(cacheKey);
@@ -255,15 +271,8 @@ export async function getFeaturedEvents(limit = 6): Promise<WebinarEvent[]> {
   let data = await apiFetch<unknown[]>(`/api/events/featured?limit=${limit}`);
 
   if (!Array.isArray(data) || data.length === 0) {
-    data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
+    data = await apiFetch<unknown[]>(`/api/events?limit=${limit}`);
     if (!Array.isArray(data)) return [];
-    const result = data
-      .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-      .map(normalizeEvent)
-      .filter((e) => e.is_featured || e.relevance_score >= 2)
-      .slice(0, limit);
-    cacheSet(cacheKey, result);
-    return result;
   }
 
   const result = data
@@ -286,9 +295,25 @@ export async function getRelatedEvents(
     .map(normalizeEvent);
 }
 
+export async function getCityEvents(city: string): Promise<WebinarEvent[]> {
+  if (!city) return [];
+  const cacheKey = `city:${city}`;
+  const cached = cacheGet<WebinarEvent[]>(cacheKey);
+  if (cached) return cached;
+
+  const data = await apiFetch<unknown[]>(`/api/cities/${encodeURIComponent(city)}`);
+  if (!Array.isArray(data)) return [];
+
+  const result = data
+    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
+    .map(normalizeEvent);
+  cacheSet(cacheKey, result);
+  return result;
+}
+
 export async function searchEvents(q: string, limit = 20): Promise<WebinarEvent[]> {
-  if (!q || q.length < 2) return [];
-  const params = new URLSearchParams({ q, limit: String(limit) });
+  if (!q || q.trim().length < 2) return [];
+  const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
   const data = await apiFetch<unknown[]>(`/api/search?${params}`);
   if (!Array.isArray(data)) return [];
   return data
@@ -300,23 +325,23 @@ export async function getSectors(): Promise<Sector[]> {
   const cached = cacheGet<Sector[]>("sectors");
   if (cached) return cached;
   const data = await apiFetch<Sector[]>("/api/sectors");
-  const result = Array.isArray(data) ? data : [];
-  cacheSet("sectors", result);
-  return result;
+  if (!Array.isArray(data)) return [];
+  cacheSet("sectors", data);
+  return data;
 }
 
 export async function getCategories(): Promise<Category[]> {
   const cached = cacheGet<Category[]>("categories");
   if (cached) return cached;
   const data = await apiFetch<Category[]>("/api/categories");
-  const result = Array.isArray(data) ? data : [];
-  cacheSet("categories", result);
-  return result;
+  if (!Array.isArray(data)) return [];
+  cacheSet("categories", data);
+  return data;
 }
 
-export async function getPlatformStats(): Promise<PlatformStats> {
+export async function getStats(): Promise<PlatformStats> {
   const fallback: PlatformStats = {
-    total_events: 500, upcoming_events: 120,
+    total_events: 500, upcoming_events: 100,
     this_week: 30, sectors: 10, categories: 20, hosts: 200,
   };
   const cached = cacheGet<PlatformStats>("stats");
@@ -349,7 +374,6 @@ export interface Host {
 
 export async function getHost(slug: string): Promise<Host | null> {
   if (!slug) return null;
-  // Backend returns flat host object directly (not wrapped in {host:{}})
   const data = await apiFetch<Record<string, unknown>>(
     `/api/hosts/${encodeURIComponent(slug)}`
   );
@@ -369,7 +393,6 @@ export async function getHost(slug: string): Promise<Host | null> {
 
 export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
   if (!slug) return [];
-  // Backend returns raw array directly (not wrapped in {events:[]})
   const data = await apiFetch<unknown[]>(
     `/api/hosts/${encodeURIComponent(slug)}/events`
   );
@@ -434,7 +457,6 @@ export function toggleWishlist(slug: string): boolean {
     list.splice(idx, 1);
   }
   try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(list)); } catch {}
-  // Fire-and-forget sync to backend (no await — never blocks UI)
   const sessionId = getSessionId();
   if (added) {
     apiFetch("/api/wishlist", {
