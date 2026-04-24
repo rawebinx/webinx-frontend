@@ -581,7 +581,8 @@ export function isUpcoming(isoString: string | null | undefined): boolean {
   if (!isoString) return false;
   try { return new Date(isoString) >= new Date(); } catch { return false; }
 }
-
+// Backwards-compat alias — home.tsx imports this name
+export const getPlatformStats = getStats;
 export function daysUntil(isoString: string | null | undefined): number | null {
   if (!isoString) return null;
   try {
