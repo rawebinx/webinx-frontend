@@ -1,4 +1,4 @@
-// src/App.tsx — WebinX Router (Step 2: /wishlist route added)
+// src/App.tsx — WebinX Router (Step 3: leaderboard, rewards, featured, certificate)
 import { Router, Switch, Route } from "wouter";
 
 import { Navbar }          from "./components/navbar";
@@ -17,6 +17,10 @@ import ContactPage         from "./pages/contact";
 import PrivacyPage         from "./pages/privacy";
 import TermsPage           from "./pages/terms";
 import WishlistPage        from "./pages/wishlist";
+import LeaderboardPage     from "./pages/leaderboard";
+import RewardClaimPage     from "./pages/reward-claim";
+import GetFeaturedPage     from "./pages/get-featured";
+import CertificatePage     from "./pages/certificate";
 
 function NotFound() {
   return (
@@ -36,23 +40,27 @@ export default function App() {
         <main className="flex-1">
           <Switch>
             {/* Core */}
-            <Route path="/"               component={Home} />
-            <Route path="/webinars"       component={WebinarsPage} />
-            <Route path="/webinar/:slug"  component={WebinarPage} />
-            <Route path="/category/:slug" component={CategoryPage} />
-            <Route path="/sector/:slug"   component={SectorPage} />
-            <Route path="/host"           component={HostPage} />
-            <Route path="/hosts/:slug"    component={HostDetailPage} />
+            <Route path="/"                  component={Home} />
+            <Route path="/webinars"          component={WebinarsPage} />
+            <Route path="/webinar/:slug"     component={WebinarPage} />
+            <Route path="/category/:slug"    component={CategoryPage} />
+            <Route path="/sector/:slug"      component={SectorPage} />
+            <Route path="/host"              component={HostPage} />
+            <Route path="/hosts/:slug"       component={HostDetailPage} />
 
             {/* Static — must be before /:slug catch-all */}
-            <Route path="/wishlist"       component={WishlistPage} />
-            <Route path="/about"          component={AboutPage} />
-            <Route path="/contact"        component={ContactPage} />
-            <Route path="/privacy"        component={PrivacyPage} />
-            <Route path="/terms"          component={TermsPage} />
+            <Route path="/wishlist"          component={WishlistPage} />
+            <Route path="/top-hosts"         component={LeaderboardPage} />
+            <Route path="/mention-webinx"    component={RewardClaimPage} />
+            <Route path="/get-featured"      component={GetFeaturedPage} />
+            <Route path="/certificate/:slug" component={CertificatePage} />
+            <Route path="/about"             component={AboutPage} />
+            <Route path="/contact"           component={ContactPage} />
+            <Route path="/privacy"           component={PrivacyPage} />
+            <Route path="/terms"             component={TermsPage} />
 
             {/* Programmatic SEO catch-all */}
-            <Route path="/:slug"          component={SeoPage} />
+            <Route path="/:slug"             component={SeoPage} />
 
             <Route component={NotFound} />
           </Switch>
