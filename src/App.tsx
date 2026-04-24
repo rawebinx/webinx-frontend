@@ -1,4 +1,4 @@
-// src/App.tsx — WebinX Router (Step 5 — final)
+// src/App.tsx — WebinX Router
 import { Router, Switch, Route, useLocation } from "wouter";
 
 import { Navbar }           from "./components/navbar";
@@ -9,6 +9,7 @@ import WebinarsPage         from "./pages/webinars";
 import WebinarPage          from "./pages/webinar";
 import CategoryPage         from "./pages/category";
 import SectorPage           from "./pages/sector";
+import CityPage             from "./pages/city";
 import HostPage             from "./pages/host";
 import HostDetailPage       from "./pages/host-detail";
 import SeoPage              from "./pages/seo";
@@ -26,6 +27,7 @@ import AdminPage            from "./pages/admin";
 import HostToolsPage        from "./pages/host-tools";
 import TrendingTopicsPage   from "./pages/trending-topics";
 import EmbedPage            from "./pages/embed";
+import SubmitWebinarPage    from "./pages/submit-webinar";
 
 function NotFound() {
   return (
@@ -46,28 +48,30 @@ function AppContent() {
       {!isEmbed && <Navbar />}
       <main className="flex-1">
         <Switch>
-          <Route path="/"                   component={Home} />
-          <Route path="/webinars"           component={WebinarsPage} />
-          <Route path="/webinar/:slug"      component={WebinarPage} />
-          <Route path="/category/:slug"     component={CategoryPage} />
-          <Route path="/sector/:slug"       component={SectorPage} />
-          <Route path="/host"               component={HostPage} />
-          <Route path="/hosts/:slug"        component={HostDetailPage} />
-          <Route path="/wishlist"           component={WishlistPage} />
-          <Route path="/top-hosts"          component={LeaderboardPage} />
-          <Route path="/mention-webinx"     component={RewardClaimPage} />
-          <Route path="/get-featured"       component={GetFeaturedPage} />
-          <Route path="/certificate/:slug"  component={CertificatePage} />
-          <Route path="/ai-search"          component={AISearchPage} />
-          <Route path="/admin"              component={AdminPage} />
-          <Route path="/host-tools"         component={HostToolsPage} />
-          <Route path="/trending-topics"    component={TrendingTopicsPage} />
-          <Route path="/embed/:slug"        component={EmbedPage} />
-          <Route path="/about"              component={AboutPage} />
-          <Route path="/contact"            component={ContactPage} />
-          <Route path="/privacy"            component={PrivacyPage} />
-          <Route path="/terms"              component={TermsPage} />
-          <Route path="/:slug"              component={SeoPage} />
+          <Route path="/"                     component={Home} />
+          <Route path="/webinars"             component={WebinarsPage} />
+          <Route path="/webinar/:slug"        component={WebinarPage} />
+          <Route path="/category/:slug"       component={CategoryPage} />
+          <Route path="/sector/:slug"         component={SectorPage} />
+          <Route path="/city/:city"           component={CityPage} />
+          <Route path="/submit-webinar"       component={SubmitWebinarPage} />
+          <Route path="/host"                 component={HostPage} />
+          <Route path="/hosts/:slug"          component={HostDetailPage} />
+          <Route path="/wishlist"             component={WishlistPage} />
+          <Route path="/top-hosts"            component={LeaderboardPage} />
+          <Route path="/mention-webinx"       component={RewardClaimPage} />
+          <Route path="/get-featured"         component={GetFeaturedPage} />
+          <Route path="/certificate/:slug"    component={CertificatePage} />
+          <Route path="/ai-search"            component={AISearchPage} />
+          <Route path="/admin"                component={AdminPage} />
+          <Route path="/host-tools"           component={HostToolsPage} />
+          <Route path="/trending-topics"      component={TrendingTopicsPage} />
+          <Route path="/embed/:slug"          component={EmbedPage} />
+          <Route path="/about"                component={AboutPage} />
+          <Route path="/contact"              component={ContactPage} />
+          <Route path="/privacy"              component={PrivacyPage} />
+          <Route path="/terms"               component={TermsPage} />
+          <Route path="/:slug"               component={SeoPage} />
           <Route component={NotFound} />
         </Switch>
       </main>
