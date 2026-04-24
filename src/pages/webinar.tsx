@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { getEventBySlug, getRelatedEvents, formatEventDate, isUpcoming, daysUntil } from "../lib/api";
+import {
+  getEventBySlug, getRelatedEvents, formatEventDate,
+  isUpcoming, daysUntil, postAlert, buildCalendarUrl,
+} from "../lib/api";
 import type { WebinarEvent } from "../lib/api";
 import { WebinarCard } from "../components/webinar-card";
 
@@ -9,10 +12,22 @@ export default function WebinarPage() {
   const [, params] = useRoute("/webinar/:slug");
   const slug = params?.slug || "";
 
-  const [event, setEvent]     = useState<WebinarEvent | null>(null);
-  const [related, setRelated] = useState<WebinarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [event, setEvent]           = useState<WebinarEvent | null>(null);
+  const [related, setRelated]       = useState<WebinarEvent[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [notFound, setNotFound]     = useState(false);
+  const [alertEmail, setAlertEmail] = useState("");
+  const [alertSent, setAlertSent]   = useState(false);
+  const [alertLoading, setAlertLoading] = useState(false);
+
+  async function handleSetAlert(e: React.FormEvent) {
+    e.preventDefault();
+    if (!alertEmail || !event) return;
+    setAlertLoading(true);
+    const res = await postAlert({ email: alertEmail, event_slug: event.slug });
+    setAlertLoading(false);
+    if (res.status === "ok") setAlertSent(true);
+  }
 
   async function load() {
     setLoading(true);
@@ -216,6 +231,52 @@ export default function WebinarPage() {
               ? "Register Now →"
               : "View Details →"}
           </a>
+        )}
+
+        {/* Add to Calendar (upcoming events only, no API key needed) */}
+        {upcoming && buildCalendarUrl(event) && (
+          <a
+            href={buildCalendarUrl(event)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition ml-3"
+          >
+            📅 Add to Calendar
+          </a>
+        )}
+
+        {/* Set Alert — frictionless email reminder */}
+        {upcoming && (
+          <div className="mt-6 p-4 rounded-xl border border-gray-100 bg-gray-50">
+            {alertSent ? (
+              <p className="text-sm text-green-700 font-medium">
+                ✓ Reminder set! We'll email you before this webinar starts.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-3">
+                  🔔 Get a reminder before this webinar starts
+                </p>
+                <form onSubmit={handleSetAlert} className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={alertEmail}
+                    onChange={(e) => setAlertEmail(e.target.value)}
+                    required
+                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+                  />
+                  <button
+                    type="submit"
+                    disabled={alertLoading}
+                    className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition disabled:opacity-60"
+                  >
+                    {alertLoading ? "…" : "Remind me"}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
         )}
 
         {/* Sponsor note */}

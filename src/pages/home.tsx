@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { getTrendingEvents, getPlatformStats } from "../lib/api";
-import type { WebinarEvent, PlatformStats } from "../lib/api";
+import { getTrendingEvents, getPlatformStats, getSectors } from "../lib/api";
+import type { WebinarEvent, PlatformStats, Sector } from "../lib/api";
 import { WebinarCard } from "../components/webinar-card";
 
 function SkeletonCard() {
@@ -18,19 +18,34 @@ function SkeletonCard() {
 export default function HomePage() {
   const [events, setEvents]   = useState<WebinarEvent[]>([]);
   const [stats, setStats]     = useState<PlatformStats | null>(null);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [search, setSearch]   = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(false);
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = search.trim();
+    if (q) window.location.href = `/webinars?q=${encodeURIComponent(q)}`;
+  }
 
   async function load() {
     setLoading(true);
     setError(false);
     try {
-      const [data, statsData] = await Promise.all([
+      const [data, statsData, sectorsData] = await Promise.all([
         getTrendingEvents(12),
         getPlatformStats(),
+        getSectors(),
       ]);
       setEvents(data || []);
       setStats(statsData);
+      // Show top 8 sectors by event count (exclude "general" if possible)
+      const topSectors = (sectorsData || [])
+        .filter((s) => s.event_count > 0)
+        .sort((a, b) => b.event_count - a.event_count)
+        .slice(0, 8);
+      setSectors(topSectors);
     } catch {
       setError(true);
     }
@@ -66,6 +81,23 @@ export default function HomePage() {
             Trending online events across technology, finance, AI, marketing and more — updated daily.
           </p>
 
+          {/* Search bar */}
+          <form onSubmit={handleSearch} className="flex max-w-xl mx-auto mt-6 gap-2">
+            <input
+              type="text"
+              placeholder="Search webinars — AI, marketing, finance..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 text-sm border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-300 shadow-sm"
+            />
+            <button
+              type="submit"
+              className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg transition shadow-sm"
+            >
+              Search
+            </button>
+          </form>
+
           {/* Stats bar */}
           {stats && (
             <div className="flex flex-wrap justify-center gap-6 mt-6 text-sm text-gray-500">
@@ -77,18 +109,23 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Sector quick links */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {["technology","finance","ai","marketing","healthcare","startup"].map((s) => (
-            <a
-              key={s}
-              href={`/sector/${s}`}
-              className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-purple-400 hover:text-purple-700 transition-colors"
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </a>
-          ))}
-        </div>
+        {/* Dynamic sector quick links from API */}
+        {sectors.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            {sectors.map((s) => (
+              <a
+                key={s.slug}
+                href={`/sector/${s.slug}`}
+                className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-purple-400 hover:text-purple-700 transition-colors"
+              >
+                {s.name}
+                {s.event_count > 0 && (
+                  <span className="ml-1 text-gray-400">({s.event_count})</span>
+                )}
+              </a>
+            ))}
+          </div>
+        )}
 
         {/* States */}
         {error && (
