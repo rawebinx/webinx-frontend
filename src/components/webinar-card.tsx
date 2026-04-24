@@ -1,9 +1,10 @@
-// src/components/webinar-card.tsx — WebinX Webinar Card v2
-// Full redesign: sector colour accent, featured badge, countdown, register CTA.
+// src/components/webinar-card.tsx — WebinX Webinar Card v3
+// Wishlist heart button + Verified host badge added.
 
 import { Link } from "wouter";
+import { useState, useCallback } from "react";
 import type { WebinarEvent } from "../lib/api";
-import { formatShortDate, daysUntil, isUpcoming } from "../lib/api";
+import { formatShortDate, daysUntil, isUpcoming, isWishlisted, toggleWishlist } from "../lib/api";
 
 // ── Sector accent colours ──────────────────────────────────────────
 const SECTOR_COLOR: Record<string, string> = {
@@ -21,6 +22,60 @@ const SECTOR_COLOR: Record<string, string> = {
 function sectorColor(slug: string): string {
   const key = (slug || "general").toLowerCase();
   return SECTOR_COLOR[key] ?? SECTOR_COLOR.general;
+}
+
+// ── Wishlist heart button ─────────────────────────────────────────
+function WishlistButton({ slug }: { slug: string }) {
+  const [saved, setSaved] = useState(() => isWishlisted(slug));
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const added = toggleWishlist(slug);
+    setSaved(added);
+  }, [slug]);
+
+  return (
+    <button
+      onClick={handleClick}
+      title={saved ? "Remove from wishlist" : "Save to wishlist"}
+      className="flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110 active:scale-95"
+      style={{
+        background: saved ? "#fee2e2" : "transparent",
+        border: `1.5px solid ${saved ? "#fca5a5" : "#e5e7eb"}`,
+      }}
+      aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="13"
+        height="13"
+        fill={saved ? "#ef4444" : "none"}
+        stroke={saved ? "#ef4444" : "#9ca3af"}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      </svg>
+    </button>
+  );
+}
+
+// ── Verified badge ────────────────────────────────────────────────
+function VerifiedBadge() {
+  return (
+    <span
+      title="Verified Host"
+      className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full"
+      style={{ background: "#dbeafe", color: "#1d4ed8" }}
+    >
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="#1d4ed8">
+        <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+      </svg>
+      Verified
+    </span>
+  );
 }
 
 // ── Host initials avatar ───────────────────────────────────────────
@@ -81,7 +136,7 @@ function CountdownBadge({ startTime }: { startTime: string | null | undefined })
 
 // ── Main card component ───────────────────────────────────────────
 interface WebinarCardProps {
-  webinar: Partial<WebinarEvent>;
+  webinar: Partial<WebinarEvent> & { is_verified?: boolean; save_count?: number };
   compact?: boolean;
 }
 
@@ -95,6 +150,8 @@ export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
   const sectorSlug   = webinar.sector_slug || "general";
   const isFeatured   = Boolean(webinar.is_featured);
   const isSponsored  = Boolean(webinar.is_sponsored);
+  const isVerified   = Boolean((webinar as any).is_verified);
+  const saveCount    = Number((webinar as any).save_count ?? 0);
   const sponsorCta   = webinar.sponsor_cta || "Register Now";
   const accent       = sectorColor(sectorSlug);
   const dateStr      = formatShortDate(startTime);
@@ -113,7 +170,7 @@ export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
       {/* Featured ribbon */}
       {isFeatured && (
         <div
-          className="absolute top-3 right-3 flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+          className="absolute top-3 right-10 flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
           style={{ background: "#fef3c7", color: "#92400e" }}
         >
           <span style={{ fontSize: "11px" }}>⭐</span> Featured
@@ -122,8 +179,15 @@ export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
 
       {/* Sponsored label */}
       {isSponsored && !isFeatured && (
-        <div className="absolute top-3 right-3 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
+        <div className="absolute top-3 right-10 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
           Sponsored
+        </div>
+      )}
+
+      {/* Wishlist heart — always visible top-right */}
+      {slug && (
+        <div className="absolute top-3 right-3">
+          <WishlistButton slug={slug} />
         </div>
       )}
 
@@ -160,14 +224,20 @@ export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
 
         {/* Host + date */}
         <div className="flex flex-col gap-1 text-sm text-gray-500">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <HostAvatar name={hostName} />
             <span className="truncate">{hostName}</span>
+            {isVerified && <VerifiedBadge />}
           </div>
           {dateStr && (
             <div className="flex items-center gap-1.5 text-xs">
               <span className="text-gray-400">📅</span>
               <span>{dateStr}</span>
+              {saveCount > 0 && (
+                <span className="ml-auto text-xs text-red-400" title="People who saved this">
+                  ♥ {saveCount}
+                </span>
+              )}
             </div>
           )}
         </div>
