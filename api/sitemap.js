@@ -1,3 +1,6 @@
+// api/sitemap.js — WebinX Sitemap
+// Always returns valid XML — never 500.
+
 export default async function handler(req, res) {
   const BASE_URL = "https://www.webinx.in";
   const BACKEND  = "https://webinx-backend.onrender.com";
@@ -18,13 +21,25 @@ export default async function handler(req, res) {
       : d.toISOString().replace(/\.\d{3}Z$/, "Z");
   };
 
-  // Static pages — always included
+  // Static pages
   const staticPages = [
-    { loc: BASE_URL,           priority: "1.0", changefreq: "daily"   },
-    { loc: `${BASE_URL}/webinars`, priority: "0.9", changefreq: "daily"   },
-    { loc: `${BASE_URL}/about`,    priority: "0.5", changefreq: "monthly" },
-    { loc: `${BASE_URL}/contact`,  priority: "0.5", changefreq: "monthly" },
+    { loc: BASE_URL,                  priority: "1.0", changefreq: "daily"   },
+    { loc: `${BASE_URL}/webinars`,    priority: "0.9", changefreq: "daily"   },
+    { loc: `${BASE_URL}/about`,       priority: "0.5", changefreq: "monthly" },
+    { loc: `${BASE_URL}/contact`,     priority: "0.5", changefreq: "monthly" },
+    { loc: `${BASE_URL}/rss.xml`,     priority: "0.3", changefreq: "daily"   },
   ];
+
+  // SEO city pages
+  const CITIES = [
+    "mumbai", "delhi", "bangalore", "hyderabad",
+    "chennai", "pune", "kolkata", "ahmedabad",
+  ];
+  const cityPages = CITIES.map((city) => ({
+    loc: `${BASE_URL}/city/${city}`,
+    priority: "0.7",
+    changefreq: "daily",
+  }));
 
   let eventPages = [];
 
@@ -54,11 +69,10 @@ export default async function handler(req, res) {
       }
     }
   } catch (err) {
-    // Backend unavailable — sitemap still returns static pages, never 500
     console.error("Sitemap backend fetch failed:", err?.message);
   }
 
-  const allPages = [...staticPages, ...eventPages];
+  const allPages = [...staticPages, ...cityPages, ...eventPages];
 
   const urlTags = allPages
     .map((p) => `
