@@ -1,3 +1,4 @@
+// src/App.tsx — WebinX Router (Step 2: /wishlist route added)
 import { Router, Switch, Route } from "wouter";
 
 import { Navbar }          from "./components/navbar";
@@ -15,6 +16,7 @@ import AboutPage           from "./pages/about";
 import ContactPage         from "./pages/contact";
 import PrivacyPage         from "./pages/privacy";
 import TermsPage           from "./pages/terms";
+import WishlistPage        from "./pages/wishlist";
 
 function NotFound() {
   return (
@@ -43,6 +45,7 @@ export default function App() {
             <Route path="/hosts/:slug"    component={HostDetailPage} />
 
             {/* Static — must be before /:slug catch-all */}
+            <Route path="/wishlist"       component={WishlistPage} />
             <Route path="/about"          component={AboutPage} />
             <Route path="/contact"        component={ContactPage} />
             <Route path="/privacy"        component={PrivacyPage} />
