@@ -78,10 +78,13 @@ export default function WebinarPage() {
     );
   }
 
-  const upcoming = isUpcoming(event.start_time);
-  const days     = daysUntil(event.start_time);
-  const dateStr  = formatEventDate(event.start_time);
+  const upcoming    = isUpcoming(event.start_time);
+  const days        = daysUntil(event.start_time);
+  const dateStr     = formatEventDate(event.start_time);
   const canonicalUrl = `https://www.webinx.in/webinar/${event.slug}`;
+
+  // Only show CTA button if we have a real external registration URL
+  const ctaUrl = event.url && event.url !== "#" ? event.url : "";
 
   // schema.org Event structured data
   const schema = {
@@ -95,7 +98,7 @@ export default function WebinarPage() {
     eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
     location: {
       "@type": "VirtualLocation",
-      url: event.url || canonicalUrl,
+      url: ctaUrl || canonicalUrl,
     },
     organizer: {
       "@type": "Organization",
@@ -217,10 +220,10 @@ export default function WebinarPage() {
           />
         )}
 
-        {/* CTA */}
-        {event.url && event.url !== "#" && (
+        {/* CTA — only renders when we have a real external URL */}
+        {ctaUrl ? (
           <a
-            href={event.url}
+            href={ctaUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg transition text-sm"
@@ -231,9 +234,17 @@ export default function WebinarPage() {
               ? "Register Now →"
               : "View Details →"}
           </a>
+        ) : (
+          // No external URL: show a search CTA so page never feels broken
+          <a
+            href="/webinars"
+            className="inline-block bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-6 py-3 rounded-lg transition text-sm"
+          >
+            Browse similar webinars →
+          </a>
         )}
 
-        {/* Add to Calendar (upcoming events only, no API key needed) */}
+        {/* Add to Calendar (upcoming events only) */}
         {upcoming && buildCalendarUrl(event) && (
           <a
             href={buildCalendarUrl(event)}
@@ -245,7 +256,7 @@ export default function WebinarPage() {
           </a>
         )}
 
-        {/* Set Alert — frictionless email reminder */}
+        {/* Set Alert */}
         {upcoming && (
           <div className="mt-6 p-4 rounded-xl border border-gray-100 bg-gray-50">
             {alertSent ? (
