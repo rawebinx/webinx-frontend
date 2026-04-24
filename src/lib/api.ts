@@ -398,6 +398,92 @@ export async function trackSponsorClick(slug: string): Promise<string | null> {
   return data?.url ?? null;
 }
 
+// ── Wishlist (localStorage + optional DB sync) ────────────────────
+const WISHLIST_KEY = "webinx_wishlist";
+const SESSION_KEY  = "webinx_session_id";
+
+function getSessionId(): string {
+  try {
+    let id = localStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  } catch { return ""; }
+}
+
+export function getWishlist(): string[] {
+  try {
+    const raw = localStorage.getItem(WISHLIST_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch { return []; }
+}
+
+export function isWishlisted(slug: string): boolean {
+  return getWishlist().includes(slug);
+}
+
+export function toggleWishlist(slug: string): boolean {
+  const list = getWishlist();
+  const idx  = list.indexOf(slug);
+  const added = idx < 0;
+  if (added) {
+    list.unshift(slug);
+  } else {
+    list.splice(idx, 1);
+  }
+  try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(list)); } catch {}
+  // Fire-and-forget sync to backend (no await — never blocks UI)
+  const sessionId = getSessionId();
+  if (added) {
+    apiFetch("/api/wishlist", {
+      method: "POST",
+      body: JSON.stringify({ event_slug: slug, session_id: sessionId }),
+    }).catch(() => {});
+  } else {
+    apiFetch("/api/wishlist", {
+      method: "DELETE",
+      body: JSON.stringify({ event_slug: slug, session_id: sessionId }),
+    }).catch(() => {});
+  }
+  return added;
+}
+
+export async function syncWishlistEmail(email: string): Promise<void> {
+  const list      = getWishlist();
+  const sessionId = getSessionId();
+  await Promise.all(
+    list.map((slug) =>
+      apiFetch("/api/wishlist", {
+        method: "POST",
+        body: JSON.stringify({ email, event_slug: slug, session_id: sessionId }),
+      }).catch(() => {})
+    )
+  );
+}
+
+export async function saveWishlistTopic(
+  email: string,
+  topicQuery: string,
+  sectorSlug?: string
+): Promise<{ status: "ok" | "error"; message: string }> {
+  const data = await apiFetch<{ status: string; message: string }>(
+    "/api/wishlist/topic",
+    { method: "POST", body: JSON.stringify({ email, topic_query: topicQuery, sector_slug: sectorSlug }) }
+  );
+  return data
+    ? { status: "ok", message: data.message ?? "Saved!" }
+    : { status: "error", message: "Failed. Please try again." };
+}
+
+export async function getWishlistEvents(): Promise<WebinarEvent[]> {
+  const slugs = getWishlist();
+  if (slugs.length === 0) return [];
+  const results = await Promise.all(slugs.map((s) => getEventBySlug(s)));
+  return results.filter((e): e is WebinarEvent => e !== null);
+}
+
 // ── Alerts ────────────────────────────────────────────────────────
 export interface AlertPayload {
   email: string;
