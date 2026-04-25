@@ -690,3 +690,34 @@ export const saveWishlistItem    = (d: { email?: string; event_slug: string; ses
   toggleWishlist('save', d);
 export const removeWishlistItem  = (d: { email?: string; event_slug: string; session_id?: string }) =>
   toggleWishlist('remove', d);
+
+// ─── Utility helpers (used by embed, seo, and other pages) ───────────────────
+
+export function isUpcoming(isoDate: string): boolean {
+  return new Date(isoDate).getTime() > Date.now();
+}
+
+export function isPast(isoDate: string): boolean {
+  return new Date(isoDate).getTime() <= Date.now();
+}
+
+export function isThisWeek(isoDate: string): boolean {
+  const diff = new Date(isoDate).getTime() - Date.now();
+  return diff > 0 && diff < 7 * 86_400_000;
+}
+
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+export function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+export function truncate(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen).trimEnd() + '…';
+}
