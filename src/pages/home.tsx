@@ -1,182 +1,924 @@
-import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet-async";
-import { getTrendingEvents, getPlatformStats, getSectors } from "../lib/api";
-import type { WebinarEvent, PlatformStats, Sector } from "../lib/api";
-import { WebinarCard } from "../components/webinar-card";
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Link } from 'wouter';
+import { Helmet } from 'react-helmet-async';
+import {
+  Search,
+  Sparkles,
+  TrendingUp,
+  MapPin,
+  ArrowRight,
+  Video,
+  Mic,
+  CalendarDays,
+  Users,
+  Star,
+  ChevronRight,
+  Zap,
+  Globe,
+  Award,
+} from 'lucide-react';
+import { apiFetch } from '../lib/api';
+import type { WebinarEvent, Sector, PlatformStats } from '../lib/types';
+import WebinarCard from '../components/webinar-card';
 
-function SkeletonCard() {
+/* ─────────────────────────────────────────────────────
+   Types
+───────────────────────────────────────────────────── */
+interface HomeData {
+  stats: PlatformStats | null;
+  featured: WebinarEvent[];
+  trending: WebinarEvent[];
+  sectors: Sector[];
+}
+
+/* ─────────────────────────────────────────────────────
+   Constants
+───────────────────────────────────────────────────── */
+const SECTOR_ICONS: Record<string, string> = {
+  ai: '🤖',
+  technology: '💻',
+  finance: '💹',
+  marketing: '📣',
+  startup: '🚀',
+  hr: '🤝',
+  healthcare: '🏥',
+  education: '🎓',
+};
+
+const SECTOR_COLORS: Record<string, string> = {
+  ai: '#6366f1',
+  technology: '#3b82f6',
+  finance: '#10b981',
+  marketing: '#f97316',
+  startup: '#8b5cf6',
+  hr: '#f43f5e',
+  healthcare: '#14b8a6',
+  education: '#f59e0b',
+};
+
+const CITIES = [
+  { name: 'Mumbai', slug: 'mumbai', emoji: '🌊' },
+  { name: 'Delhi', slug: 'delhi', emoji: '🏛️' },
+  { name: 'Bengaluru', slug: 'bengaluru', emoji: '🌳' },
+  { name: 'Hyderabad', slug: 'hyderabad', emoji: '💎' },
+  { name: 'Chennai', slug: 'chennai', emoji: '🌴' },
+  { name: 'Pune', slug: 'pune', emoji: '🎭' },
+  { name: 'Kolkata', slug: 'kolkata', emoji: '🎨' },
+  { name: 'Ahmedabad', slug: 'ahmedabad', emoji: '🦁' },
+];
+
+const PLACEHOLDER_PHRASES = [
+  'AI webinars this week…',
+  'finance for startups…',
+  'marketing masterclass…',
+  'growth hacking tactics…',
+  'product management…',
+];
+
+/* ─────────────────────────────────────────────────────
+   Animated counter
+───────────────────────────────────────────────────── */
+function AnimatedCounter({ target, duration = 1200 }: { target: number; duration?: number }): JSX.Element {
+  const [current, setCurrent] = useState<number>(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (target === 0) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const tick = (now: number): void => {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setCurrent(Math.floor(eased * target));
+            if (progress < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }
+      },
+      { threshold: 0.3 },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target, duration]);
+
+  return <span ref={ref}>{current.toLocaleString('en-IN')}</span>;
+}
+
+/* ─────────────────────────────────────────────────────
+   Search bar
+───────────────────────────────────────────────────── */
+function HeroSearch(): JSX.Element {
+  const [query, setQuery] = useState<string>('');
+  const [placeholder, setPlaceholder] = useState<string>(PLACEHOLDER_PHRASES[0]);
+  const [phIndex, setPhIndex] = useState<number>(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPhIndex((i) => {
+        const next = (i + 1) % PLACEHOLDER_PHRASES.length;
+        setPlaceholder(PLACEHOLDER_PHRASES[next]);
+        return next;
+      });
+    }, 2800);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleSearch = useCallback(
+    (e: React.FormEvent): void => {
+      e.preventDefault();
+      if (query.trim()) {
+        window.location.href = `/webinars?q=${encodeURIComponent(query.trim())}`;
+      }
+    },
+    [query],
+  );
+
   return (
-    <div className="border rounded-lg p-4 animate-pulse bg-gray-50">
-      <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
-      <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
-      <div className="h-3 bg-gray-200 rounded w-1/3 mb-4" />
-      <div className="h-3 bg-gray-200 rounded w-1/4" />
+    <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
+      <div
+        className="flex items-center gap-2 p-2 rounded-2xl"
+        style={{
+          background: 'var(--wx-white)',
+          border: '1.5px solid var(--wx-border)',
+          boxShadow: 'var(--shadow-lg)',
+          transition: 'border-color 200ms ease, box-shadow 200ms ease',
+        }}
+        onFocus={(e) => {
+          const el = e.currentTarget as HTMLDivElement;
+          el.style.borderColor = 'var(--wx-teal)';
+          el.style.boxShadow = '0 0 0 3px rgb(13 79 107 / 0.08), var(--shadow-lg)';
+        }}
+        onBlur={(e) => {
+          const el = e.currentTarget as HTMLDivElement;
+          el.style.borderColor = 'var(--wx-border)';
+          el.style.boxShadow = 'var(--shadow-lg)';
+        }}
+      >
+        <Search size={18} className="ml-2 flex-shrink-0" style={{ color: 'var(--wx-muted)' }} />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`Search ${placeholder}`}
+          className="flex-1 bg-transparent outline-none text-base"
+          style={{
+            color: 'var(--wx-ink)',
+            fontFamily: 'var(--font-sans)',
+            fontSize: '0.9375rem',
+            minWidth: 0,
+          }}
+        />
+        <button
+          type="submit"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 transition-all"
+          style={{
+            background: 'var(--wx-teal)',
+            color: 'var(--wx-white)',
+            boxShadow: '0 2px 8px rgb(13 79 107 / 0.2)',
+          }}
+        >
+          Search
+          <ArrowRight size={15} />
+        </button>
+      </div>
+
+      {/* AI Search shortcut */}
+      <div className="flex items-center justify-center gap-2 mt-3">
+        <span className="text-xs" style={{ color: 'var(--wx-muted)' }}>or try</span>
+        <Link
+          href="/ai-search"
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
+          style={{
+            background: 'linear-gradient(135deg, var(--wx-teal-pale), var(--wx-gold-pale))',
+            color: 'var(--wx-teal)',
+            border: '1px solid rgb(13 79 107 / 0.12)',
+            textDecoration: 'none',
+          }}
+        >
+          <Sparkles size={12} />
+          Ask AI in plain English
+          <ArrowRight size={11} />
+        </Link>
+      </div>
+    </form>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+   Stats bar
+───────────────────────────────────────────────────── */
+function StatsBar({ stats }: { stats: PlatformStats | null }): JSX.Element {
+  const items = useMemo(
+    () => [
+      { label: 'Total Events', value: stats?.total_events ?? 0, icon: <CalendarDays size={14} /> },
+      { label: 'Upcoming', value: stats?.upcoming ?? 0, icon: <TrendingUp size={14} /> },
+      { label: 'This Week', value: stats?.this_week ?? 0, icon: <Zap size={14} /> },
+      { label: 'Topics', value: stats?.sectors ?? 0, icon: <Globe size={14} /> },
+    ],
+    [stats],
+  );
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6">
+      {items.map((item, i) => (
+        <div key={item.label} className="flex items-center gap-1.5">
+          {i > 0 && (
+            <span className="hidden sm:block w-1 h-1 rounded-full mr-4" style={{ background: 'var(--wx-border)' }} />
+          )}
+          <span style={{ color: 'var(--wx-teal)' }}>{item.icon}</span>
+          <span className="font-bold text-sm" style={{ color: 'var(--wx-ink)', fontFamily: 'var(--font-sans)' }}>
+            <AnimatedCounter target={item.value} />
+          </span>
+          <span className="text-xs" style={{ color: 'var(--wx-muted)' }}>{item.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
 
-export default function HomePage() {
-  const [events, setEvents]   = useState<WebinarEvent[]>([]);
-  const [stats, setStats]     = useState<PlatformStats | null>(null);
-  const [sectors, setSectors] = useState<Sector[]>([]);
-  const [search, setSearch]   = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(false);
+/* ─────────────────────────────────────────────────────
+   Skeleton card
+───────────────────────────────────────────────────── */
+function SkeletonCard(): JSX.Element {
+  return (
+    <div className="wx-card p-4 space-y-3">
+      <div className="skeleton h-4 w-3/4" />
+      <div className="skeleton h-3 w-1/2" />
+      <div className="skeleton h-3 w-full" />
+      <div className="skeleton h-3 w-5/6" />
+      <div className="flex gap-2 pt-1">
+        <div className="skeleton h-6 w-16 rounded-full" />
+        <div className="skeleton h-6 w-20 rounded-full" />
+      </div>
+    </div>
+  );
+}
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const q = search.trim();
-    if (q) window.location.href = `/webinars?q=${encodeURIComponent(q)}`;
-  }
+/* ─────────────────────────────────────────────────────
+   Newsletter section
+───────────────────────────────────────────────────── */
+function NewsletterSection(): JSX.Element {
+  const [email, setEmail] = useState<string>('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  async function load() {
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent): Promise<void> => {
+      e.preventDefault();
+      if (!email.trim() || status === 'loading') return;
+      setStatus('loading');
+      try {
+        await apiFetch('/api/leads', {
+          method: 'POST',
+          body: JSON.stringify({ email: email.trim(), utm_source: 'homepage-newsletter' }),
+        });
+        setStatus('success');
+      } catch {
+        setStatus('error');
+      }
+    },
+    [email, status],
+  );
+
+  return (
+    <section
+      className="wx-section"
+      style={{
+        background: 'linear-gradient(135deg, var(--wx-teal) 0%, var(--wx-teal-mid) 60%, #0a3d56 100%)',
+      }}
+    >
+      <div className="wx-container text-center">
+        <div className="max-w-xl mx-auto">
+          <span
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full mb-4"
+            style={{ background: 'rgb(255 255 255 / 0.12)', color: 'rgb(255 255 255 / 0.9)' }}
+          >
+            <Zap size={12} />
+            Weekly Knowledge Digest
+          </span>
+
+          <h2
+            className="text-3xl md:text-4xl font-light mb-3"
+            style={{ color: 'var(--wx-white)', fontFamily: 'var(--font-display)', lineHeight: 1.2 }}
+          >
+            Never miss a great webinar
+          </h2>
+
+          <p className="text-base mb-8" style={{ color: 'rgb(255 255 255 / 0.72)' }}>
+            Get curated events in your inbox every Monday. No spam — just India's best knowledge events.
+          </p>
+
+          {status === 'success' ? (
+            <div
+              className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl"
+              style={{ background: 'rgb(255 255 255 / 0.12)', color: 'var(--wx-white)' }}
+            >
+              <span className="text-lg">🎉</span>
+              <span className="font-medium">You're in! Expect your first digest Monday.</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
+                style={{
+                  background: 'rgb(255 255 255 / 0.12)',
+                  color: 'var(--wx-white)',
+                  border: '1px solid rgb(255 255 255 / 0.2)',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={status === 'loading'}
+                className="px-6 py-3 rounded-xl text-sm font-semibold flex-shrink-0 transition-all"
+                style={{
+                  background: 'var(--wx-gold)',
+                  color: 'var(--wx-ink)',
+                  boxShadow: 'var(--shadow-gold)',
+                  opacity: status === 'loading' ? 0.7 : 1,
+                  cursor: status === 'loading' ? 'wait' : 'pointer',
+                }}
+              >
+                {status === 'loading' ? 'Subscribing…' : 'Subscribe Free'}
+              </button>
+            </form>
+          )}
+
+          {status === 'error' && (
+            <p className="text-sm mt-2" style={{ color: 'rgb(255 100 100 / 0.9)' }}>
+              Something went wrong. Please try again.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+   Main page
+───────────────────────────────────────────────────── */
+export default function HomePage(): JSX.Element {
+  const [data, setData] = useState<HomeData>({
+    stats: null,
+    featured: [],
+    trending: [],
+    sectors: [],
+  });
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async (): Promise<void> => {
     setLoading(true);
-    setError(false);
+    setError(null);
     try {
-      const [data, statsData, sectorsData] = await Promise.all([
-        getTrendingEvents(12),
-        getPlatformStats(),
-        getSectors(),
+      const [statsRes, featuredRes, trendingRes, sectorsRes] = await Promise.allSettled([
+        apiFetch('/api/stats'),
+        apiFetch('/api/events/featured?limit=6'),
+        apiFetch('/api/events/trending?limit=9'),
+        apiFetch('/api/sectors'),
       ]);
-      setEvents(data || []);
-      setStats(statsData);
-      // Show top 8 sectors by event count (exclude "general" if possible)
-      const topSectors = (sectorsData || [])
-        .filter((s) => s.event_count > 0)
-        .sort((a, b) => b.event_count - a.event_count)
-        .slice(0, 8);
-      setSectors(topSectors);
-    } catch {
-      setError(true);
-    }
-    setLoading(false);
-  }
 
-  useEffect(() => { load(); }, []);
+      setData({
+        stats: statsRes.status === 'fulfilled' ? (statsRes.value as PlatformStats) : null,
+        featured: featuredRes.status === 'fulfilled'
+          ? ((featuredRes.value as { events?: WebinarEvent[] }).events ?? [])
+          : [],
+        trending: trendingRes.status === 'fulfilled'
+          ? ((trendingRes.value as { events?: WebinarEvent[] }).events ?? [])
+          : [],
+        sectors: sectorsRes.status === 'fulfilled' ? (sectorsRes.value as Sector[]) : [],
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   return (
     <>
       <Helmet>
-        <title>WebinX — Discover Free Webinars in India</title>
+        <title>WeBinX · India's Knowledge Events Marketplace</title>
         <meta
           name="description"
-          content="Find and join the best free webinars in India across technology, finance, AI, marketing, and more. Updated daily on WebinX."
+          content="Discover India's best webinars, podcasts & live events. Updated daily across AI, finance, marketing, startup & more. Free to join."
         />
-        <link rel="canonical" href="https://www.webinx.in" />
-        <meta property="og:title" content="WebinX — Discover Free Webinars in India" />
-        <meta property="og:description" content="Free webinars across technology, finance, AI, marketing and more. Updated daily." />
-        <meta property="og:url" content="https://www.webinx.in" />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://www.webinx.in/og-default.jpg" />
+        <meta property="og:title" content="WeBinX · India's Knowledge Events Marketplace" />
+        <meta
+          property="og:description"
+          content="India's #1 platform for webinars, podcasts & live knowledge events."
+        />
+        <meta property="og:image" content="https://webinx.in/og-default.jpg" />
+        <link rel="canonical" href="https://webinx.in" />
+        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
-      <div className="max-w-6xl mx-auto px-4 py-10">
+      <main className="has-bottom-nav">
 
-        {/* Hero */}
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-            Discover Free Webinars in India
-          </h1>
-          <p className="text-gray-500 text-sm sm:text-base max-w-xl mx-auto">
-            Trending online events across technology, finance, AI, marketing and more — updated daily.
-          </p>
+        {/* ─── Hero ─── */}
+        <section
+          className="wx-hero-bg relative overflow-hidden"
+          style={{ paddingTop: 'clamp(3rem, 8vw, 6rem)', paddingBottom: 'clamp(3rem, 8vw, 5rem)' }}
+        >
+          {/* Subtle decorative elements */}
+          <div
+            aria-hidden
+            className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-30 pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, var(--wx-gold-pale) 0%, transparent 70%)',
+              transform: 'translate(30%, -30%)',
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute bottom-0 left-0 w-56 h-56 rounded-full opacity-20 pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, var(--wx-teal-pale) 0%, transparent 70%)',
+              transform: 'translate(-30%, 30%)',
+            }}
+          />
 
-          {/* Search bar */}
-          <form onSubmit={handleSearch} className="flex max-w-xl mx-auto mt-6 gap-2">
-            <input
-              type="text"
-              placeholder="Search webinars — AI, marketing, finance..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 text-sm border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-300 shadow-sm"
-            />
-            <button
-              type="submit"
-              className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg transition shadow-sm"
-            >
-              Search
-            </button>
-          </form>
+          <div className="wx-container relative">
+            <div className="text-center max-w-3xl mx-auto">
+              {/* Badge */}
+              <div className="flex justify-center mb-5 animate-fade-up">
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-full"
+                  style={{
+                    background: 'var(--wx-teal-pale)',
+                    color: 'var(--wx-teal)',
+                    border: '1px solid rgb(13 79 107 / 0.15)',
+                  }}
+                >
+                  🇮🇳 India's #1 Knowledge Events Platform
+                </span>
+              </div>
 
-          {/* Stats bar */}
-          {stats && (
-            <div className="flex flex-wrap justify-center gap-6 mt-6 text-sm text-gray-500">
-              <span><strong className="text-gray-900">{stats.total_events.toLocaleString()}</strong> events</span>
-              <span><strong className="text-gray-900">{stats.upcoming_events.toLocaleString()}</strong> upcoming</span>
-              <span><strong className="text-gray-900">{stats.sectors}</strong> sectors</span>
-              <span><strong className="text-gray-900">{stats.hosts.toLocaleString()}</strong> hosts</span>
-            </div>
-          )}
-        </div>
+              {/* Logo — replace with <img> when /logo-wordmark.png is present */}
+              <div className="flex justify-center mb-5 animate-fade-up animate-delay-100">
+                <img
+                  src="/logo-wordmark.png"
+                  alt="WeBinX"
+                  className="h-14 md:h-16 w-auto object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                {/* Fallback wordmark */}
+                <h1
+                  className="text-5xl md:text-7xl font-bold tracking-tight"
+                  style={{ color: 'var(--wx-teal)', fontFamily: 'var(--font-display)', lineHeight: 1 }}
+                >
+                  WeBin<span style={{ color: 'var(--wx-gold)' }}>X</span>
+                </h1>
+              </div>
 
-        {/* Dynamic sector quick links from API */}
-        {sectors.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-8">
-            {sectors.map((s) => (
-              <a
-                key={s.slug}
-                href={`/sector/${s.slug}`}
-                className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-purple-400 hover:text-purple-700 transition-colors"
+              {/* Tagline */}
+              <p
+                className="text-base md:text-lg mb-2 animate-fade-up animate-delay-200"
+                style={{ color: 'var(--wx-muted)', lineHeight: 1.7 }}
               >
-                {s.name}
-                {s.event_count > 0 && (
-                  <span className="ml-1 text-gray-400">({s.event_count})</span>
-                )}
-              </a>
-            ))}
+                Discover. Learn. Connect.
+              </p>
+              <p
+                className="text-sm md:text-base mb-8 animate-fade-up animate-delay-200"
+                style={{ color: 'var(--wx-muted)' }}
+              >
+                Webinars · Podcasts · Live Events — updated daily across India
+              </p>
+
+              {/* Search */}
+              <div className="animate-fade-up animate-delay-300">
+                <HeroSearch />
+              </div>
+
+              {/* Stats bar */}
+              <div className="animate-fade-up animate-delay-400">
+                <StatsBar stats={data.stats} />
+              </div>
+
+              {/* Content type pills */}
+              <div className="flex flex-wrap justify-center gap-3 mt-6 animate-fade-up animate-delay-500">
+                {[
+                  { icon: <Video size={14} />, label: 'Webinars', href: '/webinars', color: 'var(--wx-teal)' },
+                  { icon: <Mic size={14} />, label: 'Podcasts', href: '/podcasts', color: '#7c3aed', isNew: true },
+                  { icon: <MapPin size={14} />, label: 'Live Events', href: '/live-events', color: '#dc2626', isNew: true },
+                ].map((pill) => (
+                  <Link
+                    key={pill.href}
+                    href={pill.href}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all"
+                    style={{
+                      background: 'var(--wx-white)',
+                      color: pill.color,
+                      border: `1.5px solid ${pill.color}22`,
+                      textDecoration: 'none',
+                      boxShadow: 'var(--shadow-sm)',
+                    }}
+                  >
+                    {pill.icon}
+                    {pill.label}
+                    {pill.isNew && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5"
+                        style={{ background: 'var(--wx-gold-pale)', color: '#92610A' }}
+                      >
+                        NEW
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
+        </section>
+
+        {/* ─── Featured Events ─── */}
+        {(loading || data.featured.length > 0) && (
+          <section className="wx-section" style={{ background: 'var(--wx-surface)' }}>
+            <div className="wx-container">
+              <div className="wx-section-header">
+                <div className="flex items-center gap-2">
+                  <Star size={18} fill="var(--wx-gold)" stroke="none" />
+                  <h2 className="wx-section-title">Featured Events</h2>
+                </div>
+                <Link href="/webinars?featured=true" className="wx-section-link">
+                  View all <ArrowRight size={14} />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {loading
+                  ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+                  : data.featured.slice(0, 6).map((event) => (
+                      <WebinarCard key={event.id} event={event} featured />
+                    ))}
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* States */}
-        {error && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">Failed to load webinars.</p>
-            <button
-              onClick={load}
-              className="text-sm text-purple-600 border border-purple-200 px-4 py-2 rounded-lg hover:bg-purple-50 transition"
-            >
-              Retry
-            </button>
-          </div>
-        )}
+        {/* ─── Sector Pills ─── */}
+        <section className="wx-section">
+          <div className="wx-container">
+            <div className="wx-section-header">
+              <h2 className="wx-section-title">Browse by Topic</h2>
+            </div>
 
-        {/* Skeleton */}
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {(loading ? Array.from({ length: 8 }) : data.sectors).map((sector, i) => {
+                if (loading) {
+                  return <div key={i} className="skeleton h-16 rounded-xl" />;
+                }
+                const s = sector as Sector;
+                const color = SECTOR_COLORS[s.slug] ?? '#6b7280';
+                const icon = SECTOR_ICONS[s.slug] ?? '📚';
+                return (
+                  <Link
+                    key={s.slug}
+                    href={`/sector/${s.slug}`}
+                    className="flex items-center gap-3 p-4 rounded-xl transition-all group"
+                    style={{
+                      background: `${color}0d`,
+                      border: `1.5px solid ${color}22`,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span className="text-xl flex-shrink-0">{icon}</span>
+                    <div className="min-w-0">
+                      <div
+                        className="font-semibold text-sm capitalize truncate"
+                        style={{ color, fontFamily: 'var(--font-sans)' }}
+                      >
+                        {s.name}
+                      </div>
+                      {s.event_count !== undefined && (
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--wx-muted)' }}>
+                          {s.event_count} events
+                        </div>
+                      )}
+                    </div>
+                    <ChevronRight
+                      size={14}
+                      className="ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ color }}
+                    />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        )}
+        </section>
 
-        {/* Empty */}
-        {!loading && !error && events.length === 0 && (
-          <div className="text-center py-16 text-gray-500">
-            <p className="text-lg mb-2">No webinars found right now.</p>
-            <a href="/webinars" className="text-purple-600 hover:underline text-sm">
-              Browse all webinars →
-            </a>
+        {/* ─── Trending Now ─── */}
+        <section className="wx-section" style={{ background: 'var(--wx-surface)' }}>
+          <div className="wx-container">
+            <div className="wx-section-header">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={18} style={{ color: 'var(--wx-teal)' }} />
+                <h2 className="wx-section-title">Trending Now</h2>
+              </div>
+              <Link href="/webinars" className="wx-section-link">
+                View all <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {loading
+                ? Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)
+                : data.trending.map((event) => <WebinarCard key={event.id} event={event} />)}
+            </div>
+
+            {!loading && data.trending.length === 0 && (
+              <div className="text-center py-12" style={{ color: 'var(--wx-muted)' }}>
+                <TrendingUp size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No trending events yet</p>
+                <Link href="/webinars" className="wx-section-link mt-2 inline-flex">
+                  Browse all events <ArrowRight size={14} />
+                </Link>
+              </div>
+            )}
           </div>
-        )}
+        </section>
 
-        {/* Grid */}
-        {!loading && !error && events.length > 0 && (
-          <>
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Trending Now</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((e) => (
-                <WebinarCard key={e.id || e.slug} webinar={e} />
+        {/* ─── City Explorer ─── */}
+        <section className="wx-section">
+          <div className="wx-container">
+            <div className="wx-section-header">
+              <div className="flex items-center gap-2">
+                <MapPin size={18} style={{ color: 'var(--wx-teal)' }} />
+                <h2 className="wx-section-title">Events by City</h2>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {CITIES.map((city) => (
+                <Link
+                  key={city.slug}
+                  href={`/city/${city.slug}`}
+                  className="wx-card flex items-center gap-3 p-4 group"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <span className="text-2xl">{city.emoji}</span>
+                  <div className="min-w-0">
+                    <div
+                      className="font-semibold text-sm truncate"
+                      style={{ color: 'var(--wx-ink)', fontFamily: 'var(--font-sans)' }}
+                    >
+                      {city.name}
+                    </div>
+                    <div className="text-xs" style={{ color: 'var(--wx-muted)' }}>
+                      View events →
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
-            <div className="mt-10 text-center">
-              <a
-                href="/webinars"
-                className="inline-block text-sm font-medium bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition"
+          </div>
+        </section>
+
+        {/* ─── AI Search CTA ─── */}
+        <section className="wx-section" style={{ background: 'var(--wx-surface)' }}>
+          <div className="wx-container">
+            <div
+              className="rounded-2xl overflow-hidden relative"
+              style={{
+                background: 'linear-gradient(135deg, var(--wx-teal-pale) 0%, var(--wx-gold-pale) 100%)',
+                border: '1.5px solid rgb(13 79 107 / 0.12)',
+                padding: 'clamp(2rem, 5vw, 3.5rem)',
+              }}
+            >
+              <div
+                aria-hidden
+                className="absolute top-0 right-0 text-[200px] leading-none pointer-events-none select-none opacity-5"
+                style={{ color: 'var(--wx-teal)', fontFamily: 'var(--font-display)' }}
               >
-                View All Webinars →
-              </a>
+                AI
+              </div>
+
+              <div className="relative flex flex-col md:flex-row items-center gap-6">
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+                    <Sparkles size={20} style={{ color: 'var(--wx-teal)' }} />
+                    <span className="font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--wx-teal)' }}>
+                      AI-Powered Search
+                    </span>
+                  </div>
+                  <h2
+                    className="font-light mb-2"
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)',
+                      color: 'var(--wx-ink)',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    Ask in plain English
+                  </h2>
+                  <p style={{ color: 'var(--wx-muted)', fontSize: '0.9375rem' }}>
+                    "Find me free AI webinars happening this week" — Claude understands what you mean.
+                  </p>
+                </div>
+
+                <Link
+                  href="/ai-search"
+                  className="flex items-center gap-2 font-semibold px-8 py-4 rounded-xl transition-all flex-shrink-0"
+                  style={{
+                    background: 'var(--wx-teal)',
+                    color: 'var(--wx-white)',
+                    boxShadow: '0 4px 16px rgb(13 79 107 / 0.25)',
+                    textDecoration: 'none',
+                    fontSize: '0.9375rem',
+                  }}
+                >
+                  <Sparkles size={16} />
+                  Try AI Search
+                  <ArrowRight size={15} />
+                </Link>
+              </div>
             </div>
-          </>
+          </div>
+        </section>
+
+        {/* ─── For Hosts ─── */}
+        <section className="wx-section">
+          <div className="wx-container">
+            <div className="grid md:grid-cols-2 gap-5">
+              {/* List Free */}
+              <div
+                className="rounded-2xl p-8 flex flex-col"
+                style={{
+                  background: 'var(--wx-teal-pale)',
+                  border: '1.5px solid rgb(13 79 107 / 0.12)',
+                }}
+              >
+                <Video size={28} style={{ color: 'var(--wx-teal)', marginBottom: '1rem' }} />
+                <h3
+                  className="text-xl font-semibold mb-2"
+                  style={{ color: 'var(--wx-ink)', fontFamily: 'var(--font-sans)' }}
+                >
+                  List your event for free
+                </h3>
+                <p className="text-sm mb-6 flex-1" style={{ color: 'var(--wx-muted)', lineHeight: 1.7 }}>
+                  Reach thousands of Indian learners. Submit your webinar, podcast episode, or live event in under 2 minutes.
+                </p>
+                <Link
+                  href="/submit-webinar"
+                  className="self-start flex items-center gap-2 font-semibold px-6 py-3 rounded-xl text-sm transition-all"
+                  style={{
+                    background: 'var(--wx-teal)',
+                    color: 'var(--wx-white)',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 8px rgb(13 79 107 / 0.2)',
+                  }}
+                >
+                  Submit Event
+                  <ArrowRight size={15} />
+                </Link>
+              </div>
+
+              {/* Get Featured */}
+              <div
+                className="rounded-2xl p-8 flex flex-col relative overflow-hidden"
+                style={{
+                  background: 'linear-gradient(135deg, #0a3d56 0%, var(--wx-teal) 100%)',
+                }}
+              >
+                <div
+                  aria-hidden
+                  className="absolute top-0 right-0 text-[120px] leading-none opacity-10 pointer-events-none select-none"
+                  style={{ color: 'var(--wx-gold)', fontFamily: 'var(--font-display)' }}
+                >
+                  ★
+                </div>
+                <Star size={28} fill="var(--wx-gold)" stroke="none" style={{ marginBottom: '1rem' }} />
+                <h3
+                  className="text-xl font-semibold mb-2"
+                  style={{ color: 'var(--wx-white)', fontFamily: 'var(--font-sans)' }}
+                >
+                  Get Featured
+                </h3>
+                <p className="text-sm mb-6 flex-1" style={{ color: 'rgb(255 255 255 / 0.72)', lineHeight: 1.7 }}>
+                  Stand out from the crowd. Featured events appear at the top across all pages, sector feeds, and email digests.
+                </p>
+                <div className="flex items-center gap-3 mb-6">
+                  {[
+                    { label: '7 days', price: '₹299' },
+                    { label: '30 days', price: '₹799' },
+                    { label: '90 days', price: '₹1999' },
+                  ].map((plan) => (
+                    <div
+                      key={plan.label}
+                      className="flex flex-col items-center px-3 py-2 rounded-lg text-center"
+                      style={{ background: 'rgb(255 255 255 / 0.1)' }}
+                    >
+                      <span className="font-bold text-sm" style={{ color: 'var(--wx-gold)' }}>{plan.price}</span>
+                      <span className="text-xs mt-0.5" style={{ color: 'rgb(255 255 255 / 0.7)' }}>{plan.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  href="/get-featured"
+                  className="self-start flex items-center gap-2 font-semibold px-6 py-3 rounded-xl text-sm transition-all"
+                  style={{
+                    background: 'var(--wx-gold)',
+                    color: 'var(--wx-ink)',
+                    textDecoration: 'none',
+                    boxShadow: 'var(--shadow-gold)',
+                  }}
+                >
+                  <Star size={14} fill="currentColor" stroke="none" />
+                  Get Featured
+                  <ArrowRight size={15} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Platform Stats ─── */}
+        {data.stats && (
+          <section
+            className="wx-section"
+            style={{ background: 'linear-gradient(135deg, var(--wx-teal) 0%, #0a3d56 100%)' }}
+          >
+            <div className="wx-container">
+              <div className="text-center mb-10">
+                <h2
+                  className="font-light"
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 'clamp(1.75rem, 4vw, 2.5rem)',
+                    color: 'var(--wx-white)',
+                  }}
+                >
+                  India's growing knowledge hub
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[
+                  { label: 'Total Events', value: data.stats.total_events, icon: <CalendarDays size={20} /> },
+                  { label: 'Active Hosts', value: data.stats.hosts ?? 0, icon: <Users size={20} /> },
+                  { label: 'Topics Covered', value: data.stats.sectors, icon: <Globe size={20} /> },
+                  { label: 'Events This Week', value: data.stats.this_week, icon: <Award size={20} /> },
+                ].map((stat) => (
+                  <div key={stat.label} className="text-center">
+                    <div
+                      className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
+                      style={{ background: 'rgb(255 255 255 / 0.12)', color: 'var(--wx-gold)' }}
+                    >
+                      {stat.icon}
+                    </div>
+                    <div
+                      className="text-3xl font-bold mb-1"
+                      style={{ color: 'var(--wx-white)', fontFamily: 'var(--font-sans)' }}
+                    >
+                      <AnimatedCounter target={stat.value} />
+                    </div>
+                    <div className="text-sm" style={{ color: 'rgb(255 255 255 / 0.65)' }}>
+                      {stat.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
-      </div>
+
+        {/* ─── Newsletter ─── */}
+        <NewsletterSection />
+
+        {/* Error state */}
+        {error && (
+          <div
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-medium"
+            style={{
+              background: '#FEE2E2',
+              color: '#991B1B',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            {error} —{' '}
+            <button onClick={() => void loadData()} className="underline font-semibold">
+              retry
+            </button>
+          </div>
+        )}
+      </main>
     </>
   );
 }
