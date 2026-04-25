@@ -910,7 +910,7 @@ export default function HomePage(): JSX.Element {
                       className="text-3xl font-bold mb-1"
                       style={{ color: 'var(--wx-white)', fontFamily: 'var(--font-sans)' }}
                     >
-                      <AnimatedCounter target={stat.value} />
+                      {stat.value > 0 ? stat.value.toLocaleString('en-IN') : '…'}
                     </div>
                     <div className="text-sm" style={{ color: 'rgb(255 255 255 / 0.65)' }}>
                       {stat.label}
