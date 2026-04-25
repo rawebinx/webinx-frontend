@@ -18,79 +18,14 @@ import {
   Award,
 } from 'lucide-react';
 import WebinarCard from '../components/webinar-card';
-/* ── Self-contained API helper (no external import needed) ── */
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE
-  ?? 'https://webinx-backend.onrender.com';
-
-async function apiFetch(path: string, options?: RequestInit): Promise<unknown> {
-  const url = `${API_BASE}${path}`;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 20_000);
-    try {
-      const res = await fetch(url, { ...options, signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) } });
-      clearTimeout(tid);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json() as unknown;
-    } catch (err) {
-      clearTimeout(tid);
-      if (attempt === 2) throw err;
-    }
-  }
-  throw new Error('apiFetch failed after 3 attempts');
-}
+import {
+  getStats, getFeaturedEvents, getTrendingEvents, getSectors,
+  captureLead,
+} from '../lib/api';
+import type { WebinarEvent, Sector, PlatformStats } from '../lib/api';
 
 
-interface WebinarEvent {
-  id: number | string;
-  slug: string;
-  title: string;
-  host_name?: string;
-  start_time?: string;
-  sector_slug?: string;
-  sector_name?: string;
-  event_url?: string;
-  registration_url?: string;
-  is_featured?: boolean;
-  is_verified?: boolean;
-  is_sponsored?: boolean;
-  sponsor_url?: string;
-  sponsor_cta?: string;
-  view_count?: number;
-  save_count?: number;
-  tags?: string[];
-  thumbnail_url?: string;
-  duration_minutes?: number;
-  content_type?: 'webinar' | 'podcast' | 'live_event';
-}
-interface Sector { id: number | string; name: string; slug: string; event_count?: number; }
-interface PlatformStats { total_events: number; upcoming: number; this_week: number; sectors: number; hosts?: number; }
 
-interface WebinarEvent {
-  id: number | string;
-  slug: string;
-  title: string;
-  host_name?: string;
-  start_time?: string;
-  sector_slug?: string;
-  sector_name?: string;
-  event_url?: string;
-  registration_url?: string;
-  is_featured?: boolean;
-  is_verified?: boolean;
-  is_sponsored?: boolean;
-  sponsor_url?: string;
-  sponsor_cta?: string;
-  view_count?: number;
-  save_count?: number;
-  tags?: string[];
-  thumbnail_url?: string;
-  duration_minutes?: number;
-  content_type?: 'webinar' | 'podcast' | 'live_event';
-}
-interface Sector { id: number | string; name: string; slug: string; event_count?: number; }
-interface PlatformStats { total_events: number; upcoming: number; this_week: number; sectors: number; hosts?: number; }
 
 /* ─────────────────────────────────────────────────────
    Types
@@ -106,25 +41,19 @@ interface HomeData {
    Constants
 ───────────────────────────────────────────────────── */
 const SECTOR_ICONS: Record<string, string> = {
-  ai: '🤖',
-  technology: '💻',
-  finance: '💹',
-  marketing: '📣',
-  startup: '🚀',
-  hr: '🤝',
-  healthcare: '🏥',
-  education: '🎓',
+  ai: '🤖', technology: '💻', finance: '💹', marketing: '📣',
+  startup: '🚀', hr: '🤝', healthcare: '🏥', education: '🎓',
+  'it-saas': '☁️', it: '🖥️', tech: '⚙️', general: '📋',
+  'ai-data': '📊', 'startup-ecosystem': '🌱', government: '🏛️',
+  infrastructure: '🏗️', manufacturing: '🏭', msme: '🏪',
 };
 
 const SECTOR_COLORS: Record<string, string> = {
-  ai: '#6366f1',
-  technology: '#3b82f6',
-  finance: '#10b981',
-  marketing: '#f97316',
-  startup: '#8b5cf6',
-  hr: '#f43f5e',
-  healthcare: '#14b8a6',
-  education: '#f59e0b',
+  ai: '#6366f1', technology: '#3b82f6', finance: '#10b981', marketing: '#f97316',
+  startup: '#8b5cf6', hr: '#f43f5e', healthcare: '#14b8a6', education: '#f59e0b',
+  'it-saas': '#3b82f6', it: '#3b82f6', tech: '#3b82f6', general: '#6b7280',
+  'ai-data': '#6366f1', 'startup-ecosystem': '#8b5cf6', government: '#64748b',
+  infrastructure: '#78716c', manufacturing: '#d97706', msme: '#0891b2',
 };
 
 const CITIES = [
@@ -286,7 +215,7 @@ function StatsBar({ stats }: { stats: PlatformStats | null }): JSX.Element {
   const items = useMemo(
     () => [
       { label: 'Total Events', value: stats?.total_events ?? 0, icon: <CalendarDays size={14} /> },
-      { label: 'Upcoming', value: stats?.upcoming ?? 0, icon: <TrendingUp size={14} /> },
+      { label: 'Upcoming', value: stats?.upcoming_events ?? 0, icon: <TrendingUp size={14} /> },
       { label: 'This Week', value: stats?.this_week ?? 0, icon: <Zap size={14} /> },
       { label: 'Topics', value: stats?.sectors ?? 0, icon: <Globe size={14} /> },
     ],
@@ -342,11 +271,8 @@ function NewsletterSection(): JSX.Element {
       if (!email.trim() || status === 'loading') return;
       setStatus('loading');
       try {
-        await apiFetch('/api/leads', {
-          method: 'POST',
-          body: JSON.stringify({ email: email.trim(), utm_source: 'homepage-newsletter' }),
-        });
-        setStatus('success');
+        const res = await captureLead({ email: email.trim(), utm_source: 'homepage-newsletter' });
+        setStatus(res.status === 'ok' ? 'success' : 'error');
       } catch {
         setStatus('error');
       }
@@ -451,22 +377,17 @@ export default function HomePage(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      const [statsRes, featuredRes, trendingRes, sectorsRes] = await Promise.allSettled([
-        apiFetch('/api/stats'),
-        apiFetch('/api/events/featured?limit=6'),
-        apiFetch('/api/events/trending?limit=9'),
-        apiFetch('/api/sectors'),
+      const [stats, featured, trending, sectors] = await Promise.all([
+        getStats().catch(() => null),
+        getFeaturedEvents(6).catch(() => []),
+        getTrendingEvents(9).catch(() => []),
+        getSectors().catch(() => []),
       ]);
-
       setData({
-        stats: statsRes.status === 'fulfilled' ? (statsRes.value as PlatformStats) : null,
-        featured: featuredRes.status === 'fulfilled'
-          ? ((featuredRes.value as { events?: WebinarEvent[] }).events ?? [])
-          : [],
-        trending: trendingRes.status === 'fulfilled'
-          ? ((trendingRes.value as { events?: WebinarEvent[] }).events ?? [])
-          : [],
-        sectors: sectorsRes.status === 'fulfilled' ? (sectorsRes.value as Sector[]) : [],
+        stats: stats ?? null,
+        featured: featured ?? [],
+        trending: trending ?? [],
+        sectors: sectors ?? [],
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
