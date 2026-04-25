@@ -1,72 +1,162 @@
-// src/pages/footer.tsx — WebinX Footer v2 — 4 columns, all features surfaced
-import { Link } from "wouter";
+import { Link } from 'wouter';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const SECTOR_LINKS = [
-  { label: "Technology",      href: "/sector/technology"    },
-  { label: "Finance",         href: "/sector/finance"       },
-  { label: "AI & Machine Learning", href: "/sector/ai"      },
-  { label: "Marketing",       href: "/sector/marketing"     },
-  { label: "Healthcare",      href: "/sector/healthcare"    },
-  { label: "Startup",         href: "/sector/startup"       },
+  { label: 'Technology',          href: '/sector/technology' },
+  { label: 'Finance',             href: '/sector/finance' },
+  { label: 'AI & Machine Learning', href: '/sector/ai' },
+  { label: 'Marketing',           href: '/sector/marketing' },
+  { label: 'Healthcare',          href: '/sector/healthcare' },
+  { label: 'Startup',             href: '/sector/startup' },
 ];
 
 const PLATFORM_LINKS = [
-  { label: "🔍 AI Search",         href: "/ai-search"       },
-  { label: "🏆 Top Hosts",         href: "/top-hosts"       },
-  { label: "❤️ Saved Webinars",    href: "/wishlist"        },
-  { label: "📈 Trending Topics",   href: "/trending-topics" },
-  { label: "Browse All Hosts",     href: "/host"            },
-  { label: "Browse All Webinars",  href: "/webinars"        },
+  { label: '✨ AI Search',         href: '/ai-search' },
+  { label: '🏆 Top Hosts',         href: '/top-hosts' },
+  { label: '❤️ Saved Events',      href: '/wishlist' },
+  { label: '📈 Trending Topics',   href: '/trending-topics' },
+  { label: 'Browse Hosts',         href: '/host' },
+  { label: 'Browse Webinars',      href: '/webinars' },
 ];
 
 const FOR_HOSTS_LINKS = [
-  { label: "⭐ Get Featured",       href: "/get-featured"   },
-  { label: "🎤 Claim Mention Reward", href: "/mention-webinx" },
-  { label: "🛠️ Host Tools",         href: "/host-tools"     },
-  { label: "🎖️ Speaker Certificate", href: "/certificate"   },
+  { label: '⭐ Get Featured',         href: '/get-featured' },
+  { label: '🎤 Claim Mention Reward', href: '/mention-webinx' },
+  { label: '🛠️ Host Tools',           href: '/host-tools' },
+  { label: '🎖️ Speaker Certificate',  href: '/certificate' },
+  { label: '📋 Submit Event',         href: '/submit-webinar' },
 ];
 
 const COMPANY_LINKS = [
-  { label: "About",            href: "/about"    },
-  { label: "Contact",          href: "/contact"  },
-  { label: "Privacy Policy",   href: "/privacy"  },
-  { label: "Terms of Service", href: "/terms"    },
+  { label: 'About',          href: '/about' },
+  { label: 'Contact',        href: '/contact' },
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Terms of Service', href: '/terms' },
 ];
 
-export function Footer() {
+export function Footer(): JSX.Element {
   return (
-    <footer className="border-t border-gray-100 bg-white mt-auto">
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
-
-          {/* Brand — spans 1 column */}
-          <div className="col-span-2 sm:col-span-1">
-            <Link href="/" className="inline-block">
-              <span className="text-xl font-bold text-purple-600 tracking-tight">WebinX</span>
+    <footer
+      style={{
+        borderTop: '1px solid var(--wx-border)',
+        background: 'var(--wx-white)',
+        marginTop: 'auto',
+      }}
+    >
+      {/* Main footer grid */}
+      <div className="wx-container" style={{ paddingTop: '3rem', paddingBottom: '2.5rem' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '2rem',
+          }}
+        >
+          {/* Brand column */}
+          <div style={{ gridColumn: 'span 1' }}>
+            <Link href="/" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '0.75rem' }}>
+              {/* Logo image — falls back to styled text */}
+              <img
+                src="/logo-wordmark.png"
+                alt="WeBinX"
+                style={{ height: 24, width: 'auto', objectFit: 'contain' }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <span
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: 'var(--wx-teal)',
+                  letterSpacing: '-0.5px',
+                }}
+              >
+                WeBin<span style={{ color: 'var(--wx-gold)' }}>X</span>
+              </span>
             </Link>
-            <p className="mt-3 text-xs text-gray-500 leading-relaxed max-w-[180px]">
-              India's AI-powered webinar discovery platform. Find, save, and get notified — free.
+
+            <p
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--wx-muted)',
+                lineHeight: 1.6,
+                maxWidth: 180,
+                marginBottom: '1rem',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              India's Knowledge Events Marketplace — Webinars, Podcasts & Live Events, updated daily.
             </p>
-            <div className="mt-4 flex flex-col gap-1">
-              <a href="mailto:contact@webinx.in"
-                 className="text-xs text-gray-400 hover:text-gray-600 transition">
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <a
+                href="mailto:contact@webinx.in"
+                style={{ fontSize: '0.72rem', color: 'var(--wx-muted)', textDecoration: 'none' }}
+              >
                 📧 contact@webinx.in
               </a>
-              <span className="text-xs text-gray-400">🇮🇳 India-first</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--wx-muted)' }}>🇮🇳 India-first</span>
+            </div>
+
+            {/* Content type badges */}
+            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              {[
+                { label: '🎥 Webinars', href: '/webinars' },
+                { label: '🎙️ Podcasts', href: '/podcasts' },
+                { label: '📍 Live Events', href: '/live-events' },
+              ].map(item => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: 99,
+                    background: 'var(--wx-teal-pale)',
+                    color: 'var(--wx-teal)',
+                    border: '1px solid rgba(13,79,107,0.12)',
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
           </div>
 
-          {/* Browse by Sector */}
-          <nav aria-label="Sector links">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-              Browse by sector
+          {/* Sector links */}
+          <nav aria-label="Browse by sector">
+            <p
+              style={{
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'var(--wx-muted)',
+                marginBottom: '1rem',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              Browse by Sector
             </p>
-            <ul className="space-y-2">
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {SECTOR_LINKS.map(({ label, href }) => (
                 <li key={href}>
-                  <Link href={href} className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  <Link
+                    href={href}
+                    style={{
+                      fontSize: '0.8125rem',
+                      color: 'var(--wx-muted)',
+                      textDecoration: 'none',
+                      fontFamily: 'var(--font-sans)',
+                      transition: 'color 150ms ease',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--wx-ink)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--wx-muted)')}
+                  >
                     {label}
                   </Link>
                 </li>
@@ -74,15 +164,26 @@ export function Footer() {
             </ul>
           </nav>
 
-          {/* Platform */}
-          <nav aria-label="Platform links">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+          {/* Platform links */}
+          <nav aria-label="Platform">
+            <p
+              style={{
+                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: 'var(--wx-muted)',
+                marginBottom: '1rem', fontFamily: 'var(--font-sans)',
+              }}
+            >
               Platform
             </p>
-            <ul className="space-y-2">
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {PLATFORM_LINKS.map(({ label, href }) => (
                 <li key={href}>
-                  <Link href={href} className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  <Link
+                    href={href}
+                    style={{ fontSize: '0.8125rem', color: 'var(--wx-muted)', textDecoration: 'none', fontFamily: 'var(--font-sans)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--wx-ink)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--wx-muted)')}
+                  >
                     {label}
                   </Link>
                 </li>
@@ -92,13 +193,24 @@ export function Footer() {
 
           {/* For Hosts */}
           <nav aria-label="For hosts">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+            <p
+              style={{
+                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: 'var(--wx-muted)',
+                marginBottom: '1rem', fontFamily: 'var(--font-sans)',
+              }}
+            >
               For Hosts
             </p>
-            <ul className="space-y-2">
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {FOR_HOSTS_LINKS.map(({ label, href }) => (
                 <li key={href}>
-                  <Link href={href} className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  <Link
+                    href={href}
+                    style={{ fontSize: '0.8125rem', color: 'var(--wx-muted)', textDecoration: 'none', fontFamily: 'var(--font-sans)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--wx-ink)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--wx-muted)')}
+                  >
                     {label}
                   </Link>
                 </li>
@@ -107,14 +219,25 @@ export function Footer() {
           </nav>
 
           {/* Company */}
-          <nav aria-label="Company links">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+          <nav aria-label="Company">
+            <p
+              style={{
+                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: 'var(--wx-muted)',
+                marginBottom: '1rem', fontFamily: 'var(--font-sans)',
+              }}
+            >
               Company
             </p>
-            <ul className="space-y-2">
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {COMPANY_LINKS.map(({ label, href }) => (
                 <li key={href}>
-                  <Link href={href} className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  <Link
+                    href={href}
+                    style={{ fontSize: '0.8125rem', color: 'var(--wx-muted)', textDecoration: 'none', fontFamily: 'var(--font-sans)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--wx-ink)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--wx-muted)')}
+                  >
                     {label}
                   </Link>
                 </li>
@@ -124,13 +247,40 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-xs text-gray-400">© {CURRENT_YEAR} WebinX. All rights reserved. Built with ✨ AI.</p>
-          <div className="flex items-center gap-4 text-xs text-gray-400">
-            <Link href="/privacy"  className="hover:text-gray-600 transition-colors">Privacy</Link>
-            <Link href="/terms"    className="hover:text-gray-600 transition-colors">Terms</Link>
-            <Link href="/contact"  className="hover:text-gray-600 transition-colors">Contact</Link>
-            <Link href="/sitemap.xml" className="hover:text-gray-600 transition-colors">Sitemap</Link>
+        <div
+          style={{
+            marginTop: '2.5rem',
+            paddingTop: '1.25rem',
+            borderTop: '1px solid var(--wx-border)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+          }}
+        >
+          <p style={{ fontSize: '0.72rem', color: 'var(--wx-muted)', fontFamily: 'var(--font-sans)' }}>
+            © {CURRENT_YEAR}{' '}
+            <span style={{ color: 'var(--wx-teal)', fontWeight: 600 }}>WeBinX</span>
+            {' '}· India's Knowledge Events Marketplace · Built with ✨ AI
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            {[
+              { label: 'Privacy', href: '/privacy' },
+              { label: 'Terms', href: '/terms' },
+              { label: 'Contact', href: '/contact' },
+              { label: 'Sitemap', href: '/sitemap.xml' },
+            ].map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                style={{ fontSize: '0.72rem', color: 'var(--wx-muted)', textDecoration: 'none', fontFamily: 'var(--font-sans)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--wx-ink)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--wx-muted)')}
+              >
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>
