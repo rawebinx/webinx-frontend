@@ -88,6 +88,9 @@ const SECTOR_COLORS: Record<string, string> = {
   ai: '#6366f1', technology: '#3b82f6', finance: '#10b981',
   marketing: '#f97316', startup: '#8b5cf6', hr: '#f43f5e',
   healthcare: '#14b8a6', education: '#f59e0b',
+  'it-saas': '#3b82f6', it: '#3b82f6', tech: '#3b82f6', general: '#6b7280',
+  'ai-data': '#6366f1', 'startup-ecosystem': '#8b5cf6', government: '#64748b',
+  infrastructure: '#78716c', manufacturing: '#d97706', msme: '#0891b2',
 };
 
 const SECTOR_ICONS: Record<string, string> = {
