@@ -16,52 +16,12 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import WebinarCard from '../components/webinar-card';
-/* ── Self-contained API helper (no external import needed) ── */
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE
-  ?? 'https://webinx-backend.onrender.com';
-
-async function apiFetch(path: string, options?: RequestInit): Promise<unknown> {
-  const url = `${API_BASE}${path}`;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 20_000);
-    try {
-      const res = await fetch(url, { ...options, signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) } });
-      clearTimeout(tid);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json() as unknown;
-    } catch (err) {
-      clearTimeout(tid);
-      if (attempt === 2) throw err;
-    }
-  }
-  throw new Error('apiFetch failed after 3 attempts');
-}
+import { getEvents, getSectors } from '../lib/api';
+import type { WebinarEvent, Sector } from '../lib/api';
 
 
-interface WebinarEvent {
-  id: number | string;
-  slug: string;
-  title: string;
-  host_name?: string;
-  start_time?: string;
-  sector_slug?: string;
-  sector_name?: string;
-  event_url?: string;
-  registration_url?: string;
-  is_featured?: boolean;
-  is_verified?: boolean;
-  is_sponsored?: boolean;
-  sponsor_url?: string;
-  sponsor_cta?: string;
-  view_count?: number;
-  save_count?: number;
-  tags?: string[];
-  thumbnail_url?: string;
-  duration_minutes?: number;
-}
-interface Sector { id: number | string; name: string; slug: string; event_count?: number; }
+
+
 
 /* ─────────────────────────────────────────────────────
    Types
@@ -236,9 +196,7 @@ export default function WebinarsPage(): JSX.Element {
 
   /* Load sectors once */
   useEffect(() => {
-    apiFetch('/api/sectors')
-      .then((res) => setSectors(res as Sector[]))
-      .catch(() => {});
+    getSectors().then(data => setSectors(data ?? [])).catch(() => {});
   }, []);
 
   /* Build API params */
@@ -259,23 +217,24 @@ export default function WebinarsPage(): JSX.Element {
 
   /* Fetch */
   const fetchEvents = useCallback(
-    async (f: FilterState, off: number, append = false): Promise<void> => {
+    async (f: FilterState, off: number, append = false, currentTotal = 0): Promise<void> => {
       if (!append) setLoading(true);
       else setLoadingMore(true);
       setError(null);
 
       try {
-        const endpoint = f.sort === 'trending' ? '/api/events/trending' : '/api/events';
-        const params = buildParams(f, off);
-        const res = await apiFetch(`${endpoint}?${params.toString()}`) as {
-          events?: WebinarEvent[];
-          total?: number;
+        const filter = {
+          q: f.q || undefined,
+          sector: f.sector || undefined,
+          category: f.category || undefined,
+          limit: PAGE_SIZE,
+          offset: off,
         };
-        const incoming = res.events ?? [];
-        const newTotal = res.total ?? incoming.length;
+        const incoming = await getEvents(filter);
+        const newTotal = off === 0 ? (incoming.length < PAGE_SIZE ? incoming.length : incoming.length + PAGE_SIZE) : total;
 
         setEvents((prev) => (append ? [...prev, ...incoming] : incoming));
-        setTotal(newTotal);
+        setTotal(append ? currentTotal : (incoming.length < PAGE_SIZE ? off + incoming.length : off + incoming.length + PAGE_SIZE));
         setOffset(off + incoming.length);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load events');
@@ -327,7 +286,7 @@ export default function WebinarsPage(): JSX.Element {
   }, []);
 
   const loadMore = useCallback((): void => {
-    void fetchEvents(filters, offset, true);
+    void fetchEvents(filters, offset, true, total);
   }, [fetchEvents, filters, offset]);
 
   /* Active filter chips */
@@ -345,7 +304,7 @@ export default function WebinarsPage(): JSX.Element {
     return chips;
   }, [filters, sectors]);
 
-  const hasMore = events.length < total;
+  const hasMore = events.length > 0 && events.length % PAGE_SIZE === 0;
 
   /* ── Render ── */
   return (
