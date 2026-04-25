@@ -39,7 +39,16 @@ function safeExternalUrl(val: unknown): string {
   }
   return s;
 }
-
+export function getBestRegistrationUrl(event: {
+  registration_url?: string | null;
+  event_url?: string | null;
+}): string | null {
+  return (
+    safeExternalUrl(event.registration_url) ??
+    safeExternalUrl(event.event_url) ??
+    null
+  );
+}
 // ── Types ──────────────────────────────────────────────────────────
 export interface WebinarEvent {
   id: string;
