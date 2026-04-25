@@ -1,251 +1,109 @@
-import { useState, useEffect, useCallback } from 'react';
+// src/pages/podcasts.tsx
+import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { Helmet } from 'react-helmet-async';
-import { Mic, Sparkles, ArrowRight, Play, Bell } from 'lucide-react';
-import { getEvents, captureLead } from '../lib/api';
+import WebinarCard from '../components/webinar-card';
+import { getEvents, submitLead } from '../lib/api';
 import type { WebinarEvent } from '../lib/api';
-import { WebinarCard } from '../components/webinar-card';
 
-const PODCAST_PLATFORMS = [
-  { name: 'Spotify', color: '#1DB954', icon: '🎵' },
-  { name: 'Apple Podcasts', color: '#A855F7', icon: '🎙️' },
-  { name: 'Google Podcasts', color: '#4285F4', icon: '🎧' },
-  { name: 'Amazon Music', color: '#FF9900', icon: '🎶' },
-];
+export default function PodcastsPage() {
+  const [events, setEvents] = useState<WebinarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [subStatus, setSubStatus] = useState<'idle'|'loading'|'done'>('idle');
 
-export default function PodcastsPage(): JSX.Element {
-  const [email, setEmail] = useState<string>('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [webinars, setWebinars] = useState<WebinarEvent[]>([]);
-  const [loadingWebinars, setLoadingWebinars] = useState<boolean>(true);
-
-  // Load trending webinars as fallback content
   useEffect(() => {
-    getEvents({ limit: 6 }).then(data => {
-      setWebinars(data ?? []);
-      setLoadingWebinars(false);
-    }).catch(() => setLoadingWebinars(false));
+    getEvents({ content_type: 'podcast', limit: 12 })
+      .then(result => {
+        const list = Array.isArray(result) ? result : (result?.events ?? []);
+        setEvents(list);
+      })
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent): Promise<void> => {
+  const handleNotify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || status === 'loading') return;
-    setStatus('loading');
-    const res = await captureLead({ email: email.trim(), utm_source: 'podcasts-waitlist' });
-    setStatus(res.status === 'ok' ? 'success' : 'error');
-  }, [email, status]);
+    if (!email.trim() || subStatus === 'loading') return;
+    setSubStatus('loading');
+    try {
+      await submitLead({ email: email.trim(), utm_source: 'podcasts-notify' });
+      setSubStatus('done');
+    } catch {
+      setSubStatus('done');
+    }
+  };
 
   return (
     <>
       <Helmet>
         <title>Podcasts — India's Best Knowledge Podcasts | WeBinX</title>
-        <meta name="description" content="Discover India's best knowledge podcasts on AI, finance, startups, marketing and more. Coming soon to WeBinX." />
+        <meta name="description" content="Discover India's best business, tech and startup podcasts. Updated daily." />
         <link rel="canonical" href="https://webinx.in/podcasts" />
-        <meta property="og:title" content="Podcasts | WeBinX" />
-        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
       <div className="has-bottom-nav">
-        {/* Hero — Coming Soon */}
-        <section
-          style={{
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.07) 0%, rgba(232,180,74,0.05) 100%)',
-            borderBottom: '1px solid rgba(139,92,246,0.12)',
-            padding: 'clamp(3rem, 8vw, 5rem) 0',
-          }}
-        >
-          <div className="wx-container text-center">
-            <div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 mx-auto"
-              style={{ background: 'rgba(139,92,246,0.12)', border: '2px solid rgba(139,92,246,0.2)' }}
-            >
-              <Mic size={28} style={{ color: '#8b5cf6' }} />
-            </div>
-
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-1.5 rounded-full mb-4"
-              style={{ background: 'rgba(139,92,246,0.1)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}
-            >
-              🚀 Coming Soon
+        {/* Hero */}
+        <div style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #fff 100%)', borderBottom: '3px solid #8b5cf6', padding: '48px 40px 40px', textAlign: 'center' }}>
+          <div className="wx-container">
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🎙️</div>
+            <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20, letterSpacing: 1 }}>
+              🚀 COMING SOON
             </span>
-
-            <h1
-              className="font-bold mb-3"
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(2rem, 5vw, 3rem)',
-                color: 'var(--wx-ink)',
-                fontWeight: 400,
-                lineHeight: 1.2,
-              }}
-            >
-              India's Knowledge Podcasts
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, color: '#111827', marginTop: 16, marginBottom: 8 }}>
+              India's Best Knowledge Podcasts
             </h1>
-
-            <p
-              className="mx-auto mb-8"
-              style={{
-                fontSize: '1rem',
-                color: 'var(--wx-muted)',
-                maxWidth: 480,
-                lineHeight: 1.7,
-              }}
-            >
-              We're curating the best podcasts on AI, finance, startups, marketing & more —
-              all in one place. Join the waitlist to get early access.
+            <p style={{ color: '#6B7280', fontSize: 16, marginBottom: 32, maxWidth: 500, margin: '0 auto 32px' }}>
+              Business, tech, startup and finance podcasts — curated from India's top creators. Be first to know when we launch.
             </p>
 
-            {/* Platform logos */}
-            <div className="flex flex-wrap justify-center gap-3 mb-8">
-              {PODCAST_PLATFORMS.map(p => (
-                <span
-                  key={p.name}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium"
-                  style={{
-                    background: `${p.color}10`,
-                    color: p.color,
-                    border: `1.5px solid ${p.color}25`,
-                  }}
-                >
-                  {p.icon} {p.name}
-                </span>
-              ))}
-            </div>
-
-            {/* Email waitlist */}
-            {status === 'success' ? (
-              <div
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(16,185,129,0.1)', color: '#065f46', border: '1px solid rgba(16,185,129,0.2)' }}
-              >
-                🎉 You're on the list! We'll notify you when Podcasts launch.
+            {subStatus === 'done' ? (
+              <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: '14px 24px', display: 'inline-block', color: '#065f46', fontWeight: 600 }}>
+                🎉 You're on the list! We'll notify you when podcasts launch.
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+              <form onSubmit={handleNotify} style={{ display: 'flex', gap: 0, maxWidth: 420, margin: '0 auto' }}>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="flex-1 text-sm px-4 py-3 rounded-xl outline-none"
-                  style={{
-                    border: '1.5px solid var(--wx-border)',
-                    background: '#fff',
-                    fontFamily: 'var(--font-sans)',
-                    color: 'var(--wx-ink)',
-                  }}
+                  style={{ flex: 1, padding: '13px 18px', border: '1.5px solid #e5e7eb', borderRight: 'none', borderRadius: '12px 0 0 12px', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
                 />
                 <button
                   type="submit"
-                  disabled={status === 'loading'}
-                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold flex-shrink-0"
-                  style={{
-                    background: '#8b5cf6',
-                    color: '#fff',
-                    border: 'none',
-                    cursor: status === 'loading' ? 'wait' : 'pointer',
-                    opacity: status === 'loading' ? 0.7 : 1,
-                  }}
+                  disabled={subStatus === 'loading'}
+                  style={{ background: '#8b5cf6', color: '#fff', border: 'none', padding: '13px 20px', borderRadius: '0 12px 12px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
-                  <Bell size={14} />
-                  {status === 'loading' ? 'Joining…' : 'Notify Me'}
+                  🔔 Notify Me
                 </button>
               </form>
             )}
-
-            {status === 'error' && (
-              <p className="text-sm mt-2" style={{ color: '#DC2626' }}>Something went wrong. Please try again.</p>
-            )}
           </div>
-        </section>
+        </div>
 
-        {/* What to expect */}
-        <section className="wx-section">
-          <div className="wx-container">
-            <h2
-              className="text-center mb-10"
-              style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 400, color: 'var(--wx-ink)' }}
-            >
-              What to expect
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              {[
-                { icon: '🎙️', title: 'Curated Episodes', desc: 'Hand-picked podcast episodes from India\'s top creators across AI, finance, marketing and more.' },
-                { icon: '🔍', title: 'AI-Powered Discovery', desc: 'Find episodes by topic, guest, or keyword. Ask in plain English — our AI finds the right episode.' },
-                { icon: '🔔', title: 'Smart Alerts', desc: 'Follow your favourite podcasts and get notified when new episodes drop — across all platforms.' },
-              ].map(item => (
-                <div
-                  key={item.title}
-                  className="wx-card p-6 text-center"
-                >
-                  <span className="text-3xl mb-3 block">{item.icon}</span>
-                  <h3
-                    className="font-semibold mb-2 text-sm"
-                    style={{ color: 'var(--wx-ink)', fontFamily: 'var(--font-sans)' }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--wx-muted)' }}>
-                    {item.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Meanwhile — browse webinars */}
-        <section className="wx-section" style={{ background: 'var(--wx-surface)' }}>
-          <div className="wx-container">
-            <div className="wx-section-header">
-              <h2 className="wx-section-title">Meanwhile — explore webinars</h2>
-              <Link href="/webinars" className="wx-section-link">
-                View all <ArrowRight size={14} />
-              </Link>
-            </div>
-
+        {/* Events (if any podcast-type events exist) */}
+        {!loading && events.length > 0 && (
+          <div className="wx-container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, color: '#111827' }}>Available Podcasts</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {loadingWebinars
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="wx-card overflow-hidden">
-                      <div className="skeleton" style={{ aspectRatio: '16/9', borderRadius: 0 }} />
-                      <div className="p-4 space-y-2">
-                        <div className="skeleton h-3 w-1/3 rounded-full" />
-                        <div className="skeleton h-4 w-full" />
-                        <div className="skeleton h-4 w-3/4" />
-                      </div>
-                    </div>
-                  ))
-                : webinars.map(event => (
-                    <WebinarCard key={event.id} event={event} />
-                  ))}
-            </div>
-
-            {/* AI search CTA */}
-            <div
-              className="mt-8 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4"
-              style={{ background: 'linear-gradient(135deg, var(--wx-teal-pale), var(--wx-gold-pale))', border: '1.5px solid rgba(13,79,107,0.1)' }}
-            >
-              <div className="flex-1 text-center sm:text-left">
-                <p className="font-semibold text-sm mb-1" style={{ color: 'var(--wx-ink)' }}>
-                  Can't find what you're looking for?
-                </p>
-                <p className="text-xs" style={{ color: 'var(--wx-muted)' }}>
-                  Ask our AI in plain English — it searches across all events instantly.
-                </p>
-              </div>
-              <Link
-                href="/ai-search"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
-                style={{ background: 'var(--wx-teal)', color: '#fff', textDecoration: 'none' }}
-              >
-                <Sparkles size={14} />
-                Try AI Search
-              </Link>
+              {events.map(ev => <WebinarCard key={ev.id} event={ev} />)}
             </div>
           </div>
-        </section>
+        )}
+
+        {/* Browse webinars CTA */}
+        <div style={{ textAlign: 'center', padding: '48px 24px', background: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
+          <p style={{ color: '#6B7280', marginBottom: 16, fontSize: 15 }}>
+            While you wait — browse hundreds of webinars on similar topics
+          </p>
+          <Link href="/webinars">
+            <button style={{ background: '#8b5cf6', color: '#fff', border: 'none', padding: '12px 28px', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
+              Browse Webinars →
+            </button>
+          </Link>
+        </div>
       </div>
     </>
   );
