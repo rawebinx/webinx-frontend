@@ -28,6 +28,8 @@ import HostToolsPage        from "./pages/host-tools";
 import TrendingTopicsPage   from "./pages/trending-topics";
 import EmbedPage            from "./pages/embed";
 import SubmitWebinarPage    from "./pages/submit-webinar";
+import PodcastsPage         from "./pages/podcasts";
+import LiveEventsPage       from "./pages/live-events";
 
 function NotFound() {
   return (
@@ -50,6 +52,8 @@ function AppContent() {
         <Switch>
           <Route path="/"                     component={Home} />
           <Route path="/webinars"             component={WebinarsPage} />
+          <Route path="/podcasts"             component={PodcastsPage} />
+          <Route path="/live-events"          component={LiveEventsPage} />
           <Route path="/webinar/:slug"        component={WebinarPage} />
           <Route path="/category/:slug"       component={CategoryPage} />
           <Route path="/sector/:slug"         component={SectorPage} />
