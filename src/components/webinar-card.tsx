@@ -394,9 +394,9 @@ const WebinarCard = memo(function WebinarCard({
               fontSize: compact ? '0.8125rem' : '0.875rem',
               color: 'var(--wx-ink)',
               fontFamily: 'var(--font-sans)',
-              display: '-webkit-box',
+              display: '-webkit-box' as React.CSSProperties['display'],
               WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
+              WebkitBoxOrient: 'vertical' as React.CSSProperties['WebkitBoxOrient'],
               overflow: 'hidden',
             }}
           >
