@@ -320,13 +320,15 @@ export async function getEventBySlug(slug: string): Promise<WebinarEvent> {
 }
 
 export async function getFeaturedEvents(): Promise<WebinarEvent[]> {
-  const raw = await apiFetch<{ events: unknown[] }>('/api/events/featured');
-  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+  const raw = await apiFetch<unknown>('/api/events/featured');
+  const list = Array.isArray(raw) ? raw : ((raw as Record<string,unknown>).events ?? []) as unknown[];
+  return (list as unknown[]).map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function getTrendingEvents(): Promise<WebinarEvent[]> {
-  const raw = await apiFetch<{ events: unknown[] }>('/api/events/trending');
-  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+  const raw = await apiFetch<unknown>('/api/events/trending');
+  const list = Array.isArray(raw) ? raw : ((raw as Record<string,unknown>).events ?? []) as unknown[];
+  return (list as unknown[]).map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function getRelatedEvents(slug: string, sectorSlug?: string): Promise<WebinarEvent[]> {
@@ -654,7 +656,6 @@ export const SECTOR_CONFIG: Record<string, SectorConfig> = {
   education:  { slug: 'education',  name: 'Education',   emoji: '📚', color: '#f59e0b', bg: '#fffbeb', border: '#f59e0b' },
   general:    { slug: 'general',    name: 'General',     emoji: '📋', color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' },
   tech:       { slug: 'tech',       name: 'Tech',        emoji: '⚙️',  color: '#3b82f6', bg: '#eff6ff', border: '#3b82f6' },
-  finance:    { slug: 'finance',    name: 'Finance',     emoji: '💹', color: '#10b981', bg: '#ecfdf5', border: '#10b981' },
 };
 
 export function getSectorConfig(slugOrName?: string | null): SectorConfig {
