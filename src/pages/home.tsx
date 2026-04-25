@@ -17,9 +17,58 @@ import {
   Globe,
   Award,
 } from 'lucide-react';
-import { apiFetch } from '../lib/api';
-import type { WebinarEvent, Sector, PlatformStats } from '../lib/types';
+import { apiFetch } from '../api';
 import WebinarCard from '../components/webinar-card';
+
+interface WebinarEvent {
+  id: number | string;
+  slug: string;
+  title: string;
+  host_name?: string;
+  start_time?: string;
+  sector_slug?: string;
+  sector_name?: string;
+  event_url?: string;
+  registration_url?: string;
+  is_featured?: boolean;
+  is_verified?: boolean;
+  is_sponsored?: boolean;
+  sponsor_url?: string;
+  sponsor_cta?: string;
+  view_count?: number;
+  save_count?: number;
+  tags?: string[];
+  thumbnail_url?: string;
+  duration_minutes?: number;
+  content_type?: 'webinar' | 'podcast' | 'live_event';
+}
+interface Sector { id: number | string; name: string; slug: string; event_count?: number; }
+interface PlatformStats { total_events: number; upcoming: number; this_week: number; sectors: number; hosts?: number; }
+
+interface WebinarEvent {
+  id: number | string;
+  slug: string;
+  title: string;
+  host_name?: string;
+  start_time?: string;
+  sector_slug?: string;
+  sector_name?: string;
+  event_url?: string;
+  registration_url?: string;
+  is_featured?: boolean;
+  is_verified?: boolean;
+  is_sponsored?: boolean;
+  sponsor_url?: string;
+  sponsor_cta?: string;
+  view_count?: number;
+  save_count?: number;
+  tags?: string[];
+  thumbnail_url?: string;
+  duration_minutes?: number;
+  content_type?: 'webinar' | 'podcast' | 'live_event';
+}
+interface Sector { id: number | string; name: string; slug: string; event_count?: number; }
+interface PlatformStats { total_events: number; upcoming: number; this_week: number; sectors: number; hosts?: number; }
 
 /* ─────────────────────────────────────────────────────
    Types
