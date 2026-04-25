@@ -1,761 +1,635 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useRoute, Link } from 'wouter';
+// src/pages/webinar.tsx
+// WebinX — Webinar Detail Page — production version
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link } from 'wouter';
 import { Helmet } from 'react-helmet-async';
 import {
-  getEventBySlug, getRelatedEvents, formatEventDate,
-  isUpcoming, daysUntil, postAlert, buildCalendarUrl,
-  toggleWishlist, isWishlisted,
-} from '../lib/api';
-import type { WebinarEvent } from '../lib/api';
-import { WebinarCard } from '../components/webinar-card';
-import {
-  Calendar, ExternalLink, Share2, Twitter, Linkedin,
-  MessageCircle, Bell, BadgeCheck, ChevronRight,
-  Clock, Eye, Bookmark, ArrowLeft, Star, Users,
-} from 'lucide-react';
+  getEventBySlug,
+  getRelatedEvents,
+  submitAlert,
+  buildCalendarUrl,
+  getBestRegistrationUrl,
+  formatEventDate,
+  formatShortDate,
+  getCountdownLabel,
+  getSectorConfig,
+  detectPlatform,
+  PLATFORM_LABELS,
+  toggleLocalWishlist,
+  isWishlisted,
+  type WebinarEvent,
+} from '@/lib/api';
+import WebinarCard from '@/components/webinar-card';
+import AffiliateToolsSection from '@/components/AffiliateToolCard';
 
-/* ─────────────────────────────────────────────────────
-   Constants
-───────────────────────────────────────────────────── */
-const SECTOR_COLORS: Record<string, string> = {
-  ai: '#6366f1', technology: '#3b82f6', finance: '#10b981',
-  marketing: '#f97316', startup: '#8b5cf6', hr: '#f43f5e',
-  healthcare: '#14b8a6', education: '#f59e0b',
-};
-const SECTOR_ICONS: Record<string, string> = {
-  ai: '🤖', technology: '💻', finance: '💹', marketing: '📣',
-  startup: '🚀', hr: '🤝', healthcare: '🏥', education: '🎓',
-};
+// ─── Schema.org Event Markup ──────────────────────────────────────────────────
 
-/* ─────────────────────────────────────────────────────
-   Host avatar
-───────────────────────────────────────────────────── */
-function HostAvatar({ name, color, size = 44 }: { name: string; color: string; size?: number }): JSX.Element {
-  const initials = name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
-  return (
-    <span
-      className="flex-shrink-0 flex items-center justify-center rounded-full font-bold select-none"
-      style={{
-        width: size, height: size,
-        background: `${color}18`, color,
-        fontSize: size * 0.33,
-        border: `2px solid ${color}30`,
-        fontFamily: 'var(--font-sans)',
-      }}
-    >
-      {initials || '?'}
-    </span>
-  );
-}
-
-/* ─────────────────────────────────────────────────────
-   Share buttons
-───────────────────────────────────────────────────── */
-function ShareButtons({ title, url }: { title: string; url: string }): JSX.Element {
-  const encoded = encodeURIComponent(title);
-  const encodedUrl = encodeURIComponent(url);
-
-  const links = [
-    {
-      label: 'Twitter / X',
-      icon: <Twitter size={14} />,
-      href: `https://twitter.com/intent/tweet?text=${encoded}&url=${encodedUrl}`,
-      color: '#000',
-    },
-    {
-      label: 'LinkedIn',
-      icon: <Linkedin size={14} />,
-      href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-      color: '#0A66C2',
-    },
-    {
-      label: 'WhatsApp',
-      icon: <MessageCircle size={14} />,
-      href: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${title} — ${url}`)}`,
-      color: '#25D366',
-    },
-  ];
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      // fallback
-    }
-  }, [url]);
-
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs font-semibold" style={{ color: 'var(--wx-muted)' }}>Share:</span>
-      {links.map(link => (
-        <a
-          key={link.label}
-          href={link.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={link.label}
-          className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
-          style={{
-            background: `${link.color}10`,
-            color: link.color,
-            border: `1px solid ${link.color}22`,
-          }}
-        >
-          {link.icon}
-        </a>
-      ))}
-      <button
-        onClick={handleCopy}
-        title="Copy link"
-        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
-        style={{
-          background: 'var(--wx-surface)',
-          color: 'var(--wx-muted)',
-          border: '1px solid var(--wx-border)',
-          cursor: 'pointer',
-        }}
-      >
-        <Share2 size={12} />
-        Copy link
-      </button>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────
-   Sticky sidebar CTA box
-───────────────────────────────────────────────────── */
-interface SidebarProps {
-  event: WebinarEvent;
-  ctaUrl: string;
-  upcoming: boolean;
-  alertSent: boolean;
-  alertEmail: string;
-  alertLoading: boolean;
-  onAlertEmailChange: (v: string) => void;
-  onAlertSubmit: (e: React.FormEvent) => void;
-  saved: boolean;
-  onToggleSaved: () => void;
-}
-
-function Sidebar({
-  event, ctaUrl, upcoming,
-  alertSent, alertEmail, alertLoading,
-  onAlertEmailChange, onAlertSubmit,
-  saved, onToggleSaved,
-}: SidebarProps): JSX.Element {
-  const calUrl = buildCalendarUrl(event);
-  const sectorColor = SECTOR_COLORS[event.sector_slug] ?? 'var(--wx-teal)';
-
-  return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ border: '1.5px solid var(--wx-border)', boxShadow: 'var(--shadow-md)' }}
-    >
-      {/* Sector color band */}
-      <div style={{ height: 6, background: sectorColor }} />
-
-      <div className="p-5 space-y-4">
-        {/* Register CTA */}
-        {ctaUrl ? (
-          <a
-            href={ctaUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm transition-all"
-            style={{
-              background: 'var(--wx-teal)',
-              color: '#fff',
-              textDecoration: 'none',
-              boxShadow: '0 4px 14px rgba(13,79,107,0.25)',
-            }}
-          >
-            <ExternalLink size={15} />
-            {event.is_sponsored && event.sponsor_cta
-              ? event.sponsor_cta
-              : upcoming ? 'Register Now — Free' : 'View Details'}
-          </a>
-        ) : (
-          <Link
-            href="/webinars"
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm"
-            style={{
-              background: 'var(--wx-surface)',
-              color: 'var(--wx-teal)',
-              border: '1.5px solid var(--wx-teal)',
-              textDecoration: 'none',
-            }}
-          >
-            Browse similar webinars →
-          </Link>
-        )}
-
-        {/* Save + Calendar row */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={onToggleSaved}
-            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all"
-            style={{
-              background: saved ? 'rgba(232,180,74,0.12)' : 'var(--wx-surface)',
-              color: saved ? '#92610A' : 'var(--wx-muted)',
-              border: `1.5px solid ${saved ? 'rgba(232,180,74,0.4)' : 'var(--wx-border)'}`,
-              cursor: 'pointer',
-            }}
-          >
-            <Bookmark size={13} fill={saved ? '#E8B44A' : 'none'} stroke={saved ? '#92610A' : 'currentColor'} />
-            {saved ? 'Saved' : 'Save'}
-          </button>
-          {upcoming && calUrl && (
-            <a
-              href={calUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all"
-              style={{
-                background: 'var(--wx-surface)',
-                color: 'var(--wx-muted)',
-                border: '1.5px solid var(--wx-border)',
-                textDecoration: 'none',
-              }}
-            >
-              <Calendar size={13} />
-              Calendar
-            </a>
-          )}
-        </div>
-
-        {/* Alert */}
-        {upcoming && (
-          <div
-            className="rounded-xl p-3"
-            style={{ background: 'var(--wx-teal-pale)', border: '1px solid rgba(13,79,107,0.12)' }}
-          >
-            {alertSent ? (
-              <p className="text-xs font-semibold text-center" style={{ color: 'var(--wx-teal)' }}>
-                ✓ Reminder set! We'll email you before this starts.
-              </p>
-            ) : (
-              <>
-                <p className="text-xs font-medium mb-2" style={{ color: 'var(--wx-teal)' }}>
-                  <Bell size={11} className="inline mr-1" />
-                  Get reminded before it starts
-                </p>
-                <form onSubmit={onAlertSubmit} className="flex flex-col gap-2">
-                  <input
-                    type="email"
-                    required
-                    placeholder="your@email.com"
-                    value={alertEmail}
-                    onChange={e => onAlertEmailChange(e.target.value)}
-                    className="w-full text-xs px-3 py-2 rounded-lg outline-none"
-                    style={{
-                      border: '1.5px solid rgba(13,79,107,0.2)',
-                      background: '#fff',
-                      fontFamily: 'var(--font-sans)',
-                      color: 'var(--wx-ink)',
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={alertLoading}
-                    className="w-full py-2 rounded-lg text-xs font-semibold transition-all"
-                    style={{
-                      background: 'var(--wx-teal)',
-                      color: '#fff',
-                      border: 'none',
-                      cursor: alertLoading ? 'wait' : 'pointer',
-                      opacity: alertLoading ? 0.7 : 1,
-                    }}
-                  >
-                    {alertLoading ? 'Setting…' : 'Remind me'}
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Stats */}
-        <div
-          className="flex items-center justify-around py-2 rounded-xl"
-          style={{ background: 'var(--wx-surface)', border: '1px solid var(--wx-border)' }}
-        >
-          {event.view_count > 0 && (
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="font-bold text-sm" style={{ color: 'var(--wx-ink)' }}>
-                {event.view_count.toLocaleString('en-IN')}
-              </span>
-              <span className="text-xs" style={{ color: 'var(--wx-muted)' }}>views</span>
-            </div>
-          )}
-          {event.click_count > 0 && (
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="font-bold text-sm" style={{ color: 'var(--wx-ink)' }}>
-                {event.click_count.toLocaleString('en-IN')}
-              </span>
-              <span className="text-xs" style={{ color: 'var(--wx-muted)' }}>clicks</span>
-            </div>
-          )}
-          {event.relevance_score > 0 && (
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="font-bold text-sm" style={{ color: 'var(--wx-ink)' }}>
-                {Math.round(event.relevance_score * 10)}/10
-              </span>
-              <span className="text-xs" style={{ color: 'var(--wx-muted)' }}>score</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────
-   Loading skeleton
-───────────────────────────────────────────────────── */
-function LoadingSkeleton(): JSX.Element {
-  return (
-    <div className="wx-container has-bottom-nav" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-      <div className="skeleton h-3 w-32 rounded-full mb-6" />
-      <div className="max-w-4xl mx-auto">
-        <div className="skeleton h-5 w-24 rounded-full mb-4" />
-        <div className="skeleton h-8 w-full mb-2" />
-        <div className="skeleton h-8 w-4/5 mb-6" />
-        <div className="skeleton h-4 w-48 mb-2" />
-        <div className="skeleton h-4 w-36 mb-8" />
-        <div className="skeleton h-24 w-full rounded-xl mb-4" />
-        <div className="skeleton h-24 w-full rounded-xl" />
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────
-   Main page
-───────────────────────────────────────────────────── */
-export default function WebinarPage(): JSX.Element {
-  const [, params] = useRoute('/webinar/:slug');
-  const slug = params?.slug ?? '';
-
-  const [event, setEvent] = useState<WebinarEvent | null>(null);
-  const [related, setRelated] = useState<WebinarEvent[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [notFound, setNotFound] = useState<boolean>(false);
-  const [alertEmail, setAlertEmail] = useState<string>('');
-  const [alertSent, setAlertSent] = useState<boolean>(false);
-  const [alertLoading, setAlertLoading] = useState<boolean>(false);
-  const [saved, setSaved] = useState<boolean>(false);
-
-  const load = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    setNotFound(false);
-    const cleanSlug = slug.replace(/\uffff/g, '-');
-    const data = await getEventBySlug(cleanSlug);
-    if (data) {
-      setEvent(data);
-      setSaved(isWishlisted(data.slug));
-      const rel = await getRelatedEvents(data.slug, data.sector_slug, 4);
-      setRelated(rel ?? []);
-    } else {
-      setNotFound(true);
-    }
-    setLoading(false);
-  }, [slug]);
-
-  useEffect(() => {
-    if (slug) void load();
-  }, [slug, load]);
-
-  const handleAlertSubmit = useCallback(async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (!alertEmail || !event) return;
-    setAlertLoading(true);
-    const res = await postAlert({ email: alertEmail, event_slug: event.slug });
-    setAlertLoading(false);
-    if (res.status === 'ok') setAlertSent(true);
-  }, [alertEmail, event]);
-
-  const handleToggleSaved = useCallback((): void => {
-    if (!event) return;
-    const nowSaved = toggleWishlist(event.slug);
-    setSaved(nowSaved);
-    window.dispatchEvent(new Event('storage'));
-  }, [event]);
-
-  /* ── Loading ── */
-  if (loading) return <LoadingSkeleton />;
-
-  /* ── Not found ── */
-  if (notFound || !event) {
-    return (
-      <>
-        <Helmet>
-          <title>Webinar Not Found — WeBinX</title>
-          <meta name="robots" content="noindex" />
-        </Helmet>
-        <div className="flex flex-col items-center justify-center py-24 text-center px-4 has-bottom-nav">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-2xl"
-            style={{ background: 'var(--wx-surface)', border: '1px solid var(--wx-border)' }}
-          >
-            🔍
-          </div>
-          <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--wx-ink)' }}>
-            Webinar not found
-          </h1>
-          <p className="text-sm mb-6" style={{ color: 'var(--wx-muted)' }}>
-            This event may have ended or been removed.
-          </p>
-          <Link
-            href="/webinars"
-            className="flex items-center gap-1.5 text-sm font-semibold px-5 py-2.5 rounded-xl"
-            style={{ background: 'var(--wx-teal)', color: '#fff', textDecoration: 'none' }}
-          >
-            <ArrowLeft size={14} />
-            Browse all webinars
-          </Link>
-        </div>
-      </>
-    );
-  }
-
-  /* ── Data ── */
-  const upcoming = isUpcoming(event.start_time);
-  const days = daysUntil(event.start_time);
-  const dateStr = formatEventDate(event.start_time);
-  const canonicalUrl = `https://www.webinx.in/webinar/${event.slug}`;
-  const ctaUrl = event.url && event.url !== '#' ? event.url : '';
-  const sectorColor = SECTOR_COLORS[event.sector_slug] ?? 'var(--wx-teal)';
-  const sectorIcon = SECTOR_ICONS[event.sector_slug] ?? '📚';
-  const description = event.description
-    ? event.description.replace(/<[^>]+>/g, '').slice(0, 160)
-    : `Join "${event.title}" — a free online event on WeBinX.`;
-
-  /* Schema.org */
+function EventSchema({ event, regUrl }: { event: WebinarEvent; regUrl: string | null }) {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Event',
-    '@id': canonicalUrl,
+    '@id': `https://webinx.in/webinar/${event.slug}`,
     name: event.title,
-    description: event.description?.replace(/<[^>]+>/g, '').slice(0, 500) ?? event.title,
-    startDate: event.start_time ?? undefined,
+    description: event.description,
+    startDate: event.start_time,
     endDate: event.end_time ?? undefined,
+    eventAttendanceMode:
+      event.content_type === 'live_event' && !event.is_online
+        ? 'https://schema.org/OfflineEventAttendanceMode'
+        : 'https://schema.org/OnlineEventAttendanceMode',
     eventStatus: 'https://schema.org/EventScheduled',
-    eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-    location: { '@type': 'VirtualLocation', url: ctaUrl || canonicalUrl },
-    organizer: { '@type': 'Organization', name: event.host_name || 'WeBinX' },
-    url: canonicalUrl,
-    isAccessibleForFree: true,
+    organizer: {
+      '@type': 'Person',
+      name: event.host_name,
+    },
+    ...(regUrl ? { url: regUrl } : {}),
+    isAccessibleForFree: !event.ticket_price_inr,
     inLanguage: 'en-IN',
-    ...(event.sector_name ? { about: { '@type': 'Thing', name: event.sector_name } } : {}),
+    ...(event.venue_name
+      ? {
+          location: {
+            '@type': 'Place',
+            name: event.venue_name,
+            address: event.venue_address ?? event.venue_city ?? '',
+          },
+        }
+      : {}),
+    image: event.thumbnail_url
+      ? [event.thumbnail_url]
+      : ['https://webinx.in/og-default.jpg'],
   };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
+// ─── Social Share ─────────────────────────────────────────────────────────────
+
+function SocialShare({ event }: { event: WebinarEvent }) {
+  const url = encodeURIComponent(`https://webinx.in/webinar/${event.slug}`);
+  const text = encodeURIComponent(`${event.title} — check out this webinar on WeBinX!`);
+
+  const shareLinks = {
+    twitter: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+    whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${event.title}\n${decodeURIComponent(url)}`)}`,
+  };
+
+  const handleShare = useCallback(
+    (platform: keyof typeof shareLinks) => {
+      window.open(shareLinks[platform], '_blank', 'noopener,noreferrer,width=600,height=400');
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [event.slug]
+  );
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(`https://webinx.in/webinar/${event.slug}`);
+      alert('Link copied!');
+    } catch {
+      // fallback
+    }
+  }, [event.slug]);
+
+  const btnStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    padding: '8px 0',
+    border: '1px solid #E5E7EB',
+    borderRadius: 9,
+    background: '#fff',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    flex: 1,
+    color: '#374151',
+    fontFamily: 'inherit',
+    transition: 'border-color 0.15s, background 0.15s',
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>
+        Share this event
+      </div>
+      <div style={{ display: 'flex', gap: 7 }}>
+        <button style={btnStyle} onClick={() => handleShare('twitter')}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#1DA1F2'; (e.currentTarget as HTMLElement).style.color = '#1DA1F2'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+          𝕏
+        </button>
+        <button style={btnStyle} onClick={() => handleShare('linkedin')}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0A66C2'; (e.currentTarget as HTMLElement).style.color = '#0A66C2'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+          in
+        </button>
+        <button style={btnStyle} onClick={() => handleShare('whatsapp')}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#25D366'; (e.currentTarget as HTMLElement).style.color = '#25D366'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+          WA
+        </button>
+        <button style={btnStyle} onClick={handleCopy}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0D4F6B'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; }}>
+          🔗
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Alert Form ───────────────────────────────────────────────────────────────
+
+function AlertForm({ eventSlug }: { eventSlug: string }) {
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!email.trim() || state === 'loading') return;
+      setState('loading');
+      try {
+        await submitAlert({ email: email.trim(), event_slug: eventSlug });
+        setState('done');
+      } catch {
+        setState('error');
+      }
+    },
+    [email, eventSlug, state]
+  );
+
+  if (state === 'done') {
+    return (
+      <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 12, fontSize: 13, color: '#065f46' }}>
+        ✓ You'll be notified before this event starts!
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>
+        🔔 Get reminder before event
+      </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 0 }}>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          required
+          style={{
+            flex: 1,
+            padding: '9px 12px',
+            border: '1.5px solid #E5E7EB',
+            borderRight: 'none',
+            borderRadius: '9px 0 0 9px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            outline: 'none',
+            color: '#111827',
+          }}
+        />
+        <button
+          type="submit"
+          disabled={state === 'loading'}
+          style={{
+            padding: '9px 14px',
+            background: '#0D4F6B',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '0 9px 9px 0',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {state === 'loading' ? '...' : 'Notify'}
+        </button>
+      </form>
+      {state === 'error' && (
+        <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>Something went wrong. Try again.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Skeleton Loader ──────────────────────────────────────────────────────────
+
+function SkeletonLoader() {
+  const pulse: React.CSSProperties = {
+    background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
+    backgroundSize: '200% 100%',
+    animation: 'skeleton-pulse 1.4s ease infinite',
+    borderRadius: 8,
+  };
+  return (
+    <>
+      <style>{`
+        @keyframes skeleton-pulse {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 24px' }}>
+        <div style={{ ...pulse, height: 32, width: '60%', marginBottom: 16 }} />
+        <div style={{ ...pulse, height: 20, width: '40%', marginBottom: 32 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32 }}>
+          <div>
+            <div style={{ ...pulse, height: 240, marginBottom: 20 }} />
+            <div style={{ ...pulse, height: 16, marginBottom: 10 }} />
+            <div style={{ ...pulse, height: 16, width: '85%', marginBottom: 10 }} />
+            <div style={{ ...pulse, height: 16, width: '70%' }} />
+          </div>
+          <div style={{ ...pulse, height: 400 }} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function WebinarPage() {
+  const { slug } = useParams<{ slug: string }>();
+
+  const [event, setEvent] = useState<WebinarEvent | null>(null);
+  const [related, setRelated] = useState<WebinarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [wishlisted, setWishlisted] = useState(false);
+
+  useEffect(() => {
+    if (!slug) return;
+    setLoading(true);
+    setError(null);
+
+    getEventBySlug(slug)
+      .then(ev => {
+        setEvent(ev);
+        setWishlisted(isWishlisted(ev.slug));
+        return getRelatedEvents(ev.slug, ev.sector_slug ?? undefined);
+      })
+      .then(rel => setRelated(rel.slice(0, 3)))
+      .catch(err => setError(String(err)))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  const handleWishlist = useCallback(() => {
+    if (!event) return;
+    const added = toggleLocalWishlist(event.slug);
+    setWishlisted(added);
+  }, [event]);
+
+  if (loading) return <SkeletonLoader />;
+
+  if (error || !event) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Event not found</h2>
+        <p style={{ color: '#6B7280', marginBottom: 24 }}>This event may have ended or been removed.</p>
+        <Link href="/webinars">
+          <button style={{ background: '#0D4F6B', color: '#fff', border: 'none', padding: '11px 24px', borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Browse all events →
+          </button>
+        </Link>
+      </div>
+    );
+  }
+
+  const sector = getSectorConfig(event.sector_slug ?? event.sector_name);
+  const regUrl = getBestRegistrationUrl(event);
+  const countdown = getCountdownLabel(event.start_time);
+  const calendarUrl = buildCalendarUrl(event);
+  const platform = detectPlatform(event.event_url ?? event.registration_url);
+
+  const canonicalUrl = `https://webinx.in/webinar/${event.slug}`;
+  const ogImage = event.thumbnail_url ?? 'https://webinx.in/og-default.jpg';
+  const ogDescription = event.description?.slice(0, 160) ?? event.title;
+
+  const ctaLabel =
+    event.content_type === 'podcast'
+      ? 'Listen Now'
+      : event.content_type === 'live_event'
+      ? event.ticket_price_inr
+        ? `Get Tickets — ₹${event.ticket_price_inr}`
+        : 'Get Tickets Free'
+      : 'Register Now — Free';
 
   return (
     <>
       <Helmet>
         <title>{event.title} | WeBinX</title>
-        <meta name="description" content={description} />
+        <meta name="description" content={ogDescription} />
         <link rel="canonical" href={canonicalUrl} />
-        <meta property="og:title" content={event.title} />
-        <meta property="og:description" content={description} />
+        <meta property="og:title" content={`${event.title} | WeBinX`} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
         <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://www.webinx.in/og-default.jpg" />
+        <meta property="og:type" content="event" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={event.title} />
-        <meta name="twitter:description" content={description} />
-        <script type="application/ld+json">{JSON.stringify(schema)}</script>
+        <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={ogImage} />
       </Helmet>
 
-      <div className="has-bottom-nav">
-        {/* ─── Sector hero band ─── */}
-        <div
-          style={{
-            background: `linear-gradient(135deg, ${sectorColor}12 0%, ${sectorColor}06 100%)`,
-            borderBottom: `1px solid ${sectorColor}20`,
-            padding: '1.5rem 0 0',
-          }}
-        >
-          <div className="wx-container">
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-1.5 text-xs mb-4" style={{ color: 'var(--wx-muted)' }}>
-              <Link href="/" style={{ color: 'var(--wx-muted)', textDecoration: 'none' }}>Home</Link>
-              <ChevronRight size={12} />
-              <Link href="/webinars" style={{ color: 'var(--wx-muted)', textDecoration: 'none' }}>Webinars</Link>
-              {event.sector_slug && (
-                <>
-                  <ChevronRight size={12} />
-                  <Link
-                    href={`/sector/${event.sector_slug}`}
-                    style={{ color: sectorColor, textDecoration: 'none', fontWeight: 600 }}
-                  >
-                    {sectorIcon} {event.sector_name}
-                  </Link>
-                </>
-              )}
-            </nav>
+      <EventSchema event={event} regUrl={regUrl} />
 
-            {/* Badges row */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {event.sector_name && (
-                <span
-                  className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full"
-                  style={{ background: `${sectorColor}15`, color: sectorColor, border: `1px solid ${sectorColor}25` }}
-                >
-                  {sectorIcon} {event.sector_name}
-                </span>
-              )}
-              {upcoming && days !== null && (
-                <span
-                  className="text-xs font-semibold px-3 py-1 rounded-full"
-                  style={{ background: 'var(--wx-teal-pale)', color: 'var(--wx-teal)', border: '1px solid rgba(13,79,107,0.15)' }}
-                >
-                  {days === 0 ? '🔴 Today' : days === 1 ? '📅 Tomorrow' : `📅 In ${days} days`}
-                </span>
-              )}
-              {!upcoming && (
-                <span
-                  className="text-xs px-3 py-1 rounded-full"
-                  style={{ background: 'var(--wx-surface)', color: 'var(--wx-muted)', border: '1px solid var(--wx-border)' }}
-                >
-                  Ended
-                </span>
-              )}
-              {event.is_featured && (
-                <span
-                  className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full"
-                  style={{ background: 'var(--wx-gold-pale)', color: '#92610A', border: '1px solid rgba(232,180,74,0.3)' }}
-                >
-                  <Star size={11} fill="#E8B44A" stroke="none" />
-                  Featured
-                </span>
-              )}
-            </div>
+      {/* Hero Band */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${sector.bg} 0%, #fff 100%)`,
+          borderBottom: `3px solid ${sector.border}`,
+          padding: '32px 40px 28px',
+        }}
+      >
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          {/* Breadcrumb */}
+          <nav style={{ fontSize: 12.5, color: '#9CA3AF', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Link href="/" style={{ color: '#6B7280', textDecoration: 'none' }}>Home</Link>
+            <span>›</span>
+            <Link href="/webinars" style={{ color: '#6B7280', textDecoration: 'none' }}>Webinars</Link>
+            <span>›</span>
+            <Link href={`/sector/${event.sector_slug}`} style={{ color: sector.color, textDecoration: 'none' }}>
+              {sector.emoji} {sector.name}
+            </Link>
+            <span>›</span>
+            <span style={{ color: '#374151' }}>{event.title.slice(0, 40)}{event.title.length > 40 ? '…' : ''}</span>
+          </nav>
 
-            {/* Title */}
-            <h1
-              className="font-bold leading-tight mb-5"
-              style={{
-                fontFamily: 'var(--font-sans)',
-                fontSize: 'clamp(1.375rem, 3.5vw, 2rem)',
-                color: 'var(--wx-ink)',
-                maxWidth: '72ch',
-              }}
-            >
+          {/* Title + badges */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#111827', lineHeight: 1.3, flex: 1 }}>
               {event.title}
             </h1>
-
-            {/* Host row */}
-            <div className="flex items-center gap-3 pb-5">
-              <HostAvatar name={event.host_name || 'H'} color={sectorColor} size={44} />
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-sm" style={{ color: 'var(--wx-ink)' }}>
-                    {event.host_name}
-                  </span>
-                  {event.is_verified && (
-                    <BadgeCheck size={15} style={{ color: 'var(--wx-teal)' }} />
-                  )}
-                </div>
-                <div className="text-xs mt-0.5" style={{ color: 'var(--wx-muted)' }}>
-                  <Calendar size={11} className="inline mr-1" />
-                  {dateStr}
-                  {event.source_name && (
-                    <span className="ml-3 opacity-70">via {event.source_name}</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            {event.is_featured && (
+              <span style={{ background: '#E8B44A', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 8, flexShrink: 0, marginTop: 6 }}>
+                ★ Featured
+              </span>
+            )}
           </div>
-        </div>
 
-        {/* ─── Body ─── */}
-        <div className="wx-container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-          <div className="flex gap-8 items-start">
-
-            {/* ── Main content ── */}
-            <div className="flex-1 min-w-0">
-
-              {/* Mobile CTA (shown above content on mobile) */}
-              {ctaUrl && (
-                <a
-                  href={ctaUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="md:hidden flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm mb-6"
-                  style={{
-                    background: 'var(--wx-teal)',
-                    color: '#fff',
-                    textDecoration: 'none',
-                    boxShadow: '0 4px 14px rgba(13,79,107,0.25)',
-                  }}
-                >
-                  <ExternalLink size={15} />
-                  {upcoming ? 'Register Now — Free' : 'View Details'}
-                </a>
-              )}
-
-              {/* Tags */}
-              {event.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-6">
-                  {event.tags
-                    .filter(t => t && !t.startsWith('<') && !t.startsWith('href'))
-                    .slice(0, 8)
-                    .map(tag => (
-                      <span
-                        key={tag}
-                        className="text-xs px-2.5 py-1 rounded-full"
-                        style={{
-                          background: 'var(--wx-surface)',
-                          color: 'var(--wx-muted)',
-                          border: '1px solid var(--wx-border)',
-                        }}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                </div>
-              )}
-
-              {/* Description */}
-              {event.description ? (
-                <div
-                  className="text-sm leading-relaxed mb-8"
-                  style={{
-                    color: 'var(--wx-ink)',
-                    lineHeight: 1.75,
-                    fontFamily: 'var(--font-sans)',
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: event.description.replace(/<script[^>]*>.*?<\/script>/gi, ''),
-                  }}
-                />
-              ) : (
-                <p className="text-sm mb-8" style={{ color: 'var(--wx-muted)' }}>
-                  No description available for this event.
-                </p>
-              )}
-
-              {/* Share */}
-              <div
-                className="p-4 rounded-xl mb-8"
-                style={{ background: 'var(--wx-surface)', border: '1px solid var(--wx-border)' }}
-              >
-                <ShareButtons title={event.title} url={canonicalUrl} />
-              </div>
-
-              {/* Sponsor note */}
-              {event.is_sponsored && event.sponsor_name && (
-                <p className="text-xs mb-6" style={{ color: 'var(--wx-muted)' }}>
-                  Sponsored by <span className="font-medium">{event.sponsor_name}</span>
-                </p>
-              )}
-
-              {/* Mobile alert */}
-              {upcoming && (
-                <div className="md:hidden mb-8 p-4 rounded-xl" style={{ background: 'var(--wx-teal-pale)', border: '1px solid rgba(13,79,107,0.12)' }}>
-                  {alertSent ? (
-                    <p className="text-sm font-semibold" style={{ color: 'var(--wx-teal)' }}>
-                      ✓ Reminder set! We'll email you before this starts.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-sm font-medium mb-3" style={{ color: 'var(--wx-teal)' }}>
-                        <Bell size={13} className="inline mr-1" />
-                        Get reminded before it starts
-                      </p>
-                      <form onSubmit={handleAlertSubmit} className="flex gap-2">
-                        <input
-                          type="email"
-                          required
-                          placeholder="your@email.com"
-                          value={alertEmail}
-                          onChange={e => setAlertEmail(e.target.value)}
-                          className="flex-1 text-sm px-3 py-2 rounded-lg outline-none"
-                          style={{
-                            border: '1.5px solid rgba(13,79,107,0.2)',
-                            background: '#fff',
-                            fontFamily: 'var(--font-sans)',
-                          }}
-                        />
-                        <button
-                          type="submit"
-                          disabled={alertLoading}
-                          className="px-4 py-2 rounded-lg text-sm font-semibold"
-                          style={{
-                            background: 'var(--wx-teal)', color: '#fff',
-                            border: 'none', cursor: 'pointer',
-                            opacity: alertLoading ? 0.7 : 1,
-                          }}
-                        >
-                          {alertLoading ? '…' : 'Remind me'}
-                        </button>
-                      </form>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Related events */}
-              {related.length > 0 && (
-                <div className="mt-10 pt-8" style={{ borderTop: '1px solid var(--wx-border)' }}>
-                  <div className="flex items-center justify-between mb-5">
-                    <h2
-                      className="font-semibold"
-                      style={{ fontSize: '1.125rem', color: 'var(--wx-ink)', fontFamily: 'var(--font-sans)' }}
-                    >
-                      Related Events
-                    </h2>
-                    <Link
-                      href={`/sector/${event.sector_slug}`}
-                      className="text-xs font-semibold"
-                      style={{ color: 'var(--wx-teal)', textDecoration: 'none' }}
-                    >
-                      View all {event.sector_name} →
-                    </Link>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {related.map(e => (
-                      <WebinarCard key={e.id || e.slug} event={e} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Back link */}
-              <div className="mt-8">
-                <Link
-                  href="/webinars"
-                  className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
-                  style={{ color: 'var(--wx-muted)', textDecoration: 'none' }}
-                >
-                  <ArrowLeft size={14} />
-                  Browse all webinars
-                </Link>
-              </div>
-            </div>
-
-            {/* ── Sticky sidebar (desktop only) ── */}
-            <div
-              className="hidden md:block flex-shrink-0"
-              style={{ width: 280, position: 'sticky', top: '5rem' }}
+          {/* Meta row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <span
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                background: sector.bg, color: sector.color, fontWeight: 600, fontSize: 13,
+                padding: '5px 12px', borderRadius: 8,
+              }}
             >
-              <Sidebar
-                event={event}
-                ctaUrl={ctaUrl}
-                upcoming={upcoming}
-                alertSent={alertSent}
-                alertEmail={alertEmail}
-                alertLoading={alertLoading}
-                onAlertEmailChange={setAlertEmail}
-                onAlertSubmit={handleAlertSubmit}
-                saved={saved}
-                onToggleSaved={handleToggleSaved}
-              />
-            </div>
+              {sector.emoji} {sector.name}
+            </span>
+
+            <span style={{ fontSize: 13.5, color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+              📅 {formatEventDate(event.start_time)}
+              {countdown && (
+                <span style={{ background: '#E1F5EE', color: '#0D4F6B', fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
+                  {countdown}
+                </span>
+              )}
+            </span>
+
+            {platform !== 'other' && (
+              <span style={{ background: '#f3f4f6', color: '#374151', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 7 }}>
+                {PLATFORM_LABELS[platform]}
+              </span>
+            )}
+
+            <span style={{ fontSize: 12.5, color: '#9CA3AF' }}>👁 {event.view_count} views</span>
           </div>
         </div>
       </div>
+
+      {/* Main Content */}
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 40px 64px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 40, alignItems: 'start' }}>
+
+        {/* LEFT — Content */}
+        <div>
+          {/* Host card */}
+          <div style={{ background: '#f9fafb', border: '1px solid #E5E7EB', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: sector.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
+              {event.host_name.split(' ').slice(0,2).map(w => w[0]).join('')}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{event.host_name}</span>
+                {event.host_is_verified && (
+                  <span style={{ background: '#0D4F6B', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>✓ VERIFIED</span>
+                )}
+              </div>
+              <div style={{ fontSize: 12.5, color: '#6B7280', marginTop: 2 }}>Event Host</div>
+            </div>
+            {event.host_slug && (
+              <Link href={`/hosts/${event.host_slug}`}>
+                <button style={{ background: 'transparent', border: '1.5px solid #0D4F6B', color: '#0D4F6B', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  View Profile →
+                </button>
+              </Link>
+            )}
+          </div>
+
+          {/* Description */}
+          <div style={{ marginBottom: 28 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', marginBottom: 12 }}>About this event</h2>
+            <div style={{ fontSize: 15, color: '#374151', lineHeight: 1.75, whiteSpace: 'pre-line' }}>
+              {event.description}
+            </div>
+          </div>
+
+          {/* Podcast extras */}
+          {event.content_type === 'podcast' && (
+            <div style={{ background: '#f5f3ff', border: '1px solid #ede9fe', borderRadius: 12, padding: 16, marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {event.podcast_series && <div><span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 600 }}>SERIES</span><div style={{ fontWeight: 600, color: '#111827' }}>{event.podcast_series}</div></div>}
+              {event.episode_number && <div><span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 600 }}>EPISODE</span><div style={{ fontWeight: 600, color: '#111827' }}>#{event.episode_number}</div></div>}
+              {event.duration_minutes && <div><span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 600 }}>DURATION</span><div style={{ fontWeight: 600, color: '#111827' }}>{event.duration_minutes} min</div></div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4, width: '100%' }}>
+                {event.spotify_url && <a href={event.spotify_url} target="_blank" rel="noopener noreferrer" style={{ background: '#1DB954', color: '#fff', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Spotify</a>}
+                {event.apple_podcasts_url && <a href={event.apple_podcasts_url} target="_blank" rel="noopener noreferrer" style={{ background: '#8b5cf6', color: '#fff', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Apple Podcasts</a>}
+              </div>
+            </div>
+          )}
+
+          {/* Live event extras */}
+          {event.content_type === 'live_event' && (event.venue_name || event.venue_city) && (
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: 16, marginBottom: 24 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginBottom: 8 }}>📍 Venue</div>
+              {event.venue_name && <div style={{ fontWeight: 600, color: '#111827' }}>{event.venue_name}</div>}
+              {event.venue_address && <div style={{ fontSize: 13.5, color: '#6B7280', marginTop: 4 }}>{event.venue_address}</div>}
+              {event.venue_city && <div style={{ fontSize: 13, color: '#f97316', fontWeight: 600, marginTop: 4 }}>{event.venue_city}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                {event.is_hybrid && <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Hybrid</span>}
+                {event.is_online && <span style={{ background: '#ecfdf5', color: '#065f46', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Online Available</span>}
+                {event.max_attendees && <span style={{ background: '#f3f4f6', color: '#6B7280', fontSize: 11, padding: '3px 8px', borderRadius: 6 }}>Max {event.max_attendees} attendees</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Tags */}
+          {event.tags.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', marginBottom: 10 }}>Topics covered</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {event.tags.map(tag => (
+                  <span key={tag} style={{ background: '#F3F4F6', color: '#374151', fontSize: 13, padding: '5px 12px', borderRadius: 8 }}>{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT — Sticky Sidebar */}
+        <aside>
+          <div
+            style={{
+              position: 'sticky',
+              top: 80,
+              background: '#fff',
+              border: '1px solid #E5E7EB',
+              borderRadius: 18,
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+            }}
+          >
+            {/* Date summary */}
+            <div style={{ textAlign: 'center', paddingBottom: 12, borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 4 }}>
+                {event.content_type === 'podcast' ? 'Published' : 'Event Date'}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+                {formatShortDate(event.start_time)}
+              </div>
+              {countdown && (
+                <div style={{ background: '#E1F5EE', color: '#0D4F6B', fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 20, display: 'inline-block', marginTop: 6 }}>
+                  {countdown}
+                </div>
+              )}
+            </div>
+
+            {/* Main CTA */}
+            {regUrl ? (
+              <a href={regUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <button
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: '#0D4F6B',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 12,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                >
+                  {event.content_type === 'podcast' ? '▶ ' : '📹 '}
+                  {ctaLabel} ↗
+                </button>
+              </a>
+            ) : (
+              <button
+                disabled
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: '#f3f4f6',
+                  color: '#9CA3AF',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontSize: 14,
+                  cursor: 'not-allowed',
+                  fontFamily: 'inherit',
+                }}
+                title="No registration link available"
+              >
+                Registration Not Available
+              </button>
+            )}
+
+            {/* Secondary actions */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {/* Add to calendar */}
+              <a href={calendarUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <button style={{ width: '100%', padding: '9px 0', background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  📅 Calendar
+                </button>
+              </a>
+
+              {/* Wishlist */}
+              <button
+                onClick={handleWishlist}
+                style={{ padding: '9px 0', background: wishlisted ? '#fff1f2' : 'transparent', border: `1.5px solid ${wishlisted ? '#f43f5e' : '#E5E7EB'}`, borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: wishlisted ? '#f43f5e' : '#374151', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+              >
+                {wishlisted ? '♥ Saved' : '♡ Save'}
+              </button>
+            </div>
+
+            {/* Certificate link */}
+            <Link href={`/certificate/${event.slug}`}>
+              <button style={{ width: '100%', padding: '9px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: '#92400e', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                🎖 Get Certificate
+              </button>
+            </Link>
+
+            {/* Alert form */}
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+              <AlertForm eventSlug={event.slug} />
+            </div>
+
+            {/* Social share */}
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+              <SocialShare event={event} />
+            </div>
+
+            {/* Affiliate Tools */}
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+              <AffiliateToolsSection
+                sectorSlug={event.sector_slug ?? ''}
+                contentType={event.content_type ?? 'webinar'}
+                compact={true}
+              />
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Related Events */}
+      {related.length > 0 && (
+        <div style={{ background: '#f9fafb', padding: '48px 40px', borderTop: '1px solid #E5E7EB' }}>
+          <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>Related Events</h2>
+              <Link href={`/sector/${event.sector_slug}`} style={{ fontSize: 14, color: '#0D4F6B', fontWeight: 600, textDecoration: 'none' }}>
+                View all {sector.name} events →
+              </Link>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+              {related.map(rel => (
+                <WebinarCard key={rel.id} event={rel} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
