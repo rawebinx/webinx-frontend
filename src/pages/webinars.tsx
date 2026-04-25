@@ -309,7 +309,7 @@ export default function WebinarsPage(): JSX.Element {
             ? `"${filters.q}" — Webinars | WeBinX`
             : filters.sector
             ? `${filters.sector} Webinars | WeBinX`
-            : 'Webinars · India's Best Knowledge Events | WeBinX'}
+            : "Webinars \u00B7 India's Best Knowledge Events | WeBinX"}
         </title>
         <meta
           name="description"
