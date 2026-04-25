@@ -310,8 +310,19 @@ export async function getEvents(params?: {
   if (params?.offset != null) sp.set('offset', String(params.offset));
   if (params?.upcoming_only) sp.set('upcoming_only', 'true');
   const qs = sp.toString() ? `?${sp}` : '';
-  const raw = await apiFetch<{ events: unknown[]; total: number; limit: number; offset: number }>(`/api/events${qs}`);
-  return { events: raw.events.map(e => normalizeEvent(e as Record<string, unknown>)), total: raw.total, limit: raw.limit, offset: raw.offset };
+  const raw = await apiFetch<unknown>(`/api/events${qs}`);
+  // Backend may return array directly OR {events:[], total, limit, offset}
+  if (Array.isArray(raw)) {
+    const events = (raw as unknown[]).map(e => normalizeEvent(e as Record<string, unknown>));
+    return { events, total: events.length, limit: params?.limit ?? 20, offset: params?.offset ?? 0 };
+  }
+  const obj = raw as { events: unknown[]; total: number; limit: number; offset: number };
+  return {
+    events: (obj.events ?? []).map(e => normalizeEvent(e as Record<string, unknown>)),
+    total: obj.total ?? 0,
+    limit: obj.limit ?? params?.limit ?? 20,
+    offset: obj.offset ?? params?.offset ?? 0,
+  };
 }
 
 export async function getEventBySlug(slug: string): Promise<WebinarEvent> {
