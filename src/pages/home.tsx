@@ -234,7 +234,7 @@ function StatsBar({ stats }: { stats: PlatformStats | null }): JSX.Element {
       { label: 'Total Events', value: stats?.total_events ?? 0, icon: <CalendarDays size={14} /> },
       { label: 'Upcoming', value: stats?.upcoming_events ?? 0, icon: <TrendingUp size={14} /> },
       { label: 'This Week', value: stats?.this_week ?? 0, icon: <Zap size={14} /> },
-      { label: 'Topics', value: stats?.sectors ?? 0, icon: <Globe size={14} /> },
+      { label: 'Topics', value: stats?.sector_count ?? 0, icon: <Globe size={14} /> },
     ],
     [stats],
   );
@@ -396,8 +396,8 @@ export default function HomePage(): JSX.Element {
     try {
       const [stats, featured, trending, sectors] = await Promise.all([
         getStats().catch(() => null),
-        getFeaturedEvents(6).catch(() => []),
-        getTrendingEvents(9).catch(() => []),
+        getFeaturedEvents().catch(() => []),
+        getTrendingEvents().catch(() => []),
         getSectors().catch(() => []),
       ]);
       setData({
@@ -573,7 +573,7 @@ export default function HomePage(): JSX.Element {
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
                   : data.featured.slice(0, 6).map((event) => (
-                      <WebinarCard key={event.id} event={event} featured />
+                      <WebinarCard key={event.id} event={event} variant="featured" />
                     ))}
               </div>
             </div>
@@ -884,8 +884,8 @@ export default function HomePage(): JSX.Element {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {[
                   { label: 'Total Events', value: data.stats.total_events, icon: <CalendarDays size={20} /> },
-                  { label: 'Active Hosts', value: data.stats.hosts ?? 0, icon: <Users size={20} /> },
-                  { label: 'Topics Covered', value: data.stats.sectors, icon: <Globe size={20} /> },
+                  { label: 'Active Hosts', value: data.stats.host_count ?? 0, icon: <Users size={20} /> },
+                  { label: 'Topics Covered', value: data.stats.sector_count, icon: <Globe size={20} /> },
                   { label: 'Events This Week', value: data.stats.this_week, icon: <Award size={20} /> },
                 ].map((stat) => (
                   <div key={stat.label} className="text-center">

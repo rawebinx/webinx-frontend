@@ -2,30 +2,15 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { Helmet } from 'react-helmet-async';
 import {
-  Search,
-  SlidersHorizontal,
-  X,
-  ChevronDown,
-  CalendarDays,
-  TrendingUp,
-  LayoutGrid,
-  List,
-  Loader2,
-  Frown,
-  Sparkles,
-  ArrowRight,
+  Search, SlidersHorizontal, X, ChevronDown,
+  CalendarDays, TrendingUp, LayoutGrid, List,
+  Frown, Sparkles, ArrowRight,
 } from 'lucide-react';
 import WebinarCard from '../components/webinar-card';
 import { getEvents, getSectors } from '../lib/api';
 import type { WebinarEvent, Sector } from '../lib/api';
 
-
-
-
-
-/* ─────────────────────────────────────────────────────
-   Types
-───────────────────────────────────────────────────── */
+/* ── Types ── */
 interface FilterState {
   q: string;
   sector: string;
@@ -35,11 +20,7 @@ interface FilterState {
 }
 
 const DEFAULT_FILTERS: FilterState = {
-  q: '',
-  sector: '',
-  category: '',
-  upcomingOnly: false,
-  sort: 'relevance',
+  q: '', sector: '', category: '', upcomingOnly: false, sort: 'relevance',
 };
 
 const PAGE_SIZE = 12;
@@ -58,20 +39,12 @@ const SECTOR_ICONS: Record<string, string> = {
   startup: '🚀', hr: '🤝', healthcare: '🏥', education: '🎓',
 };
 
-/* ─────────────────────────────────────────────────────
-   Parse query string helper
-───────────────────────────────────────────────────── */
 function parseSearch(search: string): Partial<FilterState> {
   const p = new URLSearchParams(search.replace(/^\?/, ''));
-  return {
-    q: p.get('q') ?? '',
-    sector: p.get('sector') ?? '',
-  };
+  return { q: p.get('q') ?? '', sector: p.get('sector') ?? '' };
 }
 
-/* ─────────────────────────────────────────────────────
-   Skeleton row of cards
-───────────────────────────────────────────────────── */
+/* ── Skeleton ── */
 function SkeletonCards({ count = 6 }: { count?: number }): JSX.Element {
   return (
     <>
@@ -91,9 +64,7 @@ function SkeletonCards({ count = 6 }: { count?: number }): JSX.Element {
   );
 }
 
-/* ─────────────────────────────────────────────────────
-   Empty state
-───────────────────────────────────────────────────── */
+/* ── Empty state ── */
 function EmptyState({ query, onClear }: { query: string; onClear: () => void }): JSX.Element {
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
@@ -131,24 +102,12 @@ function EmptyState({ query, onClear }: { query: string; onClear: () => void }):
   );
 }
 
-/* ─────────────────────────────────────────────────────
-   Filter chip
-───────────────────────────────────────────────────── */
-function FilterChip({
-  label,
-  onRemove,
-}: {
-  label: string;
-  onRemove: () => void;
-}): JSX.Element {
+/* ── Filter chip ── */
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }): JSX.Element {
   return (
     <span
       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
-      style={{
-        background: 'var(--wx-teal-pale)',
-        color: 'var(--wx-teal)',
-        border: '1px solid rgba(13,79,107,0.15)',
-      }}
+      style={{ background: 'var(--wx-teal-pale)', color: 'var(--wx-teal)', border: '1px solid rgba(13,79,107,0.15)' }}
     >
       {label}
       <button
@@ -162,14 +121,11 @@ function FilterChip({
   );
 }
 
-/* ─────────────────────────────────────────────────────
-   Main page
-───────────────────────────────────────────────────── */
+/* ── Main page ── */
 export default function WebinarsPage(): JSX.Element {
   const [locationPath] = useLocation();
   const searchString = typeof window !== 'undefined' ? window.location.search : '';
 
-  /* Filters */
   const [filters, setFilters] = useState<FilterState>(() => ({
     ...DEFAULT_FILTERS,
     ...parseSearch(searchString),
@@ -177,7 +133,6 @@ export default function WebinarsPage(): JSX.Element {
   const [inputValue, setInputValue] = useState<string>(filters.q);
   const [showFilters, setShowFilters] = useState<boolean>(false);
 
-  /* Data */
   const [events, setEvents] = useState<WebinarEvent[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [offset, setOffset] = useState<number>(0);
@@ -185,56 +140,37 @@ export default function WebinarsPage(): JSX.Element {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* Sectors */
   const [sectors, setSectors] = useState<Sector[]>([]);
-
-  /* View */
-  const [gridView, setGridView] = useState<true | false>(true);
-
-  /* Debounce ref */
+  const [gridView, setGridView] = useState<boolean>(true);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* Load sectors once */
   useEffect(() => {
     getSectors().then(data => setSectors(data ?? [])).catch(() => {});
   }, []);
 
-  /* Build API params */
-  const buildParams = useCallback(
-    (f: FilterState, off: number): URLSearchParams => {
-      const p = new URLSearchParams();
-      if (f.q) p.set('q', f.q);
-      if (f.sector) p.set('sector', f.sector);
-      if (f.category) p.set('category', f.category);
-      if (f.upcomingOnly) p.set('upcoming', 'true');
-      if (f.sort === 'trending') p.set('sort', 'trending');
-      p.set('limit', String(PAGE_SIZE));
-      p.set('offset', String(off));
-      return p;
-    },
-    [],
-  );
-
-  /* Fetch */
+  /* ── Fetch ── Fixed: getEvents returns EventsResponse {events, total, limit, offset} */
   const fetchEvents = useCallback(
-    async (f: FilterState, off: number, append = false, currentTotal = 0): Promise<void> => {
+    async (f: FilterState, off: number, append = false): Promise<void> => {
       if (!append) setLoading(true);
       else setLoadingMore(true);
       setError(null);
 
       try {
-        const filter = {
+        const result = await getEvents({
           q: f.q || undefined,
           sector: f.sector || undefined,
           category: f.category || undefined,
+          upcoming_only: f.upcomingOnly || undefined,
           limit: PAGE_SIZE,
           offset: off,
-        };
-        const incoming = await getEvents(filter);
-        const newTotal = off === 0 ? (incoming.length < PAGE_SIZE ? incoming.length : incoming.length + PAGE_SIZE) : total;
+        });
 
-        setEvents((prev) => (append ? [...prev, ...incoming] : incoming));
-        setTotal(append ? currentTotal : (incoming.length < PAGE_SIZE ? off + incoming.length : off + incoming.length + PAGE_SIZE));
+        // result is EventsResponse: { events: WebinarEvent[], total: number, ... }
+        const incoming = result.events;
+        const serverTotal = result.total;
+
+        setEvents(prev => append ? [...prev, ...incoming] : incoming);
+        setTotal(serverTotal);
         setOffset(off + incoming.length);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load events');
@@ -243,31 +179,28 @@ export default function WebinarsPage(): JSX.Element {
         setLoadingMore(false);
       }
     },
-    [buildParams],
+    [],
   );
 
-  /* Refetch when filters change */
   useEffect(() => {
     setEvents([]);
     setOffset(0);
     void fetchEvents(filters, 0, false);
   }, [filters, fetchEvents]);
 
-  /* Sync URL params on mount */
   useEffect(() => {
     const parsed = parseSearch(window.location.search);
     if (parsed.q || parsed.sector) {
-      setFilters((f) => ({ ...f, ...parsed }));
+      setFilters(f => ({ ...f, ...parsed }));
       setInputValue(parsed.q ?? '');
     }
   }, []);
 
-  /* Search with debounce */
   const handleSearchChange = useCallback((value: string): void => {
     setInputValue(value);
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
-      setFilters((f) => ({ ...f, q: value }));
+      setFilters(f => ({ ...f, q: value }));
     }, 380);
   }, []);
 
@@ -275,7 +208,7 @@ export default function WebinarsPage(): JSX.Element {
     (e: React.FormEvent): void => {
       e.preventDefault();
       if (searchDebounce.current) clearTimeout(searchDebounce.current);
-      setFilters((f) => ({ ...f, q: inputValue }));
+      setFilters(f => ({ ...f, q: inputValue }));
     },
     [inputValue],
   );
@@ -286,27 +219,22 @@ export default function WebinarsPage(): JSX.Element {
   }, []);
 
   const loadMore = useCallback((): void => {
-    void fetchEvents(filters, offset, true, total);
+    void fetchEvents(filters, offset, true);
   }, [fetchEvents, filters, offset]);
 
-  /* Active filter chips */
   const activeChips = useMemo<{ label: string; clear: () => void }[]>(() => {
     const chips: { label: string; clear: () => void }[] = [];
-    if (filters.q) chips.push({ label: `"${filters.q}"`, clear: () => setFilters((f) => ({ ...f, q: '' })) });
+    if (filters.q) chips.push({ label: `"${filters.q}"`, clear: () => setFilters(f => ({ ...f, q: '' })) });
     if (filters.sector) {
-      const sec = sectors.find((s) => s.slug === filters.sector);
-      chips.push({
-        label: sec?.name ?? filters.sector,
-        clear: () => setFilters((f) => ({ ...f, sector: '' })),
-      });
+      const sec = sectors.find(s => s.slug === filters.sector);
+      chips.push({ label: sec?.name ?? filters.sector, clear: () => setFilters(f => ({ ...f, sector: '' })) });
     }
-    if (filters.upcomingOnly) chips.push({ label: 'Upcoming only', clear: () => setFilters((f) => ({ ...f, upcomingOnly: false })) });
+    if (filters.upcomingOnly) chips.push({ label: 'Upcoming only', clear: () => setFilters(f => ({ ...f, upcomingOnly: false })) });
     return chips;
   }, [filters, sectors]);
 
-  const hasMore = events.length > 0 && events.length % PAGE_SIZE === 0;
+  const hasMore = total > events.length;
 
-  /* ── Render ── */
   return (
     <>
       <Helmet>
@@ -315,7 +243,7 @@ export default function WebinarsPage(): JSX.Element {
             ? `"${filters.q}" — Webinars | WeBinX`
             : filters.sector
             ? `${filters.sector} Webinars | WeBinX`
-            : "Webinars \u00B7 India's Best Knowledge Events | WeBinX"}
+            : "Webinars · India's Best Knowledge Events | WeBinX"}
         </title>
         <meta
           name="description"
@@ -327,7 +255,7 @@ export default function WebinarsPage(): JSX.Element {
       </Helmet>
 
       <div className="has-bottom-nav">
-        {/* ─── Page header ─── */}
+        {/* Sticky filter bar */}
         <div
           className="sticky top-16 z-40 w-full"
           style={{
@@ -337,22 +265,16 @@ export default function WebinarsPage(): JSX.Element {
           }}
         >
           <div className="wx-container py-3">
-            {/* Search + controls row */}
             <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-              {/* Search input */}
               <div
                 className="flex items-center gap-2 flex-1 px-3 py-2 rounded-xl"
-                style={{
-                  background: 'var(--wx-surface)',
-                  border: '1.5px solid var(--wx-border)',
-                  minWidth: 0,
-                }}
+                style={{ background: 'var(--wx-surface)', border: '1.5px solid var(--wx-border)', minWidth: 0 }}
               >
                 <Search size={15} style={{ color: 'var(--wx-muted)', flexShrink: 0 }} />
                 <input
                   type="text"
                   value={inputValue}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={e => handleSearchChange(e.target.value)}
                   placeholder="Search webinars, topics, hosts…"
                   className="flex-1 bg-transparent outline-none text-sm"
                   style={{ color: 'var(--wx-ink)', fontFamily: 'var(--font-sans)', minWidth: 0 }}
@@ -360,7 +282,7 @@ export default function WebinarsPage(): JSX.Element {
                 {inputValue && (
                   <button
                     type="button"
-                    onClick={() => { setInputValue(''); setFilters((f) => ({ ...f, q: '' })); }}
+                    onClick={() => { setInputValue(''); setFilters(f => ({ ...f, q: '' })); }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--wx-muted)', display: 'flex' }}
                   >
                     <X size={14} />
@@ -372,14 +294,9 @@ export default function WebinarsPage(): JSX.Element {
               <div className="relative hidden sm:block">
                 <select
                   value={filters.sort}
-                  onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value as FilterState['sort'] }))}
+                  onChange={e => setFilters(f => ({ ...f, sort: e.target.value as FilterState['sort'] }))}
                   className="appearance-none pl-3 pr-8 py-2 rounded-xl text-sm font-medium cursor-pointer outline-none"
-                  style={{
-                    background: 'var(--wx-surface)',
-                    border: '1.5px solid var(--wx-border)',
-                    color: 'var(--wx-ink)',
-                    fontFamily: 'var(--font-sans)',
-                  }}
+                  style={{ background: 'var(--wx-surface)', border: '1.5px solid var(--wx-border)', color: 'var(--wx-ink)', fontFamily: 'var(--font-sans)' }}
                 >
                   <option value="relevance">Relevant</option>
                   <option value="date">Latest</option>
@@ -391,7 +308,7 @@ export default function WebinarsPage(): JSX.Element {
               {/* Upcoming toggle */}
               <button
                 type="button"
-                onClick={() => setFilters((f) => ({ ...f, upcomingOnly: !f.upcomingOnly }))}
+                onClick={() => setFilters(f => ({ ...f, upcomingOnly: !f.upcomingOnly }))}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all"
                 style={{
                   background: filters.upcomingOnly ? 'var(--wx-teal-pale)' : 'var(--wx-surface)',
@@ -407,7 +324,7 @@ export default function WebinarsPage(): JSX.Element {
               {/* Filter toggle (mobile) */}
               <button
                 type="button"
-                onClick={() => setShowFilters((v) => !v)}
+                onClick={() => setShowFilters(v => !v)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium sm:hidden"
                 style={{
                   background: showFilters ? 'var(--wx-teal-pale)' : 'var(--wx-surface)',
@@ -441,8 +358,7 @@ export default function WebinarsPage(): JSX.Element {
                     background: gridView ? 'var(--wx-white)' : 'transparent',
                     color: gridView ? 'var(--wx-teal)' : 'var(--wx-muted)',
                     boxShadow: gridView ? 'var(--shadow-sm)' : 'none',
-                    cursor: 'pointer',
-                    border: 'none',
+                    cursor: 'pointer', border: 'none',
                   }}
                 >
                   <LayoutGrid size={15} />
@@ -455,8 +371,7 @@ export default function WebinarsPage(): JSX.Element {
                     background: !gridView ? 'var(--wx-white)' : 'transparent',
                     color: !gridView ? 'var(--wx-teal)' : 'var(--wx-muted)',
                     boxShadow: !gridView ? 'var(--shadow-sm)' : 'none',
-                    cursor: 'pointer',
-                    border: 'none',
+                    cursor: 'pointer', border: 'none',
                   }}
                 >
                   <List size={15} />
@@ -465,10 +380,10 @@ export default function WebinarsPage(): JSX.Element {
             </form>
 
             {/* Sector pills (desktop) */}
-            <div className="hidden sm:flex items-center gap-2 mt-2.5 overflow-x-auto pb-0.5 scroll-smooth">
+            <div className="hidden sm:flex items-center gap-2 mt-2.5 overflow-x-auto pb-0.5">
               <button
                 type="button"
-                onClick={() => setFilters((f) => ({ ...f, sector: '' }))}
+                onClick={() => setFilters(f => ({ ...f, sector: '' }))}
                 className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
                   background: !filters.sector ? 'var(--wx-teal)' : 'var(--wx-surface)',
@@ -479,14 +394,14 @@ export default function WebinarsPage(): JSX.Element {
               >
                 All Topics
               </button>
-              {sectors.map((s) => {
+              {sectors.map(s => {
                 const color = SECTOR_COLORS[s.slug] ?? '#6b7280';
                 const active = filters.sector === s.slug;
                 return (
                   <button
                     key={s.slug}
                     type="button"
-                    onClick={() => setFilters((f) => ({ ...f, sector: active ? '' : s.slug }))}
+                    onClick={() => setFilters(f => ({ ...f, sector: active ? '' : s.slug }))}
                     className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                     style={{
                       background: active ? color : `${color}10`,
@@ -510,25 +425,24 @@ export default function WebinarsPage(): JSX.Element {
               <div className="sm:hidden flex flex-wrap gap-2 mt-2.5 pt-2.5" style={{ borderTop: '1px solid var(--wx-border)' }}>
                 <button
                   type="button"
-                  onClick={() => setFilters((f) => ({ ...f, sector: '' }))}
+                  onClick={() => setFilters(f => ({ ...f, sector: '' }))}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold"
                   style={{
                     background: !filters.sector ? 'var(--wx-teal)' : 'var(--wx-surface)',
                     color: !filters.sector ? '#fff' : 'var(--wx-muted)',
-                    border: '1.5px solid var(--wx-border)',
-                    cursor: 'pointer',
+                    border: '1.5px solid var(--wx-border)', cursor: 'pointer',
                   }}
                 >
                   All
                 </button>
-                {sectors.map((s) => {
+                {sectors.map(s => {
                   const color = SECTOR_COLORS[s.slug] ?? '#6b7280';
                   const active = filters.sector === s.slug;
                   return (
                     <button
                       key={s.slug}
                       type="button"
-                      onClick={() => setFilters((f) => ({ ...f, sector: active ? '' : s.slug }))}
+                      onClick={() => setFilters(f => ({ ...f, sector: active ? '' : s.slug }))}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold"
                       style={{
                         background: active ? color : `${color}10`,
@@ -543,13 +457,12 @@ export default function WebinarsPage(): JSX.Element {
                 })}
                 <button
                   type="button"
-                  onClick={() => setFilters((f) => ({ ...f, upcomingOnly: !f.upcomingOnly }))}
+                  onClick={() => setFilters(f => ({ ...f, upcomingOnly: !f.upcomingOnly }))}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
                   style={{
                     background: filters.upcomingOnly ? 'var(--wx-teal-pale)' : 'var(--wx-surface)',
                     color: filters.upcomingOnly ? 'var(--wx-teal)' : 'var(--wx-muted)',
-                    border: '1.5px solid var(--wx-border)',
-                    cursor: 'pointer',
+                    border: '1.5px solid var(--wx-border)', cursor: 'pointer',
                   }}
                 >
                   <CalendarDays size={12} /> Upcoming only
@@ -559,7 +472,7 @@ export default function WebinarsPage(): JSX.Element {
           </div>
         </div>
 
-        {/* ─── Results area ─── */}
+        {/* Results area */}
         <div className="wx-container" style={{ paddingTop: '1.5rem', paddingBottom: '3rem' }}>
           {/* Result count + active chips */}
           <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -571,7 +484,7 @@ export default function WebinarsPage(): JSX.Element {
                 {filters.q ? <> matching <em>"{filters.q}"</em></> : ''}
               </p>
             )}
-            {activeChips.map((chip) => (
+            {activeChips.map(chip => (
               <FilterChip key={chip.label} label={chip.label} onRemove={chip.clear} />
             ))}
             {activeChips.length > 1 && (
@@ -586,28 +499,20 @@ export default function WebinarsPage(): JSX.Element {
           </div>
 
           {/* Grid */}
-          <div
-            className={
-              gridView
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'
-                : 'grid grid-cols-1 gap-3'
-            }
-          >
+          <div className={gridView ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'grid grid-cols-1 gap-3'}>
             {loading ? (
               <SkeletonCards count={PAGE_SIZE} />
             ) : events.length === 0 ? (
               <EmptyState query={filters.q} onClear={clearFilters} />
             ) : (
-              events.map((event) => (
+              events.map(event => (
                 <WebinarCard
                   key={event.id}
                   event={event}
-                  featured={event.is_featured === true}
-                  compact={!gridView}
+                  variant={event.is_featured ? 'featured' : gridView ? 'default' : 'compact'}
                 />
               ))
             )}
-
             {loadingMore && <SkeletonCards count={3} />}
           </div>
 
@@ -618,11 +523,8 @@ export default function WebinarsPage(): JSX.Element {
                 onClick={loadMore}
                 className="flex items-center gap-2 px-8 py-3 rounded-xl font-semibold text-sm transition-all"
                 style={{
-                  background: 'var(--wx-white)',
-                  border: '1.5px solid var(--wx-border)',
-                  color: 'var(--wx-ink)',
-                  cursor: 'pointer',
-                  boxShadow: 'var(--shadow-sm)',
+                  background: 'var(--wx-white)', border: '1.5px solid var(--wx-border)',
+                  color: 'var(--wx-ink)', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
                 }}
               >
                 <TrendingUp size={16} style={{ color: 'var(--wx-teal)' }} />
@@ -646,10 +548,7 @@ export default function WebinarsPage(): JSX.Element {
 
           {/* Error */}
           {error && (
-            <div
-              className="text-center py-10 text-sm"
-              style={{ color: '#DC2626' }}
-            >
+            <div className="text-center py-10 text-sm" style={{ color: '#DC2626' }}>
               {error} —{' '}
               <button
                 onClick={() => void fetchEvents(filters, 0)}
