@@ -12,7 +12,28 @@ import {
   Play,
   Video,
 } from 'lucide-react';
-import type { WebinarEvent } from '../lib/types';
+interface WebinarEvent {
+  id: number | string;
+  slug: string;
+  title: string;
+  host_name?: string;
+  start_time?: string;
+  sector_slug?: string;
+  sector_name?: string;
+  event_url?: string;
+  registration_url?: string;
+  is_featured?: boolean;
+  is_verified?: boolean;
+  is_sponsored?: boolean;
+  sponsor_url?: string;
+  sponsor_cta?: string;
+  view_count?: number;
+  save_count?: number;
+  tags?: unknown;
+  thumbnail_url?: string;
+  duration_minutes?: number;
+  content_type?: 'webinar' | 'podcast' | 'live_event';
+}
 
 /* ─────────────────────────────────────────────────────
    Types
