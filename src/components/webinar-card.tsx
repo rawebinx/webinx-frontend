@@ -1,298 +1,542 @@
-// src/components/webinar-card.tsx — WebinX Webinar Card v3
-// Wishlist heart button + Verified host badge added.
+import { useState, useCallback, memo } from 'react';
+import { Link } from 'wouter';
+import {
+  Heart,
+  Eye,
+  Clock,
+  Calendar,
+  Users,
+  ExternalLink,
+  BadgeCheck,
+  Bookmark,
+  Play,
+  Video,
+} from 'lucide-react';
+import type { WebinarEvent } from '../lib/types';
 
-import { Link } from "wouter";
-import { useState, useCallback } from "react";
-import type { WebinarEvent } from "../lib/api";
-import { formatShortDate, daysUntil, isUpcoming, isWishlisted, toggleWishlist } from "../lib/api";
-
-// ── Sector accent colours ──────────────────────────────────────────
-const SECTOR_COLOR: Record<string, string> = {
-  ai:         "#6366f1",
-  technology: "#3b82f6",
-  finance:    "#10b981",
-  marketing:  "#f97316",
-  startup:    "#8b5cf6",
-  hr:         "#f43f5e",
-  healthcare: "#14b8a6",
-  education:  "#f59e0b",
-  general:    "#94a3b8",
-};
-
-function sectorColor(slug: string): string {
-  const key = (slug || "general").toLowerCase();
-  return SECTOR_COLOR[key] ?? SECTOR_COLOR.general;
-}
-
-// ── Wishlist heart button ─────────────────────────────────────────
-function WishlistButton({ slug }: { slug: string }) {
-  const [saved, setSaved] = useState(() => isWishlisted(slug));
-
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const added = toggleWishlist(slug);
-    setSaved(added);
-  }, [slug]);
-
-  return (
-    <button
-      onClick={handleClick}
-      title={saved ? "Remove from wishlist" : "Save to wishlist"}
-      className="flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110 active:scale-95"
-      style={{
-        background: saved ? "#fee2e2" : "transparent",
-        border: `1.5px solid ${saved ? "#fca5a5" : "#e5e7eb"}`,
-      }}
-      aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        width="13"
-        height="13"
-        fill={saved ? "#ef4444" : "none"}
-        stroke={saved ? "#ef4444" : "#9ca3af"}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-      </svg>
-    </button>
-  );
-}
-
-// ── Verified badge ────────────────────────────────────────────────
-function VerifiedBadge() {
-  return (
-    <span
-      title="Verified Host"
-      className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full"
-      style={{ background: "#dbeafe", color: "#1d4ed8" }}
-    >
-      <svg viewBox="0 0 24 24" width="10" height="10" fill="#1d4ed8">
-        <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-      </svg>
-      Verified
-    </span>
-  );
-}
-
-// ── Host initials avatar ───────────────────────────────────────────
-function HostAvatar({ name }: { name: string }) {
-  const initials = name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-  return (
-    <span
-      style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.03em" }}
-      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 text-gray-600 shrink-0"
-    >
-      {initials || "?"}
-    </span>
-  );
-}
-
-// ── Countdown badge ────────────────────────────────────────────────
-function CountdownBadge({ startTime }: { startTime: string | null | undefined }) {
-  if (!startTime) return null;
-  const days = daysUntil(startTime);
-  const upcoming = isUpcoming(startTime);
-
-  if (!upcoming) {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
-        Ended
-      </span>
-    );
-  }
-  if (days === null) return null;
-  if (days === 0) {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">
-        Today
-      </span>
-    );
-  }
-  if (days === 1) {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
-        Tomorrow
-      </span>
-    );
-  }
-  if (days <= 7) {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
-        In {days} days
-      </span>
-    );
-  }
-  return null;
-}
-
-// ── Main card component ───────────────────────────────────────────
+/* ─────────────────────────────────────────────────────
+   Types
+───────────────────────────────────────────────────── */
 interface WebinarCardProps {
-  webinar: Partial<WebinarEvent> & { is_verified?: boolean; save_count?: number };
+  event: WebinarEvent;
+  featured?: boolean;
   compact?: boolean;
 }
 
-export function WebinarCard({ webinar, compact = false }: WebinarCardProps) {
-  const title       = webinar.title       || "Untitled Webinar";
-  const slug        = webinar.slug        || "";
-  const hostName    = webinar.host_name   || "Unknown Host";
-  const startTime   = webinar.start_time  ?? null;
-  const sectorName  = webinar.sector_name || "General";
-  const sectorSlug  = webinar.sector_slug || "general";
-  const isFeatured  = Boolean(webinar.is_featured);
-  const isSponsored = Boolean(webinar.is_sponsored);
-  const isVerified  = Boolean((webinar as any).is_verified);
-  const saveCount   = Number((webinar as any).save_count ?? 0);
-  const sponsorCta  = webinar.sponsor_cta || "Register Now";
-  const accent      = sectorColor(sectorSlug);
-  const dateStr     = formatShortDate(startTime);
-  const upcoming    = isUpcoming(startTime);
+/* ─────────────────────────────────────────────────────
+   Constants
+───────────────────────────────────────────────────── */
+const SECTOR_COLORS: Record<string, string> = {
+  ai:           '#6366f1',
+  technology:   '#3b82f6',
+  finance:      '#10b981',
+  marketing:    '#f97316',
+  startup:      '#8b5cf6',
+  hr:           '#f43f5e',
+  healthcare:   '#14b8a6',
+  education:    '#f59e0b',
+};
 
-  // Prefer url (already sanitized by normalizeEvent), then registration_url, then event_url
-  // All three have passed through safeExternalUrl — no webinx.in URLs will appear here
-  const externalUrl = webinar.url || webinar.registration_url || webinar.event_url || "";
+const SECTOR_BG: Record<string, string> = {
+  ai:           'rgba(99,102,241,0.08)',
+  technology:   'rgba(59,130,246,0.08)',
+  finance:      'rgba(16,185,129,0.08)',
+  marketing:    'rgba(249,115,22,0.08)',
+  startup:      'rgba(139,92,246,0.08)',
+  hr:           'rgba(244,63,94,0.08)',
+  healthcare:   'rgba(20,184,166,0.08)',
+  education:    'rgba(245,158,11,0.08)',
+};
 
-  const cleanTags = (webinar.tags || [])
-    .filter((t) => t && typeof t === "string" && !t.startsWith("<") && !t.includes("="))
-    .slice(0, 3);
+const SECTOR_ICONS: Record<string, string> = {
+  ai: '🤖', technology: '💻', finance: '💹',
+  marketing: '📣', startup: '🚀', hr: '🤝',
+  healthcare: '🏥', education: '🎓',
+};
 
+/* ─────────────────────────────────────────────────────
+   Platform badge detection
+───────────────────────────────────────────────────── */
+function detectPlatform(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const u = url.toLowerCase();
+  if (u.includes('zoom.us') || u.includes('zoom.com')) return 'Zoom';
+  if (u.includes('meet.google') || u.includes('g.co/meet')) return 'Google Meet';
+  if (u.includes('teams.microsoft') || u.includes('teams.live')) return 'Teams';
+  if (u.includes('youtube.com') || u.includes('youtu.be')) return 'YouTube';
+  if (u.includes('webinarjam') || u.includes('webinar.jam')) return 'WebinarJam';
+  if (u.includes('demio.com')) return 'Demio';
+  if (u.includes('airmeet.com')) return 'Airmeet';
+  if (u.includes('hopin.com')) return 'Hopin';
+  if (u.includes('streamyard.com')) return 'StreamYard';
+  return null;
+}
+
+const PLATFORM_COLORS: Record<string, string> = {
+  'Zoom': '#2D8CFF',
+  'Google Meet': '#34A853',
+  'Teams': '#5058D2',
+  'YouTube': '#FF0000',
+  'WebinarJam': '#E03D2B',
+  'Demio': '#6C5CE7',
+  'Airmeet': '#FB5343',
+  'Hopin': '#7B61FF',
+  'StreamYard': '#0E71EB',
+};
+
+/* ─────────────────────────────────────────────────────
+   Countdown
+───────────────────────────────────────────────────── */
+function useCountdown(startTime: string | null | undefined): string | null {
+  if (!startTime) return null;
+  const diff = new Date(startTime).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const mins = Math.floor((diff % 3_600_000) / 60_000);
+  if (days > 0) return `in ${days}d ${hours}h`;
+  if (hours > 0) return `in ${hours}h ${mins}m`;
+  if (mins > 0) return `in ${mins}m`;
+  return 'Starting soon';
+}
+
+/* ─────────────────────────────────────────────────────
+   Date formatter (IST)
+───────────────────────────────────────────────────── */
+function formatEventDate(isoString: string | null | undefined): string {
+  if (!isoString) return '';
+  try {
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }).format(new Date(isoString));
+  } catch {
+    return '';
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   Thumbnail / gradient placeholder
+───────────────────────────────────────────────────── */
+function EventThumbnail({
+  thumbnailUrl,
+  sectorSlug,
+  title,
+}: {
+  thumbnailUrl?: string | null;
+  sectorSlug?: string | null;
+  title: string;
+}): JSX.Element {
+  const [imgError, setImgError] = useState<boolean>(false);
+  const color = SECTOR_COLORS[sectorSlug ?? ''] ?? '#0D4F6B';
+  const icon = SECTOR_ICONS[sectorSlug ?? ''] ?? '📚';
+
+  if (thumbnailUrl && !imgError) {
+    return (
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
+        <img
+          src={thumbnailUrl}
+          alt={title}
+          loading="lazy"
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
+  /* Sector gradient placeholder */
   return (
     <div
-      className={`relative flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${compact ? "text-xs" : ""}`}
-      style={{ borderLeftWidth: "3px", borderLeftColor: accent }}
+      className="relative w-full flex items-center justify-center"
+      style={{
+        aspectRatio: '16/9',
+        background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
+        borderBottom: `1px solid ${color}20`,
+      }}
     >
+      {/* Play / video icon */}
+      <div
+        className="flex items-center justify-center rounded-full"
+        style={{
+          width: 44,
+          height: 44,
+          background: `${color}18`,
+          border: `1.5px solid ${color}30`,
+        }}
+      >
+        <span style={{ fontSize: 22 }}>{icon}</span>
+      </div>
+
+      {/* Decorative dots */}
+      <div
+        aria-hidden
+        className="absolute top-2 right-3 text-4xl opacity-10 select-none pointer-events-none"
+        style={{ color, fontFamily: 'monospace', letterSpacing: -4 }}
+      >
+        ○○○
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+   Host avatar (initials)
+───────────────────────────────────────────────────── */
+function HostAvatar({
+  name,
+  sectorSlug,
+  size = 28,
+}: {
+  name: string;
+  sectorSlug?: string | null;
+  size?: number;
+}): JSX.Element {
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+  const color = SECTOR_COLORS[sectorSlug ?? ''] ?? '#0D4F6B';
+
+  return (
+    <span
+      className="flex-shrink-0 flex items-center justify-center rounded-full font-semibold select-none"
+      style={{
+        width: size,
+        height: size,
+        background: `${color}18`,
+        color,
+        fontSize: size * 0.35,
+        border: `1.5px solid ${color}30`,
+        fontFamily: 'var(--font-sans)',
+      }}
+    >
+      {initials || '?'}
+    </span>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+   Wishlist toggle (localStorage)
+───────────────────────────────────────────────────── */
+function useWishlist(slug: string): [boolean, () => void] {
+  const key = 'webinx_wishlist';
+
+  const read = (): string[] => {
+    try {
+      return JSON.parse(localStorage.getItem(key) ?? '[]') as string[];
+    } catch {
+      return [];
+    }
+  };
+
+  const [saved, setSaved] = useState<boolean>(() => read().includes(slug));
+
+  const toggle = useCallback((): void => {
+    const current = read();
+    const next = current.includes(slug)
+      ? current.filter((s) => s !== slug)
+      : [...current, slug];
+    localStorage.setItem(key, JSON.stringify(next));
+    setSaved(next.includes(slug));
+    window.dispatchEvent(new Event('storage'));
+  }, [slug]);
+
+  return [saved, toggle];
+}
+
+/* ─────────────────────────────────────────────────────
+   Main card component
+───────────────────────────────────────────────────── */
+const WebinarCard = memo(function WebinarCard({
+  event,
+  featured = false,
+  compact = false,
+}: WebinarCardProps): JSX.Element {
+  const [saved, toggleSaved] = useWishlist(event.slug);
+  const countdown = useCountdown(event.start_time);
+  const platform = detectPlatform(event.registration_url ?? event.event_url);
+  const sectorSlug = event.sector_slug ?? '';
+  const sectorColor = SECTOR_COLORS[sectorSlug] ?? '#0D4F6B';
+  const dateStr = formatEventDate(event.start_time);
+
+  const handleWishlistClick = useCallback(
+    (e: React.MouseEvent): void => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSaved();
+    },
+    [toggleSaved],
+  );
+
+  return (
+    <article
+      className="wx-card flex flex-col relative overflow-hidden group"
+      style={{
+        borderLeft: `3px solid ${sectorColor}`,
+        ...(featured
+          ? {
+              borderColor: 'var(--wx-gold)',
+              boxShadow: '0 2px 12px rgba(232,180,74,0.12), var(--shadow-sm)',
+            }
+          : {}),
+      }}
+    >
+      {/* Thumbnail */}
+      {!compact && (
+        <Link href={`/webinar/${event.slug}`} style={{ textDecoration: 'none' }}>
+          <EventThumbnail
+            thumbnailUrl={event.thumbnail_url}
+            sectorSlug={sectorSlug}
+            title={event.title}
+          />
+        </Link>
+      )}
+
       {/* Featured ribbon */}
-      {isFeatured && (
+      {featured && (
         <div
-          className="absolute top-3 right-10 flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-          style={{ background: "#fef3c7", color: "#92400e" }}
+          className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold z-10"
+          style={{ background: 'var(--wx-gold)', color: 'var(--wx-ink)' }}
         >
-          <span style={{ fontSize: "11px" }}>⭐</span> Featured
+          <span style={{ fontSize: 10 }}>★</span>
+          Featured
         </div>
       )}
 
-      {/* Sponsored label */}
-      {isSponsored && !isFeatured && (
-        <div className="absolute top-3 right-10 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
-          Sponsored
-        </div>
-      )}
+      {/* Wishlist button */}
+      <button
+        onClick={handleWishlistClick}
+        aria-label={saved ? 'Remove from wishlist' : 'Save event'}
+        className="absolute top-2 rounded-full flex items-center justify-center transition-all z-10"
+        style={{
+          right: featured ? 80 : 8,
+          top: compact ? 12 : 44,
+          width: 32,
+          height: 32,
+          background: saved ? 'rgba(232,180,74,0.15)' : 'rgba(255,255,255,0.9)',
+          border: `1.5px solid ${saved ? 'var(--wx-gold)' : 'var(--wx-border)'}`,
+          backdropFilter: 'blur(8px)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <Heart
+          size={14}
+          fill={saved ? 'var(--wx-gold)' : 'none'}
+          stroke={saved ? 'var(--wx-gold-dark)' : 'var(--wx-muted)'}
+          strokeWidth={2}
+        />
+      </button>
 
-      {/* Wishlist heart */}
-      {slug && (
-        <div className="absolute top-3 right-3">
-          <WishlistButton slug={slug} />
-        </div>
-      )}
-
-      {/* Card body */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
-
-        {/* Sector + countdown row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <a
+      {/* Content */}
+      <div className="flex flex-col flex-1 p-4">
+        {/* Sector + platform row */}
+        <div className="flex items-center justify-between mb-2">
+          <Link
             href={`/sector/${sectorSlug}`}
-            onClick={(e) => e.stopPropagation()}
-            className="text-xs font-medium px-2 py-0.5 rounded-full transition-colors hover:opacity-80"
-            style={{ background: `${accent}18`, color: accent }}
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{
+              background: SECTOR_BG[sectorSlug] ?? 'var(--wx-teal-pale)',
+              color: sectorColor,
+              textDecoration: 'none',
+            }}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
-            {sectorName}
-          </a>
-          <CountdownBadge startTime={startTime} />
+            <span style={{ fontSize: 11 }}>{SECTOR_ICONS[sectorSlug] ?? '📚'}</span>
+            {event.sector_name ?? sectorSlug}
+          </Link>
+
+          {platform && (
+            <span
+              className="text-xs font-medium px-2 py-0.5 rounded-full"
+              style={{
+                background: `${PLATFORM_COLORS[platform] ?? '#6b7280'}12`,
+                color: PLATFORM_COLORS[platform] ?? '#6b7280',
+                border: `1px solid ${PLATFORM_COLORS[platform] ?? '#6b7280'}22`,
+              }}
+            >
+              {platform}
+            </span>
+          )}
         </div>
 
         {/* Title */}
-        {slug ? (
-          <Link href={`/webinar/${slug}`}>
-            <h3
-              className={`font-semibold text-gray-900 leading-snug line-clamp-2 cursor-pointer hover:text-purple-700 transition-colors ${compact ? "text-sm" : "text-base"}`}
-            >
-              {title}
-            </h3>
-          </Link>
-        ) : (
-          <h3 className={`font-semibold text-gray-900 leading-snug line-clamp-2 ${compact ? "text-sm" : "text-base"}`}>
-            {title}
+        <Link href={`/webinar/${event.slug}`} style={{ textDecoration: 'none' }}>
+          <h3
+            className="font-semibold mb-2 leading-snug line-clamp-2 group-hover:text-wx-teal transition-colors"
+            style={{
+              fontSize: compact ? '0.8125rem' : '0.875rem',
+              color: 'var(--wx-ink)',
+              fontFamily: 'var(--font-sans)',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {event.title}
           </h3>
-        )}
+        </Link>
 
-        {/* Host + date */}
-        <div className="flex flex-col gap-1 text-sm text-gray-500">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <HostAvatar name={hostName} />
-            <span className="truncate">{hostName}</span>
-            {isVerified && <VerifiedBadge />}
+        {/* Date + countdown */}
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
+            <Calendar size={12} strokeWidth={1.75} />
+            <span>{dateStr || 'Date TBD'}</span>
           </div>
-          {dateStr && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-gray-400">📅</span>
-              <span>{dateStr}</span>
-              {saveCount > 0 && (
-                <span className="ml-auto text-xs text-red-400" title="People who saved this">
-                  ♥ {saveCount}
-                </span>
-              )}
-            </div>
+          {countdown && (
+            <span
+              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: 'var(--wx-teal-pale)', color: 'var(--wx-teal)' }}
+            >
+              {countdown}
+            </span>
+          )}
+        </div>
+
+        {/* Host row */}
+        <div className="flex items-center gap-2 mb-3">
+          <HostAvatar name={event.host_name ?? 'Host'} sectorSlug={sectorSlug} size={24} />
+          <div className="flex items-center gap-1 min-w-0">
+            <span
+              className="text-xs truncate"
+              style={{ color: 'var(--wx-muted)', maxWidth: 160 }}
+            >
+              {event.host_name ?? 'Unknown Host'}
+            </span>
+            {event.is_verified && (
+              <BadgeCheck size={13} style={{ color: 'var(--wx-teal)', flexShrink: 0 }} />
+            )}
+          </div>
+        </div>
+
+        {/* Micro stats */}
+        <div className="flex items-center gap-3 mb-3">
+          {(event.view_count ?? 0) > 0 && (
+            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
+              <Eye size={11} strokeWidth={1.75} />
+              {(event.view_count ?? 0).toLocaleString('en-IN')}
+            </span>
+          )}
+          {(event.save_count ?? 0) > 2 && (
+            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
+              <Bookmark size={11} strokeWidth={1.75} />
+              {event.save_count} saved
+            </span>
+          )}
+          {event.duration_minutes && (
+            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
+              <Clock size={11} strokeWidth={1.75} />
+              {event.duration_minutes} min
+            </span>
           )}
         </div>
 
         {/* Tags */}
-        {cleanTags.length > 0 && !compact && (
-          <div className="flex flex-wrap gap-1">
-            {cleanTags.map((tag) => (
+        {Array.isArray(event.tags) && event.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {(event.tags as string[]).slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded"
+                className="text-xs px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--wx-surface)',
+                  color: 'var(--wx-muted)',
+                  border: '1px solid var(--wx-border)',
+                }}
               >
                 {tag}
               </span>
             ))}
           </div>
         )}
-      </div>
 
-      {/* CTA footer */}
-      <div className="px-4 pb-4">
-        {isSponsored && externalUrl ? (
-          <a
-            href={externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block w-full text-center text-sm font-semibold py-2 px-3 rounded-lg transition-colors text-white"
-            style={{ background: accent }}
-          >
-            {sponsorCta}
-          </a>
-        ) : slug ? (
-          // Always navigate to detail page — that page shows the real external CTA
-          <Link href={`/webinar/${slug}`}>
-            <span
-              className="block w-full text-center text-sm font-medium py-2 px-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50"
-              style={{ borderColor: `${accent}60`, color: accent }}
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* CTA footer */}
+        <div
+          className="flex items-center gap-2 pt-3"
+          style={{ borderTop: '1px solid var(--wx-border-light)' }}
+        >
+          {event.is_sponsored && event.sponsor_cta && event.sponsor_url ? (
+            <a
+              href={event.sponsor_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: 'var(--wx-gold)',
+                color: 'var(--wx-ink)',
+                textDecoration: 'none',
+              }}
+              onClick={(e) => e.stopPropagation()}
             >
-              {upcoming ? "View & Register →" : "View Details →"}
-            </span>
-          </Link>
-        ) : externalUrl ? (
-          <a
-            href={externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block w-full text-center text-sm font-medium py-2 px-3 rounded-lg border transition-colors hover:bg-gray-50"
-            style={{ borderColor: `${accent}60`, color: accent }}
+              {event.sponsor_cta}
+              <ExternalLink size={11} />
+            </a>
+          ) : featured ? (
+            <a
+              href={event.registration_url ?? event.event_url ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: 'var(--wx-teal)',
+                color: '#fff',
+                textDecoration: 'none',
+                boxShadow: '0 2px 8px rgba(13,79,107,0.2)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Video size={12} />
+              Register Now
+              <ExternalLink size={11} />
+            </a>
+          ) : (
+            <a
+              href={event.registration_url ?? event.event_url ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: 'transparent',
+                color: 'var(--wx-teal)',
+                textDecoration: 'none',
+                border: '1.5px solid var(--wx-teal)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Register Free
+              <ExternalLink size={11} />
+            </a>
+          )}
+
+          <Link
+            href={`/webinar/${event.slug}`}
+            className="flex items-center justify-center rounded-lg transition-colors"
+            style={{
+              width: 34,
+              height: 34,
+              background: 'var(--wx-surface)',
+              border: '1px solid var(--wx-border)',
+              color: 'var(--wx-muted)',
+              textDecoration: 'none',
+              flexShrink: 0,
+            }}
+            title="View details"
           >
-            {upcoming ? "Register →" : "View Details →"}
-          </a>
-        ) : null}
+            <Play size={13} strokeWidth={2} />
+          </Link>
+        </div>
       </div>
-    </div>
+    </article>
   );
-}
+});
+
+export default WebinarCard;
