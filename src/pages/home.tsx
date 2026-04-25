@@ -67,6 +67,17 @@ const CITIES = [
   { name: 'Ahmedabad', slug: 'ahmedabad', emoji: '🦁' },
 ];
 
+const FALLBACK_SECTORS = [
+  { id:1, slug:'ai',         name:'AI',          event_count:0 },
+  { id:2, slug:'technology', name:'IT & SaaS',   event_count:0 },
+  { id:3, slug:'finance',    name:'Finance',     event_count:0 },
+  { id:4, slug:'marketing',  name:'Marketing',   event_count:0 },
+  { id:5, slug:'startup',    name:'Startup',     event_count:0 },
+  { id:6, slug:'hr',         name:'HR',          event_count:0 },
+  { id:7, slug:'healthcare', name:'Healthcare',  event_count:0 },
+  { id:8, slug:'education',  name:'Education',   event_count:0 },
+];
+
 const PLACEHOLDER_PHRASES = [
   'AI webinars this week…',
   'finance for startups…',
@@ -397,14 +408,14 @@ export default function HomePage(): JSX.Element {
       const [stats, featured, trending, sectors] = await Promise.all([
         getStats().catch(() => null),
         getFeaturedEvents().catch(() => []),
-        getTrendingEvents().catch(() => []),
-        getSectors().catch(() => []),
+        getTrendingEvents().catch(() => []) .then(t => t.length > 0 ? t : getFeaturedEvents().catch(() => [])),
+        getSectors().catch(() => FALLBACK_SECTORS),
       ]);
       setData({
         stats: stats ?? null,
         featured: featured ?? [],
         trending: trending ?? [],
-        sectors: sectors ?? [],
+        sectors: (sectors && sectors.length > 0) ? sectors : FALLBACK_SECTORS,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
