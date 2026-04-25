@@ -17,8 +17,30 @@ import {
   Globe,
   Award,
 } from 'lucide-react';
-import { apiFetch } from '../api';
 import WebinarCard from '../components/webinar-card';
+/* ── Self-contained API helper (no external import needed) ── */
+const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE
+  ?? 'https://webinx-backend.onrender.com';
+
+async function apiFetch(path: string, options?: RequestInit): Promise<unknown> {
+  const url = `${API_BASE}${path}`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 20_000);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) } });
+      clearTimeout(tid);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json() as unknown;
+    } catch (err) {
+      clearTimeout(tid);
+      if (attempt === 2) throw err;
+    }
+  }
+  throw new Error('apiFetch failed after 3 attempts');
+}
+
 
 interface WebinarEvent {
   id: number | string;
