@@ -1,0 +1,635 @@
+// src/pages/webinar.tsx
+// WebinX — Webinar Detail Page — production version
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link } from 'wouter';
+import { Helmet } from 'react-helmet-async';
+import {
+  getEventBySlug,
+  getRelatedEvents,
+  submitAlert,
+  buildCalendarUrl,
+  getBestRegistrationUrl,
+  formatEventDate,
+  formatShortDate,
+  getCountdownLabel,
+  getSectorConfig,
+  detectPlatform,
+  PLATFORM_LABELS,
+  toggleLocalWishlist,
+  isWishlisted,
+  type WebinarEvent,
+} from '@/lib/api';
+import WebinarCard from '@/components/webinar-card';
+import AffiliateToolsSection from '@/components/AffiliateToolCard';
+
+// ─── Schema.org Event Markup ──────────────────────────────────────────────────
+
+function EventSchema({ event, regUrl }: { event: WebinarEvent; regUrl: string | null }) {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    '@id': `https://webinx.in/webinar/${event.slug}`,
+    name: event.title,
+    description: event.description,
+    startDate: event.start_time,
+    endDate: event.end_time ?? undefined,
+    eventAttendanceMode:
+      event.content_type === 'live_event' && !event.is_online
+        ? 'https://schema.org/OfflineEventAttendanceMode'
+        : 'https://schema.org/OnlineEventAttendanceMode',
+    eventStatus: 'https://schema.org/EventScheduled',
+    organizer: {
+      '@type': 'Person',
+      name: event.host_name,
+    },
+    ...(regUrl ? { url: regUrl } : {}),
+    isAccessibleForFree: !event.ticket_price_inr,
+    inLanguage: 'en-IN',
+    ...(event.venue_name
+      ? {
+          location: {
+            '@type': 'Place',
+            name: event.venue_name,
+            address: event.venue_address ?? event.venue_city ?? '',
+          },
+        }
+      : {}),
+    image: event.thumbnail_url
+      ? [event.thumbnail_url]
+      : ['https://webinx.in/og-default.jpg'],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
+// ─── Social Share ─────────────────────────────────────────────────────────────
+
+function SocialShare({ event }: { event: WebinarEvent }) {
+  const url = encodeURIComponent(`https://webinx.in/webinar/${event.slug}`);
+  const text = encodeURIComponent(`${event.title} — check out this webinar on WeBinX!`);
+
+  const shareLinks = {
+    twitter: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+    whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${event.title}\n${decodeURIComponent(url)}`)}`,
+  };
+
+  const handleShare = useCallback(
+    (platform: keyof typeof shareLinks) => {
+      window.open(shareLinks[platform], '_blank', 'noopener,noreferrer,width=600,height=400');
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [event.slug]
+  );
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(`https://webinx.in/webinar/${event.slug}`);
+      alert('Link copied!');
+    } catch {
+      // fallback
+    }
+  }, [event.slug]);
+
+  const btnStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    padding: '8px 0',
+    border: '1px solid #E5E7EB',
+    borderRadius: 9,
+    background: '#fff',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    flex: 1,
+    color: '#374151',
+    fontFamily: 'inherit',
+    transition: 'border-color 0.15s, background 0.15s',
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>
+        Share this event
+      </div>
+      <div style={{ display: 'flex', gap: 7 }}>
+        <button style={btnStyle} onClick={() => handleShare('twitter')}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#1DA1F2'; (e.currentTarget as HTMLElement).style.color = '#1DA1F2'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+          𝕏
+        </button>
+        <button style={btnStyle} onClick={() => handleShare('linkedin')}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0A66C2'; (e.currentTarget as HTMLElement).style.color = '#0A66C2'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+          in
+        </button>
+        <button style={btnStyle} onClick={() => handleShare('whatsapp')}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#25D366'; (e.currentTarget as HTMLElement).style.color = '#25D366'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+          WA
+        </button>
+        <button style={btnStyle} onClick={handleCopy}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0D4F6B'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; }}>
+          🔗
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Alert Form ───────────────────────────────────────────────────────────────
+
+function AlertForm({ eventSlug }: { eventSlug: string }) {
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!email.trim() || state === 'loading') return;
+      setState('loading');
+      try {
+        await submitAlert({ email: email.trim(), event_slug: eventSlug });
+        setState('done');
+      } catch {
+        setState('error');
+      }
+    },
+    [email, eventSlug, state]
+  );
+
+  if (state === 'done') {
+    return (
+      <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 12, fontSize: 13, color: '#065f46' }}>
+        ✓ You'll be notified before this event starts!
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>
+        🔔 Get reminder before event
+      </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 0 }}>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          required
+          style={{
+            flex: 1,
+            padding: '9px 12px',
+            border: '1.5px solid #E5E7EB',
+            borderRight: 'none',
+            borderRadius: '9px 0 0 9px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            outline: 'none',
+            color: '#111827',
+          }}
+        />
+        <button
+          type="submit"
+          disabled={state === 'loading'}
+          style={{
+            padding: '9px 14px',
+            background: '#0D4F6B',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '0 9px 9px 0',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {state === 'loading' ? '...' : 'Notify'}
+        </button>
+      </form>
+      {state === 'error' && (
+        <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>Something went wrong. Try again.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Skeleton Loader ──────────────────────────────────────────────────────────
+
+function SkeletonLoader() {
+  const pulse: React.CSSProperties = {
+    background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
+    backgroundSize: '200% 100%',
+    animation: 'skeleton-pulse 1.4s ease infinite',
+    borderRadius: 8,
+  };
+  return (
+    <>
+      <style>{`
+        @keyframes skeleton-pulse {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 24px' }}>
+        <div style={{ ...pulse, height: 32, width: '60%', marginBottom: 16 }} />
+        <div style={{ ...pulse, height: 20, width: '40%', marginBottom: 32 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32 }}>
+          <div>
+            <div style={{ ...pulse, height: 240, marginBottom: 20 }} />
+            <div style={{ ...pulse, height: 16, marginBottom: 10 }} />
+            <div style={{ ...pulse, height: 16, width: '85%', marginBottom: 10 }} />
+            <div style={{ ...pulse, height: 16, width: '70%' }} />
+          </div>
+          <div style={{ ...pulse, height: 400 }} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function WebinarPage() {
+  const { slug } = useParams<{ slug: string }>();
+
+  const [event, setEvent] = useState<WebinarEvent | null>(null);
+  const [related, setRelated] = useState<WebinarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [wishlisted, setWishlisted] = useState(false);
+
+  useEffect(() => {
+    if (!slug) return;
+    setLoading(true);
+    setError(null);
+
+    getEventBySlug(slug)
+      .then(ev => {
+        setEvent(ev);
+        setWishlisted(isWishlisted(ev.slug));
+        return getRelatedEvents(ev.slug, ev.sector_slug ?? undefined);
+      })
+      .then(rel => setRelated(rel.slice(0, 3)))
+      .catch(err => setError(String(err)))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  const handleWishlist = useCallback(() => {
+    if (!event) return;
+    const added = toggleLocalWishlist(event.slug);
+    setWishlisted(added);
+  }, [event]);
+
+  if (loading) return <SkeletonLoader />;
+
+  if (error || !event) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Event not found</h2>
+        <p style={{ color: '#6B7280', marginBottom: 24 }}>This event may have ended or been removed.</p>
+        <Link href="/webinars">
+          <button style={{ background: '#0D4F6B', color: '#fff', border: 'none', padding: '11px 24px', borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Browse all events →
+          </button>
+        </Link>
+      </div>
+    );
+  }
+
+  const sector = getSectorConfig(event.sector_slug ?? event.sector_name);
+  const regUrl = getBestRegistrationUrl(event);
+  const countdown = getCountdownLabel(event.start_time);
+  const calendarUrl = buildCalendarUrl(event);
+  const platform = detectPlatform(event.event_url ?? event.registration_url);
+
+  const canonicalUrl = `https://webinx.in/webinar/${event.slug}`;
+  const ogImage = event.thumbnail_url ?? 'https://webinx.in/og-default.jpg';
+  const ogDescription = event.description?.slice(0, 160) ?? event.title;
+
+  const ctaLabel =
+    event.content_type === 'podcast'
+      ? 'Listen Now'
+      : event.content_type === 'live_event'
+      ? event.ticket_price_inr
+        ? `Get Tickets — ₹${event.ticket_price_inr}`
+        : 'Get Tickets Free'
+      : 'Register Now — Free';
+
+  return (
+    <>
+      <Helmet>
+        <title>{event.title} | WeBinX</title>
+        <meta name="description" content={ogDescription} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={`${event.title} | WeBinX`} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:type" content="event" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={event.title} />
+        <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={ogImage} />
+      </Helmet>
+
+      <EventSchema event={event} regUrl={regUrl} />
+
+      {/* Hero Band */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${sector.bg} 0%, #fff 100%)`,
+          borderBottom: `3px solid ${sector.border}`,
+          padding: '32px 40px 28px',
+        }}
+      >
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          {/* Breadcrumb */}
+          <nav style={{ fontSize: 12.5, color: '#9CA3AF', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Link href="/" style={{ color: '#6B7280', textDecoration: 'none' }}>Home</Link>
+            <span>›</span>
+            <Link href="/webinars" style={{ color: '#6B7280', textDecoration: 'none' }}>Webinars</Link>
+            <span>›</span>
+            <Link href={`/sector/${event.sector_slug}`} style={{ color: sector.color, textDecoration: 'none' }}>
+              {sector.emoji} {sector.name}
+            </Link>
+            <span>›</span>
+            <span style={{ color: '#374151' }}>{event.title.slice(0, 40)}{event.title.length > 40 ? '…' : ''}</span>
+          </nav>
+
+          {/* Title + badges */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#111827', lineHeight: 1.3, flex: 1 }}>
+              {event.title}
+            </h1>
+            {event.is_featured && (
+              <span style={{ background: '#E8B44A', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 8, flexShrink: 0, marginTop: 6 }}>
+                ★ Featured
+              </span>
+            )}
+          </div>
+
+          {/* Meta row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <span
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                background: sector.bg, color: sector.color, fontWeight: 600, fontSize: 13,
+                padding: '5px 12px', borderRadius: 8,
+              }}
+            >
+              {sector.emoji} {sector.name}
+            </span>
+
+            <span style={{ fontSize: 13.5, color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+              📅 {formatEventDate(event.start_time)}
+              {countdown && (
+                <span style={{ background: '#E1F5EE', color: '#0D4F6B', fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
+                  {countdown}
+                </span>
+              )}
+            </span>
+
+            {platform !== 'other' && (
+              <span style={{ background: '#f3f4f6', color: '#374151', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 7 }}>
+                {PLATFORM_LABELS[platform]}
+              </span>
+            )}
+
+            <span style={{ fontSize: 12.5, color: '#9CA3AF' }}>👁 {event.view_count} views</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 40px 64px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 40, alignItems: 'start' }}>
+
+        {/* LEFT — Content */}
+        <div>
+          {/* Host card */}
+          <div style={{ background: '#f9fafb', border: '1px solid #E5E7EB', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: sector.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
+              {event.host_name.split(' ').slice(0,2).map(w => w[0]).join('')}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{event.host_name}</span>
+                {event.host_is_verified && (
+                  <span style={{ background: '#0D4F6B', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>✓ VERIFIED</span>
+                )}
+              </div>
+              <div style={{ fontSize: 12.5, color: '#6B7280', marginTop: 2 }}>Event Host</div>
+            </div>
+            {event.host_slug && (
+              <Link href={`/hosts/${event.host_slug}`}>
+                <button style={{ background: 'transparent', border: '1.5px solid #0D4F6B', color: '#0D4F6B', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  View Profile →
+                </button>
+              </Link>
+            )}
+          </div>
+
+          {/* Description */}
+          <div style={{ marginBottom: 28 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', marginBottom: 12 }}>About this event</h2>
+            <div style={{ fontSize: 15, color: '#374151', lineHeight: 1.75, whiteSpace: 'pre-line' }}>
+              {event.description}
+            </div>
+          </div>
+
+          {/* Podcast extras */}
+          {event.content_type === 'podcast' && (
+            <div style={{ background: '#f5f3ff', border: '1px solid #ede9fe', borderRadius: 12, padding: 16, marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {event.podcast_series && <div><span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 600 }}>SERIES</span><div style={{ fontWeight: 600, color: '#111827' }}>{event.podcast_series}</div></div>}
+              {event.episode_number && <div><span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 600 }}>EPISODE</span><div style={{ fontWeight: 600, color: '#111827' }}>#{event.episode_number}</div></div>}
+              {event.duration_minutes && <div><span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 600 }}>DURATION</span><div style={{ fontWeight: 600, color: '#111827' }}>{event.duration_minutes} min</div></div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4, width: '100%' }}>
+                {event.spotify_url && <a href={event.spotify_url} target="_blank" rel="noopener noreferrer" style={{ background: '#1DB954', color: '#fff', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Spotify</a>}
+                {event.apple_podcasts_url && <a href={event.apple_podcasts_url} target="_blank" rel="noopener noreferrer" style={{ background: '#8b5cf6', color: '#fff', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Apple Podcasts</a>}
+              </div>
+            </div>
+          )}
+
+          {/* Live event extras */}
+          {event.content_type === 'live_event' && (event.venue_name || event.venue_city) && (
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: 16, marginBottom: 24 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginBottom: 8 }}>📍 Venue</div>
+              {event.venue_name && <div style={{ fontWeight: 600, color: '#111827' }}>{event.venue_name}</div>}
+              {event.venue_address && <div style={{ fontSize: 13.5, color: '#6B7280', marginTop: 4 }}>{event.venue_address}</div>}
+              {event.venue_city && <div style={{ fontSize: 13, color: '#f97316', fontWeight: 600, marginTop: 4 }}>{event.venue_city}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                {event.is_hybrid && <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Hybrid</span>}
+                {event.is_online && <span style={{ background: '#ecfdf5', color: '#065f46', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Online Available</span>}
+                {event.max_attendees && <span style={{ background: '#f3f4f6', color: '#6B7280', fontSize: 11, padding: '3px 8px', borderRadius: 6 }}>Max {event.max_attendees} attendees</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Tags */}
+          {event.tags.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', marginBottom: 10 }}>Topics covered</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {event.tags.map(tag => (
+                  <span key={tag} style={{ background: '#F3F4F6', color: '#374151', fontSize: 13, padding: '5px 12px', borderRadius: 8 }}>{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT — Sticky Sidebar */}
+        <aside>
+          <div
+            style={{
+              position: 'sticky',
+              top: 80,
+              background: '#fff',
+              border: '1px solid #E5E7EB',
+              borderRadius: 18,
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+            }}
+          >
+            {/* Date summary */}
+            <div style={{ textAlign: 'center', paddingBottom: 12, borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 4 }}>
+                {event.content_type === 'podcast' ? 'Published' : 'Event Date'}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+                {formatShortDate(event.start_time)}
+              </div>
+              {countdown && (
+                <div style={{ background: '#E1F5EE', color: '#0D4F6B', fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 20, display: 'inline-block', marginTop: 6 }}>
+                  {countdown}
+                </div>
+              )}
+            </div>
+
+            {/* Main CTA */}
+            {regUrl ? (
+              <a href={regUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <button
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: '#0D4F6B',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 12,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                >
+                  {event.content_type === 'podcast' ? '▶ ' : '📹 '}
+                  {ctaLabel} ↗
+                </button>
+              </a>
+            ) : (
+              <button
+                disabled
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: '#f3f4f6',
+                  color: '#9CA3AF',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontSize: 14,
+                  cursor: 'not-allowed',
+                  fontFamily: 'inherit',
+                }}
+                title="No registration link available"
+              >
+                Registration Not Available
+              </button>
+            )}
+
+            {/* Secondary actions */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {/* Add to calendar */}
+              <a href={calendarUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <button style={{ width: '100%', padding: '9px 0', background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  📅 Calendar
+                </button>
+              </a>
+
+              {/* Wishlist */}
+              <button
+                onClick={handleWishlist}
+                style={{ padding: '9px 0', background: wishlisted ? '#fff1f2' : 'transparent', border: `1.5px solid ${wishlisted ? '#f43f5e' : '#E5E7EB'}`, borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: wishlisted ? '#f43f5e' : '#374151', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+              >
+                {wishlisted ? '♥ Saved' : '♡ Save'}
+              </button>
+            </div>
+
+            {/* Certificate link */}
+            <Link href={`/certificate/${event.slug}`}>
+              <button style={{ width: '100%', padding: '9px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: '#92400e', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                🎖 Get Certificate
+              </button>
+            </Link>
+
+            {/* Alert form */}
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+              <AlertForm eventSlug={event.slug} />
+            </div>
+
+            {/* Social share */}
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+              <SocialShare event={event} />
+            </div>
+
+            {/* Affiliate Tools */}
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+              <AffiliateToolsSection
+                sectorSlug={event.sector_slug ?? ''}
+                contentType={event.content_type ?? 'webinar'}
+                compact={true}
+              />
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Related Events */}
+      {related.length > 0 && (
+        <div style={{ background: '#f9fafb', padding: '48px 40px', borderTop: '1px solid #E5E7EB' }}>
+          <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>Related Events</h2>
+              <Link href={`/sector/${event.sector_slug}`} style={{ fontSize: 14, color: '#0D4F6B', fontWeight: 600, textDecoration: 'none' }}>
+                View all {sector.name} events →
+              </Link>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+              {related.map(rel => (
+                <WebinarCard key={rel.id} event={rel} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
