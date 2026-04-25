@@ -653,6 +653,8 @@ export const SECTOR_CONFIG: Record<string, SectorConfig> = {
   healthcare: { slug: 'healthcare', name: 'Healthcare',  emoji: '🏥', color: '#14b8a6', bg: '#f0fdfa', border: '#14b8a6' },
   education:  { slug: 'education',  name: 'Education',   emoji: '📚', color: '#f59e0b', bg: '#fffbeb', border: '#f59e0b' },
   general:    { slug: 'general',    name: 'General',     emoji: '📋', color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' },
+  tech:       { slug: 'tech',       name: 'Tech',        emoji: '⚙️',  color: '#3b82f6', bg: '#eff6ff', border: '#3b82f6' },
+  finance:    { slug: 'finance',    name: 'Finance',     emoji: '💹', color: '#10b981', bg: '#ecfdf5', border: '#10b981' },
 };
 
 export function getSectorConfig(slugOrName?: string | null): SectorConfig {

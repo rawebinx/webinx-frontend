@@ -68,14 +68,13 @@ const CITIES = [
 ];
 
 const FALLBACK_SECTORS = [
-  { id:1, slug:'ai',         name:'AI',          event_count:0 },
-  { id:2, slug:'technology', name:'IT & SaaS',   event_count:0 },
-  { id:3, slug:'finance',    name:'Finance',     event_count:0 },
-  { id:4, slug:'marketing',  name:'Marketing',   event_count:0 },
-  { id:5, slug:'startup',    name:'Startup',     event_count:0 },
-  { id:6, slug:'hr',         name:'HR',          event_count:0 },
-  { id:7, slug:'healthcare', name:'Healthcare',  event_count:0 },
-  { id:8, slug:'education',  name:'Education',   event_count:0 },
+  { id:1, slug:'ai',        name:'AI',        event_count:44 },
+  { id:3, slug:'finance',   name:'Finance',   event_count:13 },
+  { id:4, slug:'hr',        name:'HR',        event_count:11 },
+  { id:5, slug:'startup',   name:'Startup',   event_count:7  },
+  { id:7, slug:'general',   name:'General',   event_count:7  },
+  { id:6, slug:'marketing', name:'Marketing', event_count:6  },
+  { id:2, slug:'tech',      name:'Tech',      event_count:2  },
 ];
 
 const PLACEHOLDER_PHRASES = [
