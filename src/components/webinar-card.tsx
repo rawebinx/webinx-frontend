@@ -73,6 +73,9 @@ const SECTOR_ICONS: Record<string, string> = {
   ai: '🤖', technology: '💻', finance: '💹',
   marketing: '📣', startup: '🚀', hr: '🤝',
   healthcare: '🏥', education: '🎓',
+  'it-saas': '☁️', it: '🖥️', tech: '⚙️', general: '📋',
+  'ai-data': '📊', 'startup-ecosystem': '🌱', government: '🏛️',
+  infrastructure: '🏗️', manufacturing: '🏭', msme: '🏪',
 };
 
 /* ─────────────────────────────────────────────────────
