@@ -81,29 +81,46 @@ const PLACEHOLDER_PHRASES = [
 function AnimatedCounter({ target, duration = 1200 }: { target: number; duration?: number }): JSX.Element {
   const [current, setCurrent] = useState<number>(0);
   const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef<boolean>(false);
+  const animRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (target === 0) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true;
-          const start = performance.now();
-          const tick = (now: number): void => {
-            const progress = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setCurrent(Math.floor(eased * target));
-            if (progress < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
+    // Cancel any running animation
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+
+    const runAnimation = (): void => {
+      const start = performance.now();
+      const from = 0;
+      const tick = (now: number): void => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCurrent(Math.floor(from + eased * (target - from)));
+        if (progress < 1) {
+          animRef.current = requestAnimationFrame(tick);
+        } else {
+          setCurrent(target);
         }
-      },
-      { threshold: 0.3 },
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target, duration]);
+      };
+      animRef.current = requestAnimationFrame(tick);
+    };
+
+    // Use IntersectionObserver if element is in DOM, else run immediately
+    if (ref.current) {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            observer.disconnect();
+            runAnimation();
+          }
+        },
+        { threshold: 0.1 },
+      );
+      observer.observe(ref.current);
+      return () => { observer.disconnect(); if (animRef.current) cancelAnimationFrame(animRef.current); };
+    } else {
+      runAnimation();
+    }
+  }, [target, duration]); // Re-run whenever target changes (data loads)
 
   return <span ref={ref}>{current.toLocaleString('en-IN')}</span>;
 }
@@ -571,7 +588,10 @@ export default function HomePage(): JSX.Element {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {(loading ? Array.from({ length: 8 }) : data.sectors).map((sector, i) => {
+              {(loading ? Array.from({ length: 8 }) : 
+                [...data.sectors].sort((a, b) => (b.event_count ?? 0) - (a.event_count ?? 0))
+                .filter(s => (s.event_count ?? 0) > 0)
+              ).map((sector, i) => {
                 if (loading) {
                   return <div key={i} className="skeleton h-16 rounded-xl" />;
                 }
