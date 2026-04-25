@@ -363,8 +363,14 @@ export async function getStats(): Promise<PlatformStats> {
   return apiFetch<PlatformStats>('/api/stats');
 }
 
-// Backwards-compat alias
+// Backwards-compat aliases — keep these so existing pages don't break
 export const getPlatformStats = getStats;
+export const captureLead = submitLead;
+export const addAlert = submitAlert;
+export const saveWishlistItem = (data: { email?: string; event_slug: string; session_id?: string }) =>
+  toggleWishlist('save', data);
+export const removeWishlistItem = (data: { email?: string; event_slug: string; session_id?: string }) =>
+  toggleWishlist('remove', data);
 
 export async function getSectors(): Promise<Sector[]> {
   const raw = await apiFetch<{ sectors: unknown[] }>('/api/sectors');
