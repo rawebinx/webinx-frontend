@@ -371,6 +371,10 @@ export const saveWishlistItem = (data: { email?: string; event_slug: string; ses
   toggleWishlist('save', data);
 export const removeWishlistItem = (data: { email?: string; event_slug: string; session_id?: string }) =>
   toggleWishlist('remove', data);
+export const getHost = getHostBySlug;
+export const subscribeAlert = submitAlert;
+export const submitEvent = async (data: Record<string, unknown>): Promise<unknown> =>
+  apiFetch("/api/events/submit", { method: "POST", body: JSON.stringify(data) }, true);
 
 export async function getSectors(): Promise<Sector[]> {
   const raw = await apiFetch<{ sectors: unknown[] }>('/api/sectors');
