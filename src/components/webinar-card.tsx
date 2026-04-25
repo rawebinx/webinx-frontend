@@ -1,243 +1,51 @@
-import { useState, useCallback, memo } from 'react';
+// src/components/webinar-card.tsx
+// WebinX — Enhanced WebinarCard — production version
+
+import { useState, useCallback } from 'react';
 import { Link } from 'wouter';
 import {
-  Heart,
-  Eye,
-  Clock,
-  Calendar,
-  Users,
-  ExternalLink,
-  BadgeCheck,
-  Bookmark,
-  Play,
-  Video,
-} from 'lucide-react';
-interface WebinarEvent {
-  id: number | string;
-  slug: string;
-  title: string;
-  host_name?: string;
-  start_time?: string;
-  sector_slug?: string;
-  sector_name?: string;
-  event_url?: string;
-  registration_url?: string;
-  is_featured?: boolean;
-  is_verified?: boolean;
-  is_sponsored?: boolean;
-  sponsor_url?: string;
-  sponsor_cta?: string;
-  view_count?: number;
-  save_count?: number;
-  tags?: unknown;
-  thumbnail_url?: string;
-  duration_minutes?: number;
-  content_type?: 'webinar' | 'podcast' | 'live_event';
-}
+  type WebinarEvent,
+  getBestRegistrationUrl,
+  getCountdownLabel,
+  formatEventDate,
+  getSectorConfig,
+  detectPlatform,
+  PLATFORM_LABELS,
+  toggleLocalWishlist,
+  isWishlisted,
+} from '@/lib/api';
 
-/* ─────────────────────────────────────────────────────
-   Types
-───────────────────────────────────────────────────── */
-interface WebinarCardProps {
-  event: WebinarEvent;
-  featured?: boolean;
-  compact?: boolean;
-}
+// ─── Avatar Helper ─────────────────────────────────────────────────────────────
 
-/* ─────────────────────────────────────────────────────
-   Constants
-───────────────────────────────────────────────────── */
-const SECTOR_COLORS: Record<string, string> = {
-  ai:           '#6366f1',
-  technology:   '#3b82f6',
-  finance:      '#10b981',
-  marketing:    '#f97316',
-  startup:      '#8b5cf6',
-  hr:           '#f43f5e',
-  healthcare:   '#14b8a6',
-  education:    '#f59e0b',
-};
-
-const SECTOR_BG: Record<string, string> = {
-  ai:           'rgba(99,102,241,0.08)',
-  technology:   'rgba(59,130,246,0.08)',
-  finance:      'rgba(16,185,129,0.08)',
-  marketing:    'rgba(249,115,22,0.08)',
-  startup:      'rgba(139,92,246,0.08)',
-  hr:           'rgba(244,63,94,0.08)',
-  healthcare:   'rgba(20,184,166,0.08)',
-  education:    'rgba(245,158,11,0.08)',
-};
-
-const SECTOR_ICONS: Record<string, string> = {
-  ai: '🤖', technology: '💻', finance: '💹',
-  marketing: '📣', startup: '🚀', hr: '🤝',
-  healthcare: '🏥', education: '🎓',
-  'it-saas': '☁️', it: '🖥️', tech: '⚙️', general: '📋',
-  'ai-data': '📊', 'startup-ecosystem': '🌱', government: '🏛️',
-  infrastructure: '🏗️', manufacturing: '🏭', msme: '🏪',
-};
-
-/* ─────────────────────────────────────────────────────
-   Platform badge detection
-───────────────────────────────────────────────────── */
-function detectPlatform(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const u = url.toLowerCase();
-  if (u.includes('zoom.us') || u.includes('zoom.com')) return 'Zoom';
-  if (u.includes('meet.google') || u.includes('g.co/meet')) return 'Google Meet';
-  if (u.includes('teams.microsoft') || u.includes('teams.live')) return 'Teams';
-  if (u.includes('youtube.com') || u.includes('youtu.be')) return 'YouTube';
-  if (u.includes('webinarjam') || u.includes('webinar.jam')) return 'WebinarJam';
-  if (u.includes('demio.com')) return 'Demio';
-  if (u.includes('airmeet.com')) return 'Airmeet';
-  if (u.includes('hopin.com')) return 'Hopin';
-  if (u.includes('streamyard.com')) return 'StreamYard';
-  return null;
-}
-
-const PLATFORM_COLORS: Record<string, string> = {
-  'Zoom': '#2D8CFF',
-  'Google Meet': '#34A853',
-  'Teams': '#5058D2',
-  'YouTube': '#FF0000',
-  'WebinarJam': '#E03D2B',
-  'Demio': '#6C5CE7',
-  'Airmeet': '#FB5343',
-  'Hopin': '#7B61FF',
-  'StreamYard': '#0E71EB',
-};
-
-/* ─────────────────────────────────────────────────────
-   Countdown
-───────────────────────────────────────────────────── */
-function useCountdown(startTime: string | null | undefined): string | null {
-  if (!startTime) return null;
-  const diff = new Date(startTime).getTime() - Date.now();
-  if (diff <= 0) return null;
-  const days = Math.floor(diff / 86_400_000);
-  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-  const mins = Math.floor((diff % 3_600_000) / 60_000);
-  if (days > 0) return `in ${days}d ${hours}h`;
-  if (hours > 0) return `in ${hours}h ${mins}m`;
-  if (mins > 0) return `in ${mins}m`;
-  return 'Starting soon';
-}
-
-/* ─────────────────────────────────────────────────────
-   Date formatter (IST)
-───────────────────────────────────────────────────── */
-function formatEventDate(isoString: string | null | undefined): string {
-  if (!isoString) return '';
-  try {
-    return new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    }).format(new Date(isoString));
-  } catch {
-    return '';
-  }
-}
-
-/* ─────────────────────────────────────────────────────
-   Thumbnail / gradient placeholder
-───────────────────────────────────────────────────── */
-function EventThumbnail({
-  thumbnailUrl,
-  sectorSlug,
-  title,
-}: {
-  thumbnailUrl?: string | null;
-  sectorSlug?: string | null;
-  title: string;
-}): JSX.Element {
-  const [imgError, setImgError] = useState<boolean>(false);
-  const color = SECTOR_COLORS[sectorSlug ?? ''] ?? '#0D4F6B';
-  const icon = SECTOR_ICONS[sectorSlug ?? ''] ?? '📚';
-
-  if (thumbnailUrl && !imgError) {
-    return (
-      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
-        <img
-          src={thumbnailUrl}
-          alt={title}
-          loading="lazy"
-          className="w-full h-full object-cover"
-          onError={() => setImgError(true)}
-        />
-      </div>
-    );
-  }
-
-  /* Sector gradient placeholder */
-  return (
-    <div
-      className="relative w-full flex items-center justify-center"
-      style={{
-        aspectRatio: '16/9',
-        background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
-        borderBottom: `1px solid ${color}20`,
-      }}
-    >
-      {/* Play / video icon */}
-      <div
-        className="flex items-center justify-center rounded-full"
-        style={{
-          width: 44,
-          height: 44,
-          background: `${color}18`,
-          border: `1.5px solid ${color}30`,
-        }}
-      >
-        <span style={{ fontSize: 22 }}>{icon}</span>
-      </div>
-
-      {/* Decorative dots */}
-      <div
-        aria-hidden
-        className="absolute top-2 right-3 text-4xl opacity-10 select-none pointer-events-none"
-        style={{ color, fontFamily: 'monospace', letterSpacing: -4 }}
-      >
-        ○○○
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────
-   Host avatar (initials)
-───────────────────────────────────────────────────── */
 function HostAvatar({
   name,
-  sectorSlug,
-  size = 28,
+  size = 24,
+  color,
 }: {
   name: string;
-  sectorSlug?: string | null;
   size?: number;
-}): JSX.Element {
+  color: string;
+}) {
   const initials = name
     .split(' ')
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
+    .map(w => w[0]?.toUpperCase() ?? '')
     .join('');
-  const color = SECTOR_COLORS[sectorSlug ?? ''] ?? '#0D4F6B';
-
   return (
     <span
-      className="flex-shrink-0 flex items-center justify-center rounded-full font-semibold select-none"
       style={{
         width: size,
         height: size,
-        background: `${color}18`,
-        color,
-        fontSize: size * 0.35,
-        border: `1.5px solid ${color}30`,
-        fontFamily: 'var(--font-sans)',
+        minWidth: size,
+        borderRadius: '50%',
+        background: color,
+        color: '#fff',
+        fontSize: size * 0.4,
+        fontWeight: 700,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        letterSpacing: '-0.5px',
       }}
     >
       {initials || '?'}
@@ -245,162 +53,266 @@ function HostAvatar({
   );
 }
 
-/* ─────────────────────────────────────────────────────
-   Wishlist toggle (localStorage)
-───────────────────────────────────────────────────── */
-function useWishlist(slug: string): [boolean, () => void] {
-  const key = 'webinx_wishlist';
+// ─── Sector Thumbnail ─────────────────────────────────────────────────────────
 
-  const read = (): string[] => {
-    try {
-      return JSON.parse(localStorage.getItem(key) ?? '[]') as string[];
-    } catch {
-      return [];
-    }
-  };
-
-  const [saved, setSaved] = useState<boolean>(() => read().includes(slug));
-
-  const toggle = useCallback((): void => {
-    const current = read();
-    const next = current.includes(slug)
-      ? current.filter((s) => s !== slug)
-      : [...current, slug];
-    localStorage.setItem(key, JSON.stringify(next));
-    setSaved(next.includes(slug));
-    window.dispatchEvent(new Event('storage'));
-  }, [slug]);
-
-  return [saved, toggle];
+function EventThumbnail({
+  event,
+  sector,
+}: {
+  event: WebinarEvent;
+  sector: ReturnType<typeof getSectorConfig>;
+}) {
+  if (event.thumbnail_url) {
+    return (
+      <img
+        src={event.thumbnail_url}
+        alt={event.title}
+        loading="lazy"
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        background: `linear-gradient(135deg, ${sector.bg} 0%, ${sector.bg}cc 100%)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 16,
+          background: `${sector.color}22`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 28,
+        }}
+      >
+        {event.content_type === 'podcast'
+          ? '🎙️'
+          : event.content_type === 'live_event'
+          ? '📍'
+          : sector.emoji}
+      </div>
+    </div>
+  );
 }
 
-/* ─────────────────────────────────────────────────────
-   Main card component
-───────────────────────────────────────────────────── */
-const WebinarCard = memo(function WebinarCard({
-  event,
-  featured = false,
-  compact = false,
-}: WebinarCardProps): JSX.Element {
-  const [saved, toggleSaved] = useWishlist(event.slug);
-  const countdown = useCountdown(event.start_time);
-  const platform = detectPlatform(event.registration_url ?? event.event_url);
-  const sectorSlug = event.sector_slug ?? '';
-  const sectorColor = SECTOR_COLORS[sectorSlug] ?? '#0D4F6B';
-  const dateStr = formatEventDate(event.start_time);
+// ─── Main Card Component ──────────────────────────────────────────────────────
 
-  const handleWishlistClick = useCallback(
-    (e: React.MouseEvent): void => {
+interface WebinarCardProps {
+  event: WebinarEvent;
+  variant?: 'default' | 'featured' | 'compact';
+  onWishlistChange?: (slug: string, saved: boolean) => void;
+}
+
+export default function WebinarCard({
+  event,
+  variant = 'default',
+  onWishlistChange,
+}: WebinarCardProps) {
+  const [wishlisted, setWishlisted] = useState(() => isWishlisted(event.slug));
+  const [wishlistPending, setWishlistPending] = useState(false);
+
+  const sector = getSectorConfig(event.sector_slug ?? event.sector_name);
+  const regUrl = getBestRegistrationUrl(event);
+  const countdown = event.start_time ? getCountdownLabel(event.start_time) : null;
+  const platform = detectPlatform(event.event_url ?? event.registration_url);
+  const isFeatured = event.is_featured || variant === 'featured';
+  const isCompact = variant === 'compact';
+
+  const handleWishlist = useCallback(
+    async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      toggleSaved();
+      if (wishlistPending) return;
+      setWishlistPending(true);
+      const added = toggleLocalWishlist(event.slug);
+      setWishlisted(added);
+      onWishlistChange?.(event.slug, added);
+      setWishlistPending(false);
     },
-    [toggleSaved],
+    [event.slug, wishlistPending, onWishlistChange]
   );
+
+  const handleRegister = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!regUrl) return;
+      window.open(regUrl, '_blank', 'noopener,noreferrer');
+    },
+    [regUrl]
+  );
+
+  // CTA label by content type
+  const ctaLabel =
+    event.content_type === 'podcast'
+      ? 'Listen Now'
+      : event.content_type === 'live_event'
+      ? event.ticket_price_inr
+        ? `Get Tickets ₹${event.ticket_price_inr}`
+        : 'Get Tickets'
+      : isFeatured
+      ? 'Register Now'
+      : 'Register Free';
 
   return (
     <article
-      className="wx-card flex flex-col relative overflow-hidden group"
       style={{
-        borderLeft: `3px solid ${sectorColor}`,
-        ...(featured
-          ? {
-              borderColor: 'var(--wx-gold)',
-              boxShadow: '0 2px 12px rgba(232,180,74,0.12), var(--shadow-sm)',
-            }
-          : {}),
+        background: '#fff',
+        border: `1px solid #E5E7EB`,
+        borderLeft: `3px solid ${sector.border}`,
+        borderRadius: 16,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'transform 0.15s, box-shadow 0.15s',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+        (e.currentTarget as HTMLElement).style.boxShadow =
+          `0 12px 32px ${sector.color}18`;
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+        (e.currentTarget as HTMLElement).style.boxShadow = 'none';
       }}
     >
       {/* Thumbnail */}
-      {!compact && (
-        <Link href={`/webinar/${event.slug}`} style={{ textDecoration: 'none' }}>
-          <EventThumbnail
-            thumbnailUrl={event.thumbnail_url}
-            sectorSlug={sectorSlug}
-            title={event.title}
-          />
+      {!isCompact && (
+        <Link href={`/webinar/${event.slug}`}>
+          <div style={{ height: 140, position: 'relative', flexShrink: 0 }}>
+            <EventThumbnail event={event} sector={sector} />
+
+            {/* Featured badge */}
+            {isFeatured && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  background: '#E8B44A',
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  letterSpacing: '0.3px',
+                }}
+              >
+                ★ Featured
+              </div>
+            )}
+
+            {/* Wishlist button */}
+            <button
+              onClick={handleWishlist}
+              title={wishlisted ? 'Remove from saved' : 'Save event'}
+              style={{
+                position: 'absolute',
+                top: 10,
+                left: 10,
+                width: 30,
+                height: 30,
+                background: 'rgba(255,255,255,0.92)',
+                border: 'none',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 15,
+                cursor: 'pointer',
+                color: wishlisted ? '#f43f5e' : '#9CA3AF',
+                transition: 'color 0.15s',
+              }}
+            >
+              {wishlisted ? '♥' : '♡'}
+            </button>
+
+            {/* Platform badge */}
+            {platform !== 'other' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 8,
+                  right: 8,
+                  background: 'rgba(255,255,255,0.92)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  padding: '2px 8px',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: '#374151',
+                }}
+              >
+                {PLATFORM_LABELS[platform]}
+              </div>
+            )}
+
+            {/* Save count indicator */}
+            {event.save_count > 2 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 8,
+                  left: 8,
+                  background: 'rgba(255,255,255,0.92)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  padding: '2px 7px',
+                  fontSize: 10,
+                  color: '#6B7280',
+                  fontWeight: 500,
+                }}
+              >
+                ♥ {event.save_count} saved
+              </div>
+            )}
+          </div>
         </Link>
       )}
 
-      {/* Featured ribbon */}
-      {featured && (
-        <div
-          className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold z-10"
-          style={{ background: 'var(--wx-gold)', color: 'var(--wx-ink)' }}
-        >
-          <span style={{ fontSize: 10 }}>★</span>
-          Featured
-        </div>
-      )}
+      {/* Body */}
+      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
 
-      {/* Wishlist button */}
-      <button
-        onClick={handleWishlistClick}
-        aria-label={saved ? 'Remove from wishlist' : 'Save event'}
-        className="absolute top-2 rounded-full flex items-center justify-center transition-all z-10"
-        style={{
-          right: featured ? 80 : 8,
-          top: compact ? 12 : 44,
-          width: 32,
-          height: 32,
-          background: saved ? 'rgba(232,180,74,0.15)' : 'rgba(255,255,255,0.9)',
-          border: `1.5px solid ${saved ? 'var(--wx-gold)' : 'var(--wx-border)'}`,
-          backdropFilter: 'blur(8px)',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
-        <Heart
-          size={14}
-          fill={saved ? 'var(--wx-gold)' : 'none'}
-          stroke={saved ? 'var(--wx-gold-dark)' : 'var(--wx-muted)'}
-          strokeWidth={2}
-        />
-      </button>
-
-      {/* Content */}
-      <div className="flex flex-col flex-1 p-4">
-        {/* Sector + platform row */}
-        <div className="flex items-center justify-between mb-2">
-          <Link
-            href={`/sector/${sectorSlug}`}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+        {/* Sector pill */}
+        <Link href={`/sector/${event.sector_slug ?? 'general'}`} onClick={e => e.stopPropagation()}>
+          <span
             style={{
-              background: SECTOR_BG[sectorSlug] ?? 'var(--wx-teal-pale)',
-              color: sectorColor,
-              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              background: sector.bg,
+              color: sector.color,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '4px 10px',
+              borderRadius: 8,
+              cursor: 'pointer',
             }}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
-            <span style={{ fontSize: 11 }}>{SECTOR_ICONS[sectorSlug] ?? '📚'}</span>
-            {event.sector_name ?? sectorSlug}
-          </Link>
-
-          {platform && (
-            <span
-              className="text-xs font-medium px-2 py-0.5 rounded-full"
-              style={{
-                background: `${PLATFORM_COLORS[platform] ?? '#6b7280'}12`,
-                color: PLATFORM_COLORS[platform] ?? '#6b7280',
-                border: `1px solid ${PLATFORM_COLORS[platform] ?? '#6b7280'}22`,
-              }}
-            >
-              {platform}
-            </span>
-          )}
-        </div>
+            {sector.emoji} {sector.name}
+          </span>
+        </Link>
 
         {/* Title */}
-        <Link href={`/webinar/${event.slug}`} style={{ textDecoration: 'none' }}>
+        <Link href={`/webinar/${event.slug}`}>
           <h3
-            className="font-semibold mb-2 leading-snug line-clamp-2 group-hover:text-wx-teal transition-colors"
             style={{
-              fontSize: compact ? '0.8125rem' : '0.875rem',
-              color: 'var(--wx-ink)',
-              fontFamily: 'var(--font-sans)',
-              display: '-webkit-box' as React.CSSProperties['display'],
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical' as React.CSSProperties['WebkitBoxOrient'],
-              overflow: 'hidden',
+              fontWeight: 700,
+              fontSize: 15,
+              color: '#111827',
+              lineHeight: 1.35,
+              cursor: 'pointer',
             }}
           >
             {event.title}
@@ -408,15 +320,26 @@ const WebinarCard = memo(function WebinarCard({
         </Link>
 
         {/* Date + countdown */}
-        <div className="flex items-center gap-2 mb-2.5">
-          <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
-            <Calendar size={12} strokeWidth={1.75} />
-            <span>{dateStr || 'Date TBD'}</span>
-          </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12.5,
+            color: '#6B7280',
+          }}
+        >
+          <span>📅 {formatEventDate(event.start_time)}</span>
           {countdown && (
             <span
-              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: 'var(--wx-teal-pale)', color: 'var(--wx-teal)' }}
+              style={{
+                background: '#E1F5EE',
+                color: '#0D4F6B',
+                fontSize: 11.5,
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 20,
+              }}
             >
               {countdown}
             </span>
@@ -424,54 +347,57 @@ const WebinarCard = memo(function WebinarCard({
         </div>
 
         {/* Host row */}
-        <div className="flex items-center gap-2 mb-3">
-          <HostAvatar name={event.host_name ?? 'Host'} sectorSlug={sectorSlug} size={24} />
-          <div className="flex items-center gap-1 min-w-0">
-            <span
-              className="text-xs truncate"
-              style={{ color: 'var(--wx-muted)', maxWidth: 160 }}
-            >
-              {event.host_name ?? 'Unknown Host'}
-            </span>
-            {event.is_verified && (
-              <BadgeCheck size={13} style={{ color: 'var(--wx-teal)', flexShrink: 0 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <HostAvatar name={event.host_name} size={22} color={sector.color} />
+          <span style={{ fontSize: 12.5, color: '#4B5563', fontWeight: 500 }}>
+            {event.host_slug ? (
+              <Link
+                href={`/hosts/${event.host_slug}`}
+                onClick={e => e.stopPropagation()}
+                style={{ color: '#0D4F6B', textDecoration: 'none' }}
+              >
+                {event.host_name}
+              </Link>
+            ) : (
+              event.host_name
             )}
-          </div>
+          </span>
+          {event.host_is_verified && (
+            <span
+              title="Verified Host"
+              style={{
+                background: '#0D4F6B',
+                color: '#fff',
+                fontSize: 9,
+                fontWeight: 700,
+                padding: '1px 5px',
+                borderRadius: 4,
+              }}
+            >
+              ✓
+            </span>
+          )}
         </div>
 
-        {/* Micro stats */}
-        <div className="flex items-center gap-3 mb-3">
-          {(event.view_count ?? 0) > 0 && (
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
-              <Eye size={11} strokeWidth={1.75} />
-              {(event.view_count ?? 0).toLocaleString('en-IN')}
-            </span>
-          )}
-          {(event.save_count ?? 0) > 2 && (
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
-              <Bookmark size={11} strokeWidth={1.75} />
-              {event.save_count} saved
-            </span>
-          )}
-          {event.duration_minutes && (
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--wx-muted)' }}>
-              <Clock size={11} strokeWidth={1.75} />
-              {event.duration_minutes} min
-            </span>
-          )}
-        </div>
+        {/* View count */}
+        {event.view_count > 0 && (
+          <div style={{ fontSize: 12, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
+            👁 {event.view_count}
+          </div>
+        )}
 
         {/* Tags */}
-        {Array.isArray(event.tags) && event.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {(event.tags as string[]).slice(0, 3).map((tag) => (
+        {event.tags.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {event.tags.slice(0, 3).map(tag => (
               <span
                 key={tag}
-                className="text-xs px-2 py-0.5 rounded-full"
                 style={{
-                  background: 'var(--wx-surface)',
-                  color: 'var(--wx-muted)',
-                  border: '1px solid var(--wx-border)',
+                  background: '#F3F4F6',
+                  color: '#6B7280',
+                  fontSize: 11,
+                  padding: '3px 9px',
+                  borderRadius: 6,
                 }}
               >
                 {tag}
@@ -480,89 +406,172 @@ const WebinarCard = memo(function WebinarCard({
           </div>
         )}
 
-        {/* Spacer */}
-        <div className="flex-1" />
+        {/* Live event extras */}
+        {event.content_type === 'live_event' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {event.venue_city && (
+              <span style={{ fontSize: 12, color: '#6B7280' }}>
+                📍 {event.venue_city}
+              </span>
+            )}
+            {event.is_hybrid && (
+              <span
+                style={{
+                  background: '#fef3c7',
+                  color: '#92400e',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: '2px 7px',
+                  borderRadius: 6,
+                }}
+              >
+                Hybrid
+              </span>
+            )}
+          </div>
+        )}
 
-        {/* CTA footer */}
-        <div
-          className="flex items-center gap-2 pt-3"
-          style={{ borderTop: '1px solid var(--wx-border-light)' }}
-        >
-          {event.is_sponsored && event.sponsor_cta && event.sponsor_url ? (
-            <a
-              href={event.sponsor_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+        {/* Podcast extras */}
+        {event.content_type === 'podcast' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {event.episode_number && (
+              <span style={{ fontSize: 12, color: '#6B7280' }}>Ep. #{event.episode_number}</span>
+            )}
+            {event.duration_minutes && (
+              <span
+                style={{
+                  background: '#f3f4f6',
+                  color: '#6B7280',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: '2px 7px',
+                  borderRadius: 6,
+                }}
+              >
+                {event.duration_minutes} min
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Sponsor banner */}
+        {event.is_sponsored && event.sponsor_name && (
+          <div
+            style={{
+              background: '#fefce8',
+              border: '1px solid #fde68a',
+              borderRadius: 8,
+              padding: '6px 10px',
+              fontSize: 11.5,
+              color: '#92400e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>Sponsored by {event.sponsor_name}</span>
+            {event.sponsor_cta && event.sponsor_url && (
+              <button
+                onClick={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open(event.sponsor_url!, '_blank', 'noopener,noreferrer');
+                }}
+                style={{
+                  background: '#E8B44A',
+                  color: '#fff',
+                  border: 'none',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: 5,
+                  cursor: 'pointer',
+                }}
+              >
+                {event.sponsor_cta}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* CTA Row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {regUrl ? (
+            <button
+              onClick={handleRegister}
               style={{
-                background: 'var(--wx-gold)',
-                color: 'var(--wx-ink)',
-                textDecoration: 'none',
+                flex: 1,
+                padding: '11px 0',
+                background: isFeatured ? '#0D4F6B' : 'transparent',
+                color: isFeatured ? '#fff' : '#0D4F6B',
+                border: isFeatured ? 'none' : '1.5px solid #0D4F6B',
+                borderRadius: 10,
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                fontFamily: 'inherit',
+                transition: 'opacity 0.15s',
               }}
-              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '0.85')}
+              onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '1')}
             >
-              {event.sponsor_cta}
-              <ExternalLink size={11} />
-            </a>
-          ) : featured ? (
-            <a
-              href={event.registration_url ?? event.event_url ?? '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
-              style={{
-                background: 'var(--wx-teal)',
-                color: '#fff',
-                textDecoration: 'none',
-                boxShadow: '0 2px 8px rgba(13,79,107,0.2)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Video size={12} />
-              Register Now
-              <ExternalLink size={11} />
-            </a>
+              {event.content_type === 'podcast' ? '▶ ' : '📹 '}
+              {ctaLabel} ↗
+            </button>
           ) : (
-            <a
-              href={event.registration_url ?? event.event_url ?? '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+            <button
+              disabled
               style={{
-                background: 'transparent',
-                color: 'var(--wx-teal)',
-                textDecoration: 'none',
-                border: '1.5px solid var(--wx-teal)',
+                flex: 1,
+                padding: '11px 0',
+                background: '#f3f4f6',
+                color: '#9CA3AF',
+                border: 'none',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'not-allowed',
+                fontFamily: 'inherit',
               }}
-              onClick={(e) => e.stopPropagation()}
+              title="Registration link not available"
             >
-              Register Free
-              <ExternalLink size={11} />
-            </a>
+              Registration Unavailable
+            </button>
           )}
 
-          <Link
-            href={`/webinar/${event.slug}`}
-            className="flex items-center justify-center rounded-lg transition-colors"
-            style={{
-              width: 34,
-              height: 34,
-              background: 'var(--wx-surface)',
-              border: '1px solid var(--wx-border)',
-              color: 'var(--wx-muted)',
-              textDecoration: 'none',
-              flexShrink: 0,
-            }}
-            title="View details"
-          >
-            <Play size={13} strokeWidth={2} />
+          {/* Calendar quick-add */}
+          <Link href={`/webinar/${event.slug}`}>
+            <button
+              title="View details"
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: 38,
+                height: 38,
+                background: 'transparent',
+                border: '1.5px solid #E5E7EB',
+                borderRadius: 9,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 14,
+                flexShrink: 0,
+                color: '#6B7280',
+                fontFamily: 'inherit',
+              }}
+            >
+              ▷
+            </button>
           </Link>
         </div>
       </div>
     </article>
   );
-});
-
-export default WebinarCard;
-
-export { WebinarCard };
+}
