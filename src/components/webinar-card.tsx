@@ -561,3 +561,5 @@ const WebinarCard = memo(function WebinarCard({
 });
 
 export default WebinarCard;
+
+export { WebinarCard };
