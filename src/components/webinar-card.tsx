@@ -113,7 +113,7 @@ interface WebinarCardProps {
   onWishlistChange?: (slug: string, saved: boolean) => void;
 }
 
-export default function WebinarCard({
+export function WebinarCard({
   event,
   variant = 'default',
   onWishlistChange,
@@ -575,3 +575,5 @@ export default function WebinarCard({
     </article>
   );
 }
+
+export default WebinarCard;
