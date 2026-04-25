@@ -354,7 +354,16 @@ export async function submitEventForm(data: Record<string, unknown>): Promise<{ 
 // ─── Stats + Sectors ──────────────────────────────────────────────────────────
 
 export async function getStats(): Promise<PlatformStats> {
-  return apiFetch<PlatformStats>('/api/stats');
+  // Backend may return sectors/hosts OR sector_count/host_count — handle both
+  const raw = await apiFetch<Record<string, unknown>>('/api/stats');
+  return {
+    total_events:    Number(raw.total_events    ?? raw.total       ?? 0),
+    upcoming_events: Number(raw.upcoming_events ?? raw.upcoming    ?? 0),
+    this_week:       Number(raw.this_week       ?? 0),
+    sector_count:    Number(raw.sector_count    ?? raw.sectors     ?? 0),
+    category_count:  Number(raw.category_count  ?? raw.categories  ?? 0),
+    host_count:      Number(raw.host_count      ?? raw.hosts       ?? 0),
+  };
 }
 
 export async function getSectors(): Promise<Sector[]> {

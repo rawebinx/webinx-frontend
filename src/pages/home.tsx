@@ -590,7 +590,7 @@ export default function HomePage(): JSX.Element {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(loading ? Array.from({ length: 8 }) : 
                 [...data.sectors].sort((a, b) => (b.event_count ?? 0) - (a.event_count ?? 0))
-                .filter(s => (s.event_count ?? 0) > 0)
+                .filter(s => s.slug)  // show all valid sectors
               ).map((sector, i) => {
                 if (loading) {
                   return <div key={i} className="skeleton h-16 rounded-xl" />;
