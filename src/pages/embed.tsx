@@ -119,7 +119,6 @@ export default function EmbedPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  display: "block",
                   color: "#111827",
                   fontSize: "13px",
                   fontWeight: 600,
