@@ -1,22 +1,19 @@
 // src/lib/api.ts
-// WebinX Frontend API Layer — complete production version
+// WebinX — Complete API Layer — ALL exports, NO missing symbols
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 export const API_BASE =
-  import.meta.env.VITE_API_BASE ?? 'https://webinx-backend.onrender.com';
+  (import.meta as Record<string, unknown> & { env: Record<string, string> }).env.VITE_API_BASE ??
+  'https://webinx-backend.onrender.com';
 
-const CACHE_TTL = 60_000; // 60 seconds
-const FETCH_TIMEOUT = 20_000; // 20 seconds
+const CACHE_TTL = 60_000;
+const FETCH_TIMEOUT = 20_000;
 const MAX_RETRIES = 3;
 
 const BLOCKED_HOSTS = new Set([
-  'webinx.in',
-  'www.webinx.in',
-  'localhost',
-  '127.0.0.1',
-  'example.com',
-  'example.org',
+  'webinx.in', 'www.webinx.in', 'localhost',
+  '127.0.0.1', 'example.com', 'example.org',
 ]);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,8 +29,8 @@ export interface WebinarEvent {
   host_is_verified?: boolean;
   event_url: string | null;
   registration_url: string | null;
-  best_registration_url: string | null; // computed by normalizeEvent
-  has_registration: boolean;            // computed by normalizeEvent
+  best_registration_url: string | null;
+  has_registration: boolean;
   start_time: string;
   end_time: string | null;
   is_active: boolean;
@@ -59,13 +56,11 @@ export interface WebinarEvent {
   sub_sector?: string | null;
   thumbnail_url?: string | null;
   content_type: 'webinar' | 'podcast' | 'live_event';
-  // Podcast fields
   episode_number?: number | null;
   duration_minutes?: number | null;
   podcast_series?: string | null;
   spotify_url?: string | null;
   apple_podcasts_url?: string | null;
-  // Live event fields
   venue_name?: string | null;
   venue_address?: string | null;
   venue_city?: string | null;
@@ -89,6 +84,10 @@ export interface Host {
   is_verified: boolean;
   plan_tier?: 'free' | 'pro' | 'scale';
   event_count: number;
+  total_views?: number;
+  total_saves?: number;
+  score?: number;
+  rank?: number;
 }
 
 export interface PlatformStats {
@@ -114,19 +113,48 @@ export interface EventsResponse {
   offset: number;
 }
 
+export interface WishlistDemand {
+  topic: string;
+  demand: number;
+  sector_slug?: string | null;
+}
+
+export interface PipelineRun {
+  id: number;
+  run_at: string;
+  events_added: number;
+  events_updated: number;
+  events_skipped: number;
+  events_failed: number;
+  duration_seconds: number;
+  error_summary?: string | null;
+}
+
+export interface RewardClaim {
+  id: number;
+  host_name: string;
+  host_email: string;
+  mention_type: string;
+  webinar_title: string;
+  evidence_url: string;
+  notes?: string;
+  reward_tier: string;
+  reward_days: number;
+  status: string;
+  created_at: string;
+}
+
 // ─── URL Guards ───────────────────────────────────────────────────────────────
 
 export function safeExternalUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== 'string') return null;
   const trimmed = url.trim();
-  if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === '') return null;
-
+  if (!trimmed || trimmed === '#' || trimmed === '/') return null;
   try {
     const parsed = new URL(trimmed);
     if (!['http:', 'https:'].includes(parsed.protocol)) return null;
     const hostname = parsed.hostname.toLowerCase();
     if (BLOCKED_HOSTS.has(hostname)) return null;
-    // Block any subdomain of blocked hosts
     for (const blocked of BLOCKED_HOSTS) {
       if (hostname.endsWith('.' + blocked)) return null;
     }
@@ -136,29 +164,20 @@ export function safeExternalUrl(url: string | null | undefined): string | null {
   }
 }
 
-/**
- * Returns best available external URL for event registration.
- * Priority: registration_url → event_url → null
- * Returns null if no valid external URL exists — caller must hide button.
- */
 export function getBestRegistrationUrl(event: {
   registration_url?: string | null;
   event_url?: string | null;
 }): string | null {
-  return (
-    safeExternalUrl(event.registration_url) ??
-    safeExternalUrl(event.event_url) ??
-    null
-  );
+  return safeExternalUrl(event.registration_url) ?? safeExternalUrl(event.event_url) ?? null;
 }
 
-// ─── Event Normalizer ─────────────────────────────────────────────────────────
+// ─── Normalizer ───────────────────────────────────────────────────────────────
 
 export function normalizeEvent(raw: Record<string, unknown>): WebinarEvent {
   const tags: string[] = Array.isArray(raw.tags)
     ? (raw.tags as string[]).filter(Boolean)
     : typeof raw.tags === 'string'
-    ? JSON.parse(raw.tags || '[]')
+    ? (() => { try { return JSON.parse(raw.tags as string); } catch { return []; } })()
     : [];
 
   const regUrl = safeExternalUrl(raw.registration_url as string);
@@ -203,8 +222,7 @@ export function normalizeEvent(raw: Record<string, unknown>): WebinarEvent {
     sub_sector: raw.sub_sector ? String(raw.sub_sector) : null,
     thumbnail_url: raw.thumbnail_url ? String(raw.thumbnail_url) : null,
     content_type: (['webinar', 'podcast', 'live_event'].includes(String(raw.content_type))
-      ? String(raw.content_type)
-      : 'webinar') as WebinarEvent['content_type'],
+      ? String(raw.content_type) : 'webinar') as WebinarEvent['content_type'],
     episode_number: raw.episode_number != null ? Number(raw.episode_number) : null,
     duration_minutes: raw.duration_minutes != null ? Number(raw.duration_minutes) : null,
     podcast_series: raw.podcast_series ? String(raw.podcast_series) : null,
@@ -222,23 +240,15 @@ export function normalizeEvent(raw: Record<string, unknown>): WebinarEvent {
   };
 }
 
-// ─── In-Memory Cache ──────────────────────────────────────────────────────────
+// ─── Cache ────────────────────────────────────────────────────────────────────
 
-interface CacheEntry<T> {
-  data: T;
-  ts: number;
-}
-
-const _cache = new Map<string, CacheEntry<unknown>>();
+const _cache = new Map<string, { data: unknown; ts: number }>();
 
 function cacheGet<T>(key: string): T | null {
-  const entry = _cache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL) {
-    _cache.delete(key);
-    return null;
-  }
-  return entry.data as T;
+  const e = _cache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > CACHE_TTL) { _cache.delete(key); return null; }
+  return e.data as T;
 }
 
 function cacheSet<T>(key: string, data: T): void {
@@ -247,18 +257,12 @@ function cacheSet<T>(key: string, data: T): void {
 
 export function cacheClear(prefix?: string): void {
   if (!prefix) { _cache.clear(); return; }
-  for (const key of _cache.keys()) {
-    if (key.startsWith(prefix)) _cache.delete(key);
-  }
+  for (const k of _cache.keys()) if (k.startsWith(prefix)) _cache.delete(k);
 }
 
 // ─── Core Fetch ───────────────────────────────────────────────────────────────
 
-async function apiFetch<T>(
-  path: string,
-  options?: RequestInit,
-  skipCache = false
-): Promise<T> {
+async function apiFetch<T>(path: string, options?: RequestInit, skipCache = false): Promise<T> {
   const url = `${API_BASE}${path}`;
   const cacheKey = `${options?.method ?? 'GET'}:${url}`;
 
@@ -275,42 +279,27 @@ async function apiFetch<T>(
       const res = await fetch(url, {
         ...options,
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options?.headers ?? {}),
-        },
+        headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
       });
       clearTimeout(timer);
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as T;
-      if (!options?.method || options.method === 'GET') {
-        cacheSet(cacheKey, data);
-      }
+      if (!options?.method || options.method === 'GET') cacheSet(cacheKey, data);
       return data;
     } catch (err) {
       clearTimeout(timer);
       lastError = err instanceof Error ? err : new Error(String(err));
-      if (attempt < MAX_RETRIES - 1) {
-        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-      }
+      if (attempt < MAX_RETRIES - 1) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
     }
   }
   throw lastError ?? new Error('apiFetch failed');
 }
 
-// ─── API Functions ─────────────────────────────────────────────────────────────
+// ─── Events ───────────────────────────────────────────────────────────────────
 
 export async function getEvents(params?: {
-  q?: string;
-  sector?: string;
-  category?: string;
-  content_type?: string;
-  limit?: number;
-  offset?: number;
-  upcoming_only?: boolean;
+  q?: string; sector?: string; category?: string; content_type?: string;
+  limit?: number; offset?: number; upcoming_only?: boolean;
 }): Promise<EventsResponse> {
   const sp = new URLSearchParams();
   if (params?.q) sp.set('q', params.q);
@@ -320,17 +309,9 @@ export async function getEvents(params?: {
   if (params?.limit != null) sp.set('limit', String(params.limit));
   if (params?.offset != null) sp.set('offset', String(params.offset));
   if (params?.upcoming_only) sp.set('upcoming_only', 'true');
-
   const qs = sp.toString() ? `?${sp}` : '';
-  const raw = await apiFetch<{ events: unknown[]; total: number; limit: number; offset: number }>(
-    `/api/events${qs}`
-  );
-  return {
-    events: raw.events.map(e => normalizeEvent(e as Record<string, unknown>)),
-    total: raw.total,
-    limit: raw.limit,
-    offset: raw.offset,
-  };
+  const raw = await apiFetch<{ events: unknown[]; total: number; limit: number; offset: number }>(`/api/events${qs}`);
+  return { events: raw.events.map(e => normalizeEvent(e as Record<string, unknown>)), total: raw.total, limit: raw.limit, offset: raw.offset };
 }
 
 export async function getEventBySlug(slug: string): Promise<WebinarEvent> {
@@ -359,27 +340,34 @@ export async function searchEvents(q: string): Promise<WebinarEvent[]> {
   return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
+export async function aiSearch(q: string): Promise<WebinarEvent[]> {
+  const raw = await apiFetch<{ events: unknown[] }>('/api/search/ai', {
+    method: 'POST', body: JSON.stringify({ query: q }),
+  }, true);
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+}
+
+export async function submitEventForm(data: Record<string, unknown>): Promise<{ status: string; slug?: string }> {
+  return apiFetch('/api/events/submit', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+// ─── Stats + Sectors ──────────────────────────────────────────────────────────
+
 export async function getStats(): Promise<PlatformStats> {
   return apiFetch<PlatformStats>('/api/stats');
 }
-
-// Backwards-compat aliases — keep these so existing pages don't break
-export const getPlatformStats = getStats;
-export const captureLead = submitLead;
-export const addAlert = submitAlert;
-export const saveWishlistItem = (data: { email?: string; event_slug: string; session_id?: string }) =>
-  toggleWishlist('save', data);
-export const removeWishlistItem = (data: { email?: string; event_slug: string; session_id?: string }) =>
-  toggleWishlist('remove', data);
-export const getHost = getHostBySlug;
-export const subscribeAlert = submitAlert;
-export const submitEvent = async (data: Record<string, unknown>): Promise<unknown> =>
-  apiFetch("/api/events/submit", { method: "POST", body: JSON.stringify(data) }, true);
 
 export async function getSectors(): Promise<Sector[]> {
   const raw = await apiFetch<{ sectors: unknown[] }>('/api/sectors');
   return raw.sectors as Sector[];
 }
+
+export async function getCategories(): Promise<Array<{ id: number; name: string; slug: string }>> {
+  const raw = await apiFetch<{ categories: unknown[] }>('/api/categories');
+  return raw.categories as Array<{ id: number; name: string; slug: string }>;
+}
+
+// ─── Hosts ────────────────────────────────────────────────────────────────────
 
 export async function getHosts(): Promise<Host[]> {
   const raw = await apiFetch<{ hosts: unknown[] }>('/api/hosts');
@@ -395,39 +383,33 @@ export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
   return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
-export async function getCityEvents(city: string): Promise<WebinarEvent[]> {
-  const raw = await apiFetch<{ events: unknown[] }>(`/api/cities/${encodeURIComponent(city)}`);
-  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
-}
-
 export async function getLeaderboard(): Promise<Host[]> {
   const raw = await apiFetch<{ hosts: unknown[] }>('/api/hosts/leaderboard');
   return raw.hosts as Host[];
 }
 
+// ─── City ─────────────────────────────────────────────────────────────────────
+
+export async function getCityEvents(city: string): Promise<WebinarEvent[]> {
+  const raw = await apiFetch<{ events: unknown[] }>(`/api/cities/${encodeURIComponent(city)}`);
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+}
+
+// ─── Leads + Alerts ───────────────────────────────────────────────────────────
+
 export async function submitLead(data: {
-  email: string;
-  name?: string;
-  event_slug?: string;
-  utm_source?: string;
-  utm_medium?: string;
+  email: string; name?: string; event_slug?: string; utm_source?: string; utm_medium?: string;
 }): Promise<{ status: string }> {
-  return apiFetch('/api/leads', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }, true);
+  return apiFetch('/api/leads', { method: 'POST', body: JSON.stringify(data) }, true);
 }
 
 export async function submitAlert(data: {
-  email: string;
-  event_slug?: string;
-  topic_query?: string;
+  email: string; event_slug?: string; topic_query?: string;
 }): Promise<{ status: string }> {
-  return apiFetch('/api/alerts', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }, true);
+  return apiFetch('/api/alerts', { method: 'POST', body: JSON.stringify(data) }, true);
 }
+
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
 
 export async function toggleWishlist(
   action: 'save' | 'remove',
@@ -439,25 +421,117 @@ export async function toggleWishlist(
   }, true);
 }
 
+export async function getWishlistDemand(): Promise<WishlistDemand[]> {
+  const raw = await apiFetch<{ topics: unknown[] }>('/api/wishlist/demand');
+  return raw.topics as WishlistDemand[];
+}
+
+export async function saveWishlistTopic(data: {
+  email: string; topic_query: string; sector_slug?: string;
+}): Promise<{ status: string }> {
+  return apiFetch('/api/wishlist/topic', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+// ─── Sponsor ──────────────────────────────────────────────────────────────────
+
 export async function trackSponsorClick(slug: string): Promise<{ redirect_url: string | null }> {
   return apiFetch(`/api/sponsor/click/${slug}`, { method: 'POST' }, true);
 }
 
-export async function getTrendingTopics(): Promise<Array<{
-  topic: string;
-  demand: number;
-  sector_slug?: string;
-}>> {
+// ─── Rewards ─────────────────────────────────────────────────────────────────
+
+export async function claimReward(data: {
+  host_name: string; host_email: string; mention_type: string;
+  webinar_title: string; evidence_url: string; notes?: string;
+}): Promise<{ status: string }> {
+  return apiFetch('/api/rewards/claim', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+// ─── Razorpay ─────────────────────────────────────────────────────────────────
+
+export async function createRazorpayOrder(data: {
+  event_slug: string; host_email: string; plan: string;
+}): Promise<{ order_id: string; amount: number; currency: string; key_id: string }> {
+  return apiFetch('/api/razorpay/create-order', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+export async function verifyRazorpayPayment(data: {
+  razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string;
+}): Promise<{ status: string }> {
+  return apiFetch('/api/razorpay/verify', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+// ─── AI Host Tools ────────────────────────────────────────────────────────────
+
+export async function optimizeTitle(data: { title: string; sector?: string }): Promise<{ titles: string[] }> {
+  return apiFetch('/api/tools/optimize-title', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+export async function enhanceDescription(data: { notes: string; sector?: string }): Promise<{ description: string }> {
+  return apiFetch('/api/tools/enhance-description', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+export async function generateContent(data: {
+  title: string; description?: string; type: 'summary' | 'takeaways' | 'blog_intro' | 'meta_desc';
+}): Promise<{ content: string }> {
+  return apiFetch('/api/tools/generate-content', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+// ─── Trending Topics ──────────────────────────────────────────────────────────
+
+export async function getTrendingTopics(): Promise<WishlistDemand[]> {
   const raw = await apiFetch<{ topics: unknown[] }>('/api/trending-topics');
-  return raw.topics as Array<{ topic: string; demand: number; sector_slug?: string }>;
+  return raw.topics as WishlistDemand[];
 }
 
-export async function getPipelineStatus(): Promise<unknown[]> {
+// ─── Certificate ─────────────────────────────────────────────────────────────
+
+export async function getCertificate(slug: string): Promise<Record<string, unknown>> {
+  return apiFetch(`/api/certificate/${slug}`);
+}
+
+// ─── Embed ────────────────────────────────────────────────────────────────────
+
+export async function getEmbedData(hostSlug: string): Promise<Record<string, unknown>> {
+  return apiFetch(`/api/embed/${hostSlug}`);
+}
+
+// ─── Pipeline ─────────────────────────────────────────────────────────────────
+
+export async function getPipelineStatus(): Promise<PipelineRun[]> {
   const raw = await apiFetch<{ runs: unknown[] }>('/api/pipeline/status');
-  return raw.runs;
+  return raw.runs as PipelineRun[];
 }
 
-// ─── Wishlist (localStorage + DB) ────────────────────────────────────────────
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+function adminHeaders(password: string): Record<string, string> {
+  return { 'X-Admin-Key': password };
+}
+
+export async function getAdminStats(password: string): Promise<Record<string, unknown>> {
+  return apiFetch('/api/admin/stats', { headers: adminHeaders(password) }, true);
+}
+
+export async function getAdminLeads(password: string): Promise<unknown[]> {
+  const raw = await apiFetch<{ leads: unknown[] }>('/api/admin/leads', { headers: adminHeaders(password) }, true);
+  return raw.leads;
+}
+
+export async function getAdminRewards(password: string): Promise<RewardClaim[]> {
+  const raw = await apiFetch<{ rewards: unknown[] }>('/api/admin/rewards', { headers: adminHeaders(password) }, true);
+  return raw.rewards as RewardClaim[];
+}
+
+export async function approveReward(id: number, password: string): Promise<{ status: string }> {
+  return apiFetch(`/api/admin/rewards/${id}/approve`, { method: 'POST', headers: adminHeaders(password) }, true);
+}
+
+export async function rejectReward(id: number, password: string): Promise<{ status: string }> {
+  return apiFetch(`/api/admin/rewards/${id}/reject`, { method: 'POST', headers: adminHeaders(password) }, true);
+}
+
+// ─── Wishlist localStorage ────────────────────────────────────────────────────
 
 const WISHLIST_KEY = 'webinx_wishlist';
 const SESSION_KEY = 'webinx_session_id';
@@ -472,11 +546,7 @@ export function getSessionId(): string {
 }
 
 export function getLocalWishlist(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(WISHLIST_KEY) ?? '[]');
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(WISHLIST_KEY) ?? '[]'); } catch { return []; }
 }
 
 export function saveLocalWishlist(slugs: string[]): void {
@@ -490,41 +560,53 @@ export function isWishlisted(slug: string): boolean {
 export function toggleLocalWishlist(slug: string): boolean {
   const list = getLocalWishlist();
   const idx = list.indexOf(slug);
-  const newList = idx === -1 ? [...list, slug] : list.filter(s => s !== slug);
-  saveLocalWishlist(newList);
-  return idx === -1; // true = added
+  saveLocalWishlist(idx === -1 ? [...list, slug] : list.filter(s => s !== slug));
+  return idx === -1;
 }
 
-// ─── Date Formatting ──────────────────────────────────────────────────────────
+/** Fetch full WebinarEvent objects for all wishlisted slugs */
+export async function getWishlistEvents(): Promise<WebinarEvent[]> {
+  const slugs = getLocalWishlist();
+  if (slugs.length === 0) return [];
+  const results = await Promise.allSettled(slugs.map(s => getEventBySlug(s)));
+  return results.filter((r): r is PromiseFulfilledResult<WebinarEvent> => r.status === 'fulfilled').map(r => r.value);
+}
+
+/** Returns local wishlist slugs (kept for backwards-compat) */
+export function getWishlist(): string[] {
+  return getLocalWishlist();
+}
+
+/** Sync wishlist with backend using email */
+export async function syncWishlistEmail(email: string): Promise<{ status: string }> {
+  const slugs = getLocalWishlist();
+  const session_id = getSessionId();
+  const results = await Promise.allSettled(
+    slugs.map(slug => toggleWishlist('save', { email, event_slug: slug, session_id }))
+  );
+  const failed = results.filter(r => r.status === 'rejected').length;
+  return { status: failed === 0 ? 'ok' : `synced_with_${failed}_errors` };
+}
+
+// ─── Date Helpers ─────────────────────────────────────────────────────────────
 
 const IST = 'Asia/Kolkata';
 
 export function formatEventDate(iso: string): string {
   try {
     return new Date(iso).toLocaleString('en-IN', {
-      timeZone: IST,
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
+      timeZone: IST, day: 'numeric', month: 'short',
+      hour: '2-digit', minute: '2-digit', hour12: true,
     });
-  } catch {
-    return iso;
-  }
+  } catch { return iso; }
 }
 
 export function formatShortDate(iso: string): string {
   try {
     return new Date(iso).toLocaleString('en-IN', {
-      timeZone: IST,
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+      timeZone: IST, day: 'numeric', month: 'short', year: 'numeric',
     });
-  } catch {
-    return iso;
-  }
+  } catch { return iso; }
 }
 
 export function getCountdownLabel(iso: string): string | null {
@@ -538,51 +620,35 @@ export function getCountdownLabel(iso: string): string | null {
   return `in ${mins}m`;
 }
 
-// ─── Calendar Helper ──────────────────────────────────────────────────────────
-
 export function buildCalendarUrl(event: WebinarEvent): string {
-  const start = new Date(event.start_time)
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace('.000', '');
-  const end = event.end_time
-    ? new Date(event.end_time)
-        .toISOString()
-        .replace(/[-:]/g, '')
-        .replace('.000', '')
-    : start;
-  const title = encodeURIComponent(event.title);
-  const desc = encodeURIComponent(event.description?.slice(0, 300) ?? '');
-  const url = encodeURIComponent(event.best_registration_url ?? '');
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${desc}&location=${url}`;
+  const fmt = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace('.000', '');
+  const start = fmt(event.start_time);
+  const end = event.end_time ? fmt(event.end_time) : start;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${start}/${end}&details=${encodeURIComponent(event.description?.slice(0, 300) ?? '')}&location=${encodeURIComponent(event.best_registration_url ?? '')}`;
 }
 
 // ─── Sector Config ────────────────────────────────────────────────────────────
 
 export interface SectorConfig {
-  slug: string;
-  name: string;
-  emoji: string;
-  color: string;
-  bg: string;
-  border: string;
+  slug: string; name: string; emoji: string;
+  color: string; bg: string; border: string;
 }
 
 export const SECTOR_CONFIG: Record<string, SectorConfig> = {
-  ai: { slug: 'ai', name: 'AI', emoji: '🤖', color: '#6366f1', bg: '#eef2ff', border: '#6366f1' },
-  technology: { slug: 'technology', name: 'IT & SaaS', emoji: '☁️', color: '#3b82f6', bg: '#eff6ff', border: '#3b82f6' },
-  finance: { slug: 'finance', name: 'Finance', emoji: '💹', color: '#10b981', bg: '#ecfdf5', border: '#10b981' },
-  marketing: { slug: 'marketing', name: 'Marketing', emoji: '📣', color: '#f97316', bg: '#fff7ed', border: '#f97316' },
-  startup: { slug: 'startup', name: 'Startup', emoji: '🚀', color: '#8b5cf6', bg: '#f5f3ff', border: '#8b5cf6' },
-  hr: { slug: 'hr', name: 'HR', emoji: '🤝', color: '#f43f5e', bg: '#fff1f2', border: '#f43f5e' },
-  healthcare: { slug: 'healthcare', name: 'Healthcare', emoji: '🏥', color: '#14b8a6', bg: '#f0fdfa', border: '#14b8a6' },
-  education: { slug: 'education', name: 'Education', emoji: '📚', color: '#f59e0b', bg: '#fffbeb', border: '#f59e0b' },
-  general: { slug: 'general', name: 'General', emoji: '📋', color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' },
+  ai:         { slug: 'ai',         name: 'AI',          emoji: '🤖', color: '#6366f1', bg: '#eef2ff', border: '#6366f1' },
+  technology: { slug: 'technology', name: 'IT & SaaS',   emoji: '☁️', color: '#3b82f6', bg: '#eff6ff', border: '#3b82f6' },
+  finance:    { slug: 'finance',    name: 'Finance',     emoji: '💹', color: '#10b981', bg: '#ecfdf5', border: '#10b981' },
+  marketing:  { slug: 'marketing',  name: 'Marketing',   emoji: '📣', color: '#f97316', bg: '#fff7ed', border: '#f97316' },
+  startup:    { slug: 'startup',    name: 'Startup',     emoji: '🚀', color: '#8b5cf6', bg: '#f5f3ff', border: '#8b5cf6' },
+  hr:         { slug: 'hr',         name: 'HR',          emoji: '🤝', color: '#f43f5e', bg: '#fff1f2', border: '#f43f5e' },
+  healthcare: { slug: 'healthcare', name: 'Healthcare',  emoji: '🏥', color: '#14b8a6', bg: '#f0fdfa', border: '#14b8a6' },
+  education:  { slug: 'education',  name: 'Education',   emoji: '📚', color: '#f59e0b', bg: '#fffbeb', border: '#f59e0b' },
+  general:    { slug: 'general',    name: 'General',     emoji: '📋', color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' },
 };
 
 export function getSectorConfig(slugOrName?: string | null): SectorConfig {
   if (!slugOrName) return SECTOR_CONFIG.general;
-  const key = slugOrName.toLowerCase().replace(/\s+/g, '_');
+  const key = slugOrName.toLowerCase().replace(/[\s-]+/g, '_');
   return SECTOR_CONFIG[key] ?? SECTOR_CONFIG.general;
 }
 
@@ -602,10 +668,25 @@ export function detectPlatform(url: string | null | undefined): PlatformType {
 }
 
 export const PLATFORM_LABELS: Record<PlatformType, string> = {
-  zoom: 'Zoom',
-  gmeet: 'Google Meet',
-  teams: 'Teams',
-  youtube: 'YouTube',
-  webex: 'Webex',
-  other: 'Online',
+  zoom: 'Zoom', gmeet: 'Google Meet', teams: 'Teams',
+  youtube: 'YouTube', webex: 'Webex', other: 'Online',
 };
+
+// ─── ALL backwards-compat aliases (never remove these) ───────────────────────
+
+export const getPlatformStats    = getStats;
+export const captureLead         = submitLead;
+export const addAlert            = submitAlert;
+export const subscribeAlert      = submitAlert;
+export const getHost             = getHostBySlug;
+export const submitEvent         = submitEventForm;
+export const submitWebinar       = submitEventForm;
+export const addWishlistTopic    = saveWishlistTopic;
+export const getWishlistTopics   = getWishlistDemand;
+export const claimMentionReward  = claimReward;
+export const createOrder         = createRazorpayOrder;
+export const verifyPayment       = verifyRazorpayPayment;
+export const saveWishlistItem    = (d: { email?: string; event_slug: string; session_id?: string }) =>
+  toggleWishlist('save', d);
+export const removeWishlistItem  = (d: { email?: string; event_slug: string; session_id?: string }) =>
+  toggleWishlist('remove', d);
