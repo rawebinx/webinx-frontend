@@ -1,44 +1,146 @@
-/**
- * src/lib/api.ts — WebinX Frontend API Layer
- * Full TypeScript, async/await, in-memory caching, error handling.
- */
+// src/lib/api.ts
+// WebinX Frontend API Layer — complete production version
 
-const API_BASE =
-  (import.meta as any).env?.VITE_API_BASE ?? "https://webinx-backend.onrender.com";
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-const CACHE_TTL_MS = 60_000;
+export const API_BASE =
+  import.meta.env.VITE_API_BASE ?? 'https://webinx-backend.onrender.com';
 
-const _cache = new Map<string, { data: unknown; ts: number }>();
+const CACHE_TTL = 60_000; // 60 seconds
+const FETCH_TIMEOUT = 20_000; // 20 seconds
+const MAX_RETRIES = 3;
 
-function cacheGet<T>(key: string): T | null {
-  const entry = _cache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL_MS) {
-    _cache.delete(key);
+const BLOCKED_HOSTS = new Set([
+  'webinx.in',
+  'www.webinx.in',
+  'localhost',
+  '127.0.0.1',
+  'example.com',
+  'example.org',
+]);
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface WebinarEvent {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  host_name: string;
+  host_id?: number | null;
+  host_slug?: string | null;
+  host_is_verified?: boolean;
+  event_url: string | null;
+  registration_url: string | null;
+  best_registration_url: string | null; // computed by normalizeEvent
+  has_registration: boolean;            // computed by normalizeEvent
+  start_time: string;
+  end_time: string | null;
+  is_active: boolean;
+  is_featured: boolean;
+  is_sponsored: boolean;
+  sponsor_name?: string | null;
+  sponsor_url?: string | null;
+  sponsor_cta?: string | null;
+  sector_id?: number | null;
+  sector_name?: string | null;
+  sector_slug?: string | null;
+  category_id?: number | null;
+  category_name?: string | null;
+  category_slug?: string | null;
+  source_name?: string | null;
+  tags: string[];
+  relevance_score?: number | null;
+  quality_score?: number | null;
+  view_count: number;
+  click_count: number;
+  save_count: number;
+  intent_label?: string | null;
+  sub_sector?: string | null;
+  thumbnail_url?: string | null;
+  content_type: 'webinar' | 'podcast' | 'live_event';
+  // Podcast fields
+  episode_number?: number | null;
+  duration_minutes?: number | null;
+  podcast_series?: string | null;
+  spotify_url?: string | null;
+  apple_podcasts_url?: string | null;
+  // Live event fields
+  venue_name?: string | null;
+  venue_address?: string | null;
+  venue_city?: string | null;
+  is_online?: boolean;
+  is_hybrid?: boolean;
+  ticket_price_inr?: number | null;
+  max_attendees?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Host {
+  id: number;
+  name: string;
+  slug: string;
+  org_name?: string | null;
+  bio?: string | null;
+  website?: string | null;
+  linkedin?: string | null;
+  avatar_url?: string | null;
+  is_verified: boolean;
+  plan_tier?: 'free' | 'pro' | 'scale';
+  event_count: number;
+}
+
+export interface PlatformStats {
+  total_events: number;
+  upcoming_events: number;
+  this_week: number;
+  sector_count: number;
+  category_count: number;
+  host_count: number;
+}
+
+export interface Sector {
+  id: number;
+  name: string;
+  slug: string;
+  event_count: number;
+}
+
+export interface EventsResponse {
+  events: WebinarEvent[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// ─── URL Guards ───────────────────────────────────────────────────────────────
+
+export function safeExternalUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === '') return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    const hostname = parsed.hostname.toLowerCase();
+    if (BLOCKED_HOSTS.has(hostname)) return null;
+    // Block any subdomain of blocked hosts
+    for (const blocked of BLOCKED_HOSTS) {
+      if (hostname.endsWith('.' + blocked)) return null;
+    }
+    return trimmed;
+  } catch {
     return null;
   }
-  return entry.data as T;
 }
 
-function cacheSet(key: string, data: unknown): void {
-  _cache.set(key, { data, ts: Date.now() });
-}
-
-// ── URL guard: strip any URL that points back to our own domain ────
-const OWN_HOSTNAMES = new Set(["webinx.in", "www.webinx.in"]);
-
-function safeExternalUrl(val: unknown): string {
-  const s = String(val ?? "").trim();
-  if (!s || s === "#") return "";
-  try {
-    const host = new URL(s).hostname.toLowerCase();
-    if (OWN_HOSTNAMES.has(host)) return "";
-    if (host === "example.com" || host === "localhost") return "";
-  } catch {
-    return "";
-  }
-  return s;
-}
+/**
+ * Returns best available external URL for event registration.
+ * Priority: registration_url → event_url → null
+ * Returns null if no valid external URL exists — caller must hide button.
+ */
 export function getBestRegistrationUrl(event: {
   registration_url?: string | null;
   event_url?: string | null;
@@ -49,554 +151,451 @@ export function getBestRegistrationUrl(event: {
     null
   );
 }
-// ── Types ──────────────────────────────────────────────────────────
-export interface WebinarEvent {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  host_name: string;
-  start_time: string | null;
-  end_time: string | null;
-  event_url: string;
-  registration_url: string;
-  url: string;
-  tags: string[];
-  sub_sector: string;
-  relevance_score: number;
-  quality_score: number;
-  is_featured: boolean;
-  is_sponsored: boolean;
-  sponsor_name: string;
-  sponsor_url: string;
-  sponsor_cta: string;
-  intent_label: string;
-  sector_name: string;
-  sector_slug: string;
-  category_name: string;
-  category_slug: string;
-  source_name: string;
-  click_count: number;
-  view_count: number;
-}
 
-export interface Sector {
-  id: string;
-  name: string;
-  slug: string;
-  event_count: number;
-}
+// ─── Event Normalizer ─────────────────────────────────────────────────────────
 
-export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
+export function normalizeEvent(raw: Record<string, unknown>): WebinarEvent {
+  const tags: string[] = Array.isArray(raw.tags)
+    ? (raw.tags as string[]).filter(Boolean)
+    : typeof raw.tags === 'string'
+    ? JSON.parse(raw.tags || '[]')
+    : [];
 
-export interface PlatformStats {
-  total_events: number;
-  upcoming_events: number;
-  this_week: number;
-  sectors: number;
-  categories: number;
-  hosts: number;
-}
-
-export interface EventsFilter {
-  sector?: string;
-  q?: string;
-  category?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export interface LeadPayload {
-  email: string;
-  name?: string;
-  event_slug?: string;
-  utm_source?: string;
-  utm_medium?: string;
-}
-
-// ── Normalize ──────────────────────────────────────────────────────
-function normalizeEvent(e: Record<string, unknown>): WebinarEvent {
-  const eventUrl        = safeExternalUrl(e.event_url);
-  const registrationUrl = safeExternalUrl(e.registration_url);
-  const resolvedUrl     = safeExternalUrl(e.url) || registrationUrl || eventUrl || "";
+  const regUrl = safeExternalUrl(raw.registration_url as string);
+  const evtUrl = safeExternalUrl(raw.event_url as string);
+  const bestUrl = regUrl ?? evtUrl ?? null;
 
   return {
-    id:               String(e.id ?? ""),
-    slug:             String(e.slug ?? ""),
-    title:            String(e.title ?? "Untitled"),
-    description:      String(e.description ?? ""),
-    host_name:        String(e.host_name ?? ""),
-    start_time:       (e.start_time as string) ?? null,
-    end_time:         (e.end_time as string) ?? null,
-    event_url:        eventUrl,
-    registration_url: registrationUrl,
-    url:              resolvedUrl,
-    tags:             Array.isArray(e.tags) ? (e.tags as string[]) : [],
-    sub_sector:       String(e.sub_sector ?? ""),
-    relevance_score:  Number(e.relevance_score ?? 0),
-    quality_score:    Number(e.quality_score ?? 0),
-    is_featured:      Boolean(e.is_featured),
-    is_sponsored:     Boolean(e.is_sponsored),
-    sponsor_name:     String(e.sponsor_name ?? ""),
-    sponsor_url:      safeExternalUrl(e.sponsor_url),
-    sponsor_cta:      String(e.sponsor_cta ?? "Register Now"),
-    intent_label:     String(e.intent_label ?? "learn"),
-    sector_name:      String(e.sector_name ?? "General"),
-    sector_slug:      String(e.sector_slug ?? ""),
-    category_name:    String(e.category_name ?? ""),
-    category_slug:    String(e.category_slug ?? ""),
-    source_name:      String(e.source_name ?? ""),
-    click_count:      Number(e.click_count ?? 0),
-    view_count:       Number(e.view_count ?? 0),
+    id: Number(raw.id),
+    slug: String(raw.slug ?? ''),
+    title: String(raw.title ?? ''),
+    description: String(raw.description ?? ''),
+    host_name: String(raw.host_name ?? ''),
+    host_id: raw.host_id != null ? Number(raw.host_id) : null,
+    host_slug: raw.host_slug ? String(raw.host_slug) : null,
+    host_is_verified: Boolean(raw.host_is_verified),
+    event_url: evtUrl,
+    registration_url: regUrl,
+    best_registration_url: bestUrl,
+    has_registration: bestUrl !== null,
+    start_time: String(raw.start_time ?? ''),
+    end_time: raw.end_time ? String(raw.end_time) : null,
+    is_active: Boolean(raw.is_active ?? true),
+    is_featured: Boolean(raw.is_featured),
+    is_sponsored: Boolean(raw.is_sponsored),
+    sponsor_name: raw.sponsor_name ? String(raw.sponsor_name) : null,
+    sponsor_url: safeExternalUrl(raw.sponsor_url as string),
+    sponsor_cta: raw.sponsor_cta ? String(raw.sponsor_cta) : null,
+    sector_id: raw.sector_id != null ? Number(raw.sector_id) : null,
+    sector_name: raw.sector_name ? String(raw.sector_name) : null,
+    sector_slug: raw.sector_slug ? String(raw.sector_slug) : null,
+    category_id: raw.category_id != null ? Number(raw.category_id) : null,
+    category_name: raw.category_name ? String(raw.category_name) : null,
+    category_slug: raw.category_slug ? String(raw.category_slug) : null,
+    source_name: raw.source_name ? String(raw.source_name) : null,
+    tags,
+    relevance_score: raw.relevance_score != null ? Number(raw.relevance_score) : null,
+    quality_score: raw.quality_score != null ? Number(raw.quality_score) : null,
+    view_count: Number(raw.view_count ?? 0),
+    click_count: Number(raw.click_count ?? 0),
+    save_count: Number(raw.save_count ?? 0),
+    intent_label: raw.intent_label ? String(raw.intent_label) : null,
+    sub_sector: raw.sub_sector ? String(raw.sub_sector) : null,
+    thumbnail_url: raw.thumbnail_url ? String(raw.thumbnail_url) : null,
+    content_type: (['webinar', 'podcast', 'live_event'].includes(String(raw.content_type))
+      ? String(raw.content_type)
+      : 'webinar') as WebinarEvent['content_type'],
+    episode_number: raw.episode_number != null ? Number(raw.episode_number) : null,
+    duration_minutes: raw.duration_minutes != null ? Number(raw.duration_minutes) : null,
+    podcast_series: raw.podcast_series ? String(raw.podcast_series) : null,
+    spotify_url: safeExternalUrl(raw.spotify_url as string),
+    apple_podcasts_url: safeExternalUrl(raw.apple_podcasts_url as string),
+    venue_name: raw.venue_name ? String(raw.venue_name) : null,
+    venue_address: raw.venue_address ? String(raw.venue_address) : null,
+    venue_city: raw.venue_city ? String(raw.venue_city) : null,
+    is_online: raw.is_online !== false,
+    is_hybrid: Boolean(raw.is_hybrid),
+    ticket_price_inr: raw.ticket_price_inr != null ? Number(raw.ticket_price_inr) : null,
+    max_attendees: raw.max_attendees != null ? Number(raw.max_attendees) : null,
+    created_at: raw.created_at ? String(raw.created_at) : undefined,
+    updated_at: raw.updated_at ? String(raw.updated_at) : undefined,
   };
 }
 
-// ── Core fetch with retry + timeout ───────────────────────────────
+// ─── In-Memory Cache ──────────────────────────────────────────────────────────
+
+interface CacheEntry<T> {
+  data: T;
+  ts: number;
+}
+
+const _cache = new Map<string, CacheEntry<unknown>>();
+
+function cacheGet<T>(key: string): T | null {
+  const entry = _cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    _cache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function cacheSet<T>(key: string, data: T): void {
+  _cache.set(key, { data, ts: Date.now() });
+}
+
+export function cacheClear(prefix?: string): void {
+  if (!prefix) { _cache.clear(); return; }
+  for (const key of _cache.keys()) {
+    if (key.startsWith(prefix)) _cache.delete(key);
+  }
+}
+
+// ─── Core Fetch ───────────────────────────────────────────────────────────────
+
 async function apiFetch<T>(
   path: string,
   options?: RequestInit,
-  retries = 3
-): Promise<T | null> {
-  for (let attempt = 0; attempt < retries; attempt++) {
+  skipCache = false
+): Promise<T> {
+  const url = `${API_BASE}${path}`;
+  const cacheKey = `${options?.method ?? 'GET'}:${url}`;
+
+  if (!skipCache && (!options?.method || options.method === 'GET')) {
+    const cached = cacheGet<T>(cacheKey);
+    if (cached !== null) return cached;
+  }
+
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20_000);
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
     try {
-      const res = await fetch(`${API_BASE}${path}`, {
+      const res = await fetch(url, {
         ...options,
         signal: controller.signal,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           ...(options?.headers ?? {}),
         },
       });
       clearTimeout(timer);
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        console.error(`[WebinX] ${path} → HTTP ${res.status}`, text.slice(0, 200));
-        return null;
+        const body = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
       }
-      return (await res.json()) as T;
+      const data = (await res.json()) as T;
+      if (!options?.method || options.method === 'GET') {
+        cacheSet(cacheKey, data);
+      }
+      return data;
     } catch (err) {
       clearTimeout(timer);
-      const isLast = attempt === retries - 1;
-      if (!isLast) {
-        await new Promise((r) => setTimeout(r, 1_000 * (attempt + 1)));
-        console.warn(`[WebinX] ${path} attempt ${attempt + 1} failed, retrying…`);
-        continue;
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
       }
-      console.error(`[WebinX] ${path} failed after ${retries} attempts:`, err);
-      return null;
     }
   }
-  return null;
+  throw lastError ?? new Error('apiFetch failed');
 }
 
-// ── Events ────────────────────────────────────────────────────────
-export async function getEvents(
-  filterOrSector: EventsFilter | string = {},
-  legacyLimit = 24,
-  legacyOffset = 0
-): Promise<WebinarEvent[]> {
-  const filter: EventsFilter =
-    typeof filterOrSector === "string"
-      ? { sector: filterOrSector, limit: legacyLimit, offset: legacyOffset }
-      : filterOrSector;
+// ─── API Functions ─────────────────────────────────────────────────────────────
 
-  const params = new URLSearchParams();
-  if (filter.sector)   params.set("sector",   filter.sector);
-  if (filter.q)        params.set("q",        filter.q);
-  if (filter.category) params.set("category", filter.category);
-  params.set("limit",  String(filter.limit  ?? 24));
-  params.set("offset", String(filter.offset ?? 0));
+export async function getEvents(params?: {
+  q?: string;
+  sector?: string;
+  category?: string;
+  content_type?: string;
+  limit?: number;
+  offset?: number;
+  upcoming_only?: boolean;
+}): Promise<EventsResponse> {
+  const sp = new URLSearchParams();
+  if (params?.q) sp.set('q', params.q);
+  if (params?.sector) sp.set('sector', params.sector);
+  if (params?.category) sp.set('category', params.category);
+  if (params?.content_type) sp.set('content_type', params.content_type);
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.offset != null) sp.set('offset', String(params.offset));
+  if (params?.upcoming_only) sp.set('upcoming_only', 'true');
 
-  const qs = params.toString();
-  const cacheKey = `events:${qs}`;
-  const cached = cacheGet<WebinarEvent[]>(cacheKey);
-  if (cached) return cached;
-
-  const data = await apiFetch<unknown[]>(`/api/events?${qs}`);
-  if (!Array.isArray(data)) return [];
-
-  const result = data
-    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .filter((e) => e.slug && e.title)
-    .map(normalizeEvent);
-
-  cacheSet(cacheKey, result);
-  return result;
-}
-
-export async function getEventBySlug(slug: string): Promise<WebinarEvent | null> {
-  if (!slug) return null;
-  const cacheKey = `event:${slug}`;
-  const cached = cacheGet<WebinarEvent>(cacheKey);
-  if (cached) return cached;
-
-  const data = await apiFetch<Record<string, unknown>>(
-    `/api/events/${encodeURIComponent(slug)}`
+  const qs = sp.toString() ? `?${sp}` : '';
+  const raw = await apiFetch<{ events: unknown[]; total: number; limit: number; offset: number }>(
+    `/api/events${qs}`
   );
-  if (!data?.title) return null;
-
-  const result = normalizeEvent(data);
-  cacheSet(cacheKey, result);
-  return result;
+  return {
+    events: raw.events.map(e => normalizeEvent(e as Record<string, unknown>)),
+    total: raw.total,
+    limit: raw.limit,
+    offset: raw.offset,
+  };
 }
 
-export async function getTrendingEvents(limit = 9): Promise<WebinarEvent[]> {
-  const cacheKey = `trending:${limit}`;
-  const cached = cacheGet<WebinarEvent[]>(cacheKey);
-  if (cached) return cached;
-
-  let data = await apiFetch<unknown[]>(`/api/events/trending?limit=${limit}`);
-
-  if (!Array.isArray(data) || data.length === 0) {
-    data = await apiFetch<unknown[]>(`/api/events?limit=${limit * 2}`);
-    if (!Array.isArray(data)) return [];
-    const result = data
-      .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-      .map(normalizeEvent)
-      .sort((a, b) => b.relevance_score - a.relevance_score)
-      .slice(0, limit);
-    cacheSet(cacheKey, result);
-    return result;
-  }
-
-  const result = data
-    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
-  cacheSet(cacheKey, result);
-  return result;
+export async function getEventBySlug(slug: string): Promise<WebinarEvent> {
+  const raw = await apiFetch<Record<string, unknown>>(`/api/events/${slug}`, undefined, true);
+  return normalizeEvent(raw);
 }
 
-export async function getFeaturedEvents(limit = 6): Promise<WebinarEvent[]> {
-  const cacheKey = `featured:${limit}`;
-  const cached = cacheGet<WebinarEvent[]>(cacheKey);
-  if (cached) return cached;
-
-  let data = await apiFetch<unknown[]>(`/api/events/featured?limit=${limit}`);
-
-  if (!Array.isArray(data) || data.length === 0) {
-    data = await apiFetch<unknown[]>(`/api/events?limit=${limit}`);
-    if (!Array.isArray(data)) return [];
-  }
-
-  const result = data
-    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
-  cacheSet(cacheKey, result);
-  return result;
+export async function getFeaturedEvents(): Promise<WebinarEvent[]> {
+  const raw = await apiFetch<{ events: unknown[] }>('/api/events/featured');
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
-export async function getRelatedEvents(
-  slug: string,
-  sector: string,
-  limit = 4
-): Promise<WebinarEvent[]> {
-  const params = new URLSearchParams({ slug, sector, limit: String(limit) });
-  const data = await apiFetch<unknown[]>(`/api/related?${params}`);
-  if (!Array.isArray(data)) return [];
-  return data
-    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
+export async function getTrendingEvents(): Promise<WebinarEvent[]> {
+  const raw = await apiFetch<{ events: unknown[] }>('/api/events/trending');
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
-export async function getCityEvents(city: string): Promise<WebinarEvent[]> {
-  if (!city) return [];
-  const cacheKey = `city:${city}`;
-  const cached = cacheGet<WebinarEvent[]>(cacheKey);
-  if (cached) return cached;
-
-  const data = await apiFetch<unknown[]>(`/api/cities/${encodeURIComponent(city)}`);
-  if (!Array.isArray(data)) return [];
-
-  const result = data
-    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
-  cacheSet(cacheKey, result);
-  return result;
+export async function getRelatedEvents(slug: string, sectorSlug?: string): Promise<WebinarEvent[]> {
+  const qs = sectorSlug ? `?sector=${sectorSlug}&exclude=${slug}` : `?exclude=${slug}`;
+  const raw = await apiFetch<{ events: unknown[] }>(`/api/related${qs}`);
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
-export async function searchEvents(q: string, limit = 20): Promise<WebinarEvent[]> {
-  if (!q || q.trim().length < 2) return [];
-  const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
-  const data = await apiFetch<unknown[]>(`/api/search?${params}`);
-  if (!Array.isArray(data)) return [];
-  return data
-    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
-}
-
-export async function getSectors(): Promise<Sector[]> {
-  const cached = cacheGet<Sector[]>("sectors");
-  if (cached) return cached;
-  const data = await apiFetch<Sector[]>("/api/sectors");
-  if (!Array.isArray(data)) return [];
-  cacheSet("sectors", data);
-  return data;
-}
-
-export async function getCategories(): Promise<Category[]> {
-  const cached = cacheGet<Category[]>("categories");
-  if (cached) return cached;
-  const data = await apiFetch<Category[]>("/api/categories");
-  if (!Array.isArray(data)) return [];
-  cacheSet("categories", data);
-  return data;
+export async function searchEvents(q: string): Promise<WebinarEvent[]> {
+  const raw = await apiFetch<{ events: unknown[] }>(`/api/search?q=${encodeURIComponent(q)}`);
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function getStats(): Promise<PlatformStats> {
-  const fallback: PlatformStats = {
-    total_events: 500, upcoming_events: 100,
-    this_week: 30, sectors: 10, categories: 20, hosts: 200,
-  };
-  const cached = cacheGet<PlatformStats>("stats");
-  if (cached) return cached;
-  const data = await apiFetch<PlatformStats>("/api/stats");
-  if (!data || typeof data !== "object") return fallback;
-  const result: PlatformStats = {
-    total_events:    Number(data.total_events    ?? fallback.total_events),
-    upcoming_events: Number(data.upcoming_events ?? fallback.upcoming_events),
-    this_week:       Number(data.this_week       ?? fallback.this_week),
-    sectors:         Number(data.sectors         ?? fallback.sectors),
-    categories:      Number(data.categories      ?? fallback.categories),
-    hosts:           Number(data.hosts           ?? fallback.hosts),
-  };
-  cacheSet("stats", result);
-  return result;
+  return apiFetch<PlatformStats>('/api/stats');
 }
 
-export interface Host {
-  id?: string;
-  slug: string;
-  name: string;
-  org_name?: string;
-  bio?: string;
-  website?: string;
-  linkedin?: string;
-  is_verified?: boolean;
-  event_count?: number;
+// Backwards-compat alias
+export const getPlatformStats = getStats;
+
+export async function getSectors(): Promise<Sector[]> {
+  const raw = await apiFetch<{ sectors: unknown[] }>('/api/sectors');
+  return raw.sectors as Sector[];
 }
 
-export async function getHost(slug: string): Promise<Host | null> {
-  if (!slug) return null;
-  const data = await apiFetch<Record<string, unknown>>(
-    `/api/hosts/${encodeURIComponent(slug)}`
-  );
-  if (!data || typeof data !== "object" || !data.slug) return null;
-  return {
-    id:         String(data.id ?? ""),
-    slug:       String(data.slug ?? ""),
-    name:       String(data.name ?? ""),
-    org_name:   String(data.org_name ?? ""),
-    bio:        String(data.bio ?? ""),
-    website:    String(data.website ?? ""),
-    linkedin:   String(data.linkedin ?? ""),
-    is_verified: Boolean(data.is_verified),
-    event_count: Number(data.event_count ?? 0),
-  };
+export async function getHosts(): Promise<Host[]> {
+  const raw = await apiFetch<{ hosts: unknown[] }>('/api/hosts');
+  return raw.hosts as Host[];
+}
+
+export async function getHostBySlug(slug: string): Promise<Host> {
+  return apiFetch<Host>(`/api/hosts/${slug}`);
 }
 
 export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
-  if (!slug) return [];
-  const data = await apiFetch<unknown[]>(
-    `/api/hosts/${encodeURIComponent(slug)}/events`
-  );
-  if (!Array.isArray(data)) return [];
-  return data
-    .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-    .map(normalizeEvent);
+  const raw = await apiFetch<{ events: unknown[] }>(`/api/hosts/${slug}/events`);
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
-export async function captureLead(
-  payload: LeadPayload
-): Promise<{ status: "ok" | "error"; message: string }> {
-  const data = await apiFetch<{ status: string; message: string }>("/api/leads", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return data
-    ? { status: "ok", message: data.message ?? "Subscribed!" }
-    : { status: "error", message: "Failed to subscribe. Please try again." };
+export async function getCityEvents(city: string): Promise<WebinarEvent[]> {
+  const raw = await apiFetch<{ events: unknown[] }>(`/api/cities/${encodeURIComponent(city)}`);
+  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
-export async function trackSponsorClick(slug: string): Promise<string | null> {
-  const data = await apiFetch<{ url: string }>(`/api/sponsor/click/${slug}`, {
-    method: "POST",
-  });
-  return data?.url ?? null;
+export async function getLeaderboard(): Promise<Host[]> {
+  const raw = await apiFetch<{ hosts: unknown[] }>('/api/hosts/leaderboard');
+  return raw.hosts as Host[];
 }
 
-// ── Wishlist (localStorage + optional DB sync) ────────────────────
-const WISHLIST_KEY = "webinx_wishlist";
-const SESSION_KEY  = "webinx_session_id";
-
-function getSessionId(): string {
-  try {
-    let id = localStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(SESSION_KEY, id);
-    }
-    return id;
-  } catch { return ""; }
+export async function submitLead(data: {
+  email: string;
+  name?: string;
+  event_slug?: string;
+  utm_source?: string;
+  utm_medium?: string;
+}): Promise<{ status: string }> {
+  return apiFetch('/api/leads', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, true);
 }
 
-export function getWishlist(): string[] {
-  try {
-    const raw = localStorage.getItem(WISHLIST_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch { return []; }
-}
-
-export function isWishlisted(slug: string): boolean {
-  return getWishlist().includes(slug);
-}
-
-export function toggleWishlist(slug: string): boolean {
-  const list = getWishlist();
-  const idx  = list.indexOf(slug);
-  const added = idx < 0;
-  if (added) {
-    list.unshift(slug);
-  } else {
-    list.splice(idx, 1);
-  }
-  try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(list)); } catch {}
-  const sessionId = getSessionId();
-  if (added) {
-    apiFetch("/api/wishlist", {
-      method: "POST",
-      body: JSON.stringify({ event_slug: slug, session_id: sessionId }),
-    }).catch(() => {});
-  } else {
-    apiFetch("/api/wishlist", {
-      method: "DELETE",
-      body: JSON.stringify({ event_slug: slug, session_id: sessionId }),
-    }).catch(() => {});
-  }
-  return added;
-}
-
-export async function syncWishlistEmail(email: string): Promise<void> {
-  const list      = getWishlist();
-  const sessionId = getSessionId();
-  await Promise.all(
-    list.map((slug) =>
-      apiFetch("/api/wishlist", {
-        method: "POST",
-        body: JSON.stringify({ email, event_slug: slug, session_id: sessionId }),
-      }).catch(() => {})
-    )
-  );
-}
-
-export async function saveWishlistTopic(
-  email: string,
-  topicQuery: string,
-  sectorSlug?: string
-): Promise<{ status: "ok" | "error"; message: string }> {
-  const data = await apiFetch<{ status: string; message: string }>(
-    "/api/wishlist/topic",
-    { method: "POST", body: JSON.stringify({ email, topic_query: topicQuery, sector_slug: sectorSlug }) }
-  );
-  return data
-    ? { status: "ok", message: data.message ?? "Saved!" }
-    : { status: "error", message: "Failed. Please try again." };
-}
-
-export async function getWishlistEvents(): Promise<WebinarEvent[]> {
-  const slugs = getWishlist();
-  if (slugs.length === 0) return [];
-  const results = await Promise.all(slugs.map((s) => getEventBySlug(s)));
-  return results.filter((e): e is WebinarEvent => e !== null);
-}
-
-// ── Alerts ────────────────────────────────────────────────────────
-export interface AlertPayload {
+export async function submitAlert(data: {
   email: string;
   event_slug?: string;
   topic_query?: string;
+}): Promise<{ status: string }> {
+  return apiFetch('/api/alerts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, true);
 }
 
-export async function postAlert(
-  payload: AlertPayload
-): Promise<{ status: "ok" | "error"; message: string }> {
-  const data = await apiFetch<{ status: string; message: string }>("/api/alerts", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return data
-    ? { status: "ok", message: data.message ?? "Alert set!" }
-    : { status: "error", message: "Failed to set alert. Please try again." };
+export async function toggleWishlist(
+  action: 'save' | 'remove',
+  data: { email?: string; event_slug: string; session_id?: string }
+): Promise<{ status: string }> {
+  return apiFetch('/api/wishlist', {
+    method: action === 'save' ? 'POST' : 'DELETE',
+    body: JSON.stringify(data),
+  }, true);
 }
 
-// ── Calendar URL builder (no API key needed) ───────────────────────
+export async function trackSponsorClick(slug: string): Promise<{ redirect_url: string | null }> {
+  return apiFetch(`/api/sponsor/click/${slug}`, { method: 'POST' }, true);
+}
+
+export async function getTrendingTopics(): Promise<Array<{
+  topic: string;
+  demand: number;
+  sector_slug?: string;
+}>> {
+  const raw = await apiFetch<{ topics: unknown[] }>('/api/trending-topics');
+  return raw.topics as Array<{ topic: string; demand: number; sector_slug?: string }>;
+}
+
+export async function getPipelineStatus(): Promise<unknown[]> {
+  const raw = await apiFetch<{ runs: unknown[] }>('/api/pipeline/status');
+  return raw.runs;
+}
+
+// ─── Wishlist (localStorage + DB) ────────────────────────────────────────────
+
+const WISHLIST_KEY = 'webinx_wishlist';
+const SESSION_KEY = 'webinx_session_id';
+
+export function getSessionId(): string {
+  let sid = localStorage.getItem(SESSION_KEY);
+  if (!sid) {
+    sid = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(SESSION_KEY, sid);
+  }
+  return sid;
+}
+
+export function getLocalWishlist(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(WISHLIST_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalWishlist(slugs: string[]): void {
+  localStorage.setItem(WISHLIST_KEY, JSON.stringify(slugs));
+}
+
+export function isWishlisted(slug: string): boolean {
+  return getLocalWishlist().includes(slug);
+}
+
+export function toggleLocalWishlist(slug: string): boolean {
+  const list = getLocalWishlist();
+  const idx = list.indexOf(slug);
+  const newList = idx === -1 ? [...list, slug] : list.filter(s => s !== slug);
+  saveLocalWishlist(newList);
+  return idx === -1; // true = added
+}
+
+// ─── Date Formatting ──────────────────────────────────────────────────────────
+
+const IST = 'Asia/Kolkata';
+
+export function formatEventDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('en-IN', {
+      timeZone: IST,
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return iso;
+  }
+}
+
+export function formatShortDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('en-IN', {
+      timeZone: IST,
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+export function getCountdownLabel(iso: string): string | null {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const mins = Math.floor((diff % 3_600_000) / 60_000);
+  if (days > 0) return `in ${days}d ${hours}h`;
+  if (hours > 0) return `in ${hours}h ${mins}m`;
+  return `in ${mins}m`;
+}
+
+// ─── Calendar Helper ──────────────────────────────────────────────────────────
+
 export function buildCalendarUrl(event: WebinarEvent): string {
-  const toCalDate = (iso: string | null | undefined): string => {
-    if (!iso) return "";
-    try {
-      return new Date(iso)
+  const start = new Date(event.start_time)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace('.000', '');
+  const end = event.end_time
+    ? new Date(event.end_time)
         .toISOString()
-        .replace(/[-:]/g, "")
-        .replace(/\.\d{3}/, "");
-    } catch { return ""; }
-  };
-
-  const start = toCalDate(event.start_time);
-  const end   = toCalDate(event.end_time || event.start_time);
-  if (!start) return "";
-
-  const params = new URLSearchParams({
-    action:  "TEMPLATE",
-    text:    event.title,
-    details: `${event.description?.slice(0, 300) ?? ""}\n\nRegister: ${event.url || event.registration_url}`,
-    location: event.url || event.registration_url || "Online",
-    dates:   `${start}/${end}`,
-  });
-
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+        .replace(/[-:]/g, '')
+        .replace('.000', '')
+    : start;
+  const title = encodeURIComponent(event.title);
+  const desc = encodeURIComponent(event.description?.slice(0, 300) ?? '');
+  const url = encodeURIComponent(event.best_registration_url ?? '');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${desc}&location=${url}`;
 }
 
-// ── Date utils ─────────────────────────────────────────────────────
-export function formatEventDate(isoString: string | null | undefined): string {
-  if (!isoString) return "Date TBA";
-  try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return "Date TBA";
-    return d.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "numeric", month: "short", year: "numeric",
-      hour: "numeric", minute: "2-digit", hour12: true,
-    });
-  } catch { return "Date TBA"; }
+// ─── Sector Config ────────────────────────────────────────────────────────────
+
+export interface SectorConfig {
+  slug: string;
+  name: string;
+  emoji: string;
+  color: string;
+  bg: string;
+  border: string;
 }
 
-export function formatShortDate(isoString: string | null | undefined): string {
-  if (!isoString) return "TBA";
-  try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return "TBA";
-    return d.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata", day: "numeric", month: "short",
-    });
-  } catch { return "TBA"; }
+export const SECTOR_CONFIG: Record<string, SectorConfig> = {
+  ai: { slug: 'ai', name: 'AI', emoji: '🤖', color: '#6366f1', bg: '#eef2ff', border: '#6366f1' },
+  technology: { slug: 'technology', name: 'IT & SaaS', emoji: '☁️', color: '#3b82f6', bg: '#eff6ff', border: '#3b82f6' },
+  finance: { slug: 'finance', name: 'Finance', emoji: '💹', color: '#10b981', bg: '#ecfdf5', border: '#10b981' },
+  marketing: { slug: 'marketing', name: 'Marketing', emoji: '📣', color: '#f97316', bg: '#fff7ed', border: '#f97316' },
+  startup: { slug: 'startup', name: 'Startup', emoji: '🚀', color: '#8b5cf6', bg: '#f5f3ff', border: '#8b5cf6' },
+  hr: { slug: 'hr', name: 'HR', emoji: '🤝', color: '#f43f5e', bg: '#fff1f2', border: '#f43f5e' },
+  healthcare: { slug: 'healthcare', name: 'Healthcare', emoji: '🏥', color: '#14b8a6', bg: '#f0fdfa', border: '#14b8a6' },
+  education: { slug: 'education', name: 'Education', emoji: '📚', color: '#f59e0b', bg: '#fffbeb', border: '#f59e0b' },
+  general: { slug: 'general', name: 'General', emoji: '📋', color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' },
+};
+
+export function getSectorConfig(slugOrName?: string | null): SectorConfig {
+  if (!slugOrName) return SECTOR_CONFIG.general;
+  const key = slugOrName.toLowerCase().replace(/\s+/g, '_');
+  return SECTOR_CONFIG[key] ?? SECTOR_CONFIG.general;
 }
 
-export function isUpcoming(isoString: string | null | undefined): boolean {
-  if (!isoString) return false;
-  try { return new Date(isoString) >= new Date(); } catch { return false; }
+// ─── Platform Detection ───────────────────────────────────────────────────────
+
+export type PlatformType = 'zoom' | 'gmeet' | 'teams' | 'youtube' | 'webex' | 'other';
+
+export function detectPlatform(url: string | null | undefined): PlatformType {
+  if (!url) return 'other';
+  const u = url.toLowerCase();
+  if (u.includes('zoom.us')) return 'zoom';
+  if (u.includes('meet.google')) return 'gmeet';
+  if (u.includes('teams.microsoft') || u.includes('teams.live')) return 'teams';
+  if (u.includes('youtube.com') || u.includes('youtu.be')) return 'youtube';
+  if (u.includes('webex.com')) return 'webex';
+  return 'other';
 }
-// Backwards-compat alias — home.tsx imports this name
-export const getPlatformStats = getStats;
-export function daysUntil(isoString: string | null | undefined): number | null {
-  if (!isoString) return null;
-  try {
-    const diff = new Date(isoString).getTime() - Date.now();
-    if (diff < 0) return null;
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  } catch { return null; }
-}
+
+export const PLATFORM_LABELS: Record<PlatformType, string> = {
+  zoom: 'Zoom',
+  gmeet: 'Google Meet',
+  teams: 'Teams',
+  youtube: 'YouTube',
+  webex: 'Webex',
+  other: 'Online',
+};
