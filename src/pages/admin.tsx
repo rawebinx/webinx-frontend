@@ -146,7 +146,7 @@ export default function AdminPage() {
               { label: "Wishlist Saves",  value: stats.total_saves,      icon: "❤️" },
               { label: "Pending Rewards", value: stats.pending_rewards,  icon: "🎤", highlight: stats.pending_rewards > 0 },
               { label: "Paid Featured",   value: stats.paid_featured,    icon: "⭐" },
-              { label: "Revenue (₹)",     value: `₹${Math.round(stats.revenue_inr).toLocaleString()}`, icon: "💰" },
+              { label: "Revenue (₹)",     value: `₹${Math.round(stats.revenue_inr || 0).toLocaleString()}`, icon: "💰" },
             ].map((s) => (
               <div
                 key={s.label}
