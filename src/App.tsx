@@ -30,13 +30,14 @@ import EmbedPage            from "./pages/embed";
 import SubmitWebinarPage    from "./pages/submit-webinar";
 import PodcastsPage         from "./pages/podcasts";
 import LiveEventsPage       from "./pages/live-events";
+import PricingPage          from "./pages/pricing";
 
 function NotFound() {
   return (
     <div className="max-w-lg mx-auto px-4 py-20 text-center">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Page not found</h1>
       <p className="text-gray-500 mb-6">The page you're looking for doesn't exist.</p>
-      <a href="/" className="text-purple-600 hover:underline text-sm">← Back to home</a>
+      <a href="/" className="text-[#0D4F6B] hover:underline text-sm">← Back to home</a>
     </div>
   );
 }
@@ -71,9 +72,10 @@ function AppContent() {
           <Route path="/host-tools"           component={HostToolsPage} />
           <Route path="/trending-topics"      component={TrendingTopicsPage} />
           <Route path="/embed/:slug"          component={EmbedPage} />
-          <Route path="/about"                component={AboutPage} />
-          <Route path="/contact"              component={ContactPage} />
-          <Route path="/privacy"              component={PrivacyPage} />
+          <Route path="/pricing"             component={PricingPage} />
+          <Route path="/about"               component={AboutPage} />
+          <Route path="/contact"             component={ContactPage} />
+          <Route path="/privacy"             component={PrivacyPage} />
           <Route path="/terms"               component={TermsPage} />
           <Route path="/:slug"               component={SeoPage} />
           <Route component={NotFound} />
