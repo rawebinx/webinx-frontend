@@ -31,6 +31,7 @@ import SubmitWebinarPage    from "./pages/submit-webinar";
 import PodcastsPage         from "./pages/podcasts";
 import LiveEventsPage       from "./pages/live-events";
 import PricingPage          from "./pages/pricing";
+import MetricsPage          from "./pages/metrics";
 
 function NotFound() {
   return (
@@ -73,6 +74,7 @@ function AppContent() {
           <Route path="/trending-topics"      component={TrendingTopicsPage} />
           <Route path="/embed/:slug"          component={EmbedPage} />
           <Route path="/pricing"             component={PricingPage} />
+          <Route path="/metrics"             component={MetricsPage} />
           <Route path="/about"               component={AboutPage} />
           <Route path="/contact"             component={ContactPage} />
           <Route path="/privacy"             component={PrivacyPage} />
