@@ -11,7 +11,7 @@ import {
   Check, X, Zap, Crown, Building2, Sparkles,
   ChevronDown, ChevronUp, ArrowRight, Star,
 } from 'lucide-react';
-import { apiFetch } from '../lib/api';
+import { API_BASE } from '../lib/api';
 
 // ─── Plan Data ────────────────────────────────────────────────────────────────
 
@@ -221,17 +221,15 @@ export default function PricingPage(): React.ReactElement {
       }
       const name = window.prompt('Your name / organisation:') || '';
 
-      const res = await apiFetch<{
+      const _raw = await fetch(`${API_BASE}/api/razorpay/create-subscription`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tier: plan.id, email, name }) });
+      const res = await _raw.json() as {
         subscription_id: string;
         short_url: string;
         key: string;
         tier: string;
         message: string;
         error?: string;
-      }>('/api/razorpay/create-subscription', {
-        method: 'POST',
-        body: JSON.stringify({ tier: plan.id, email, name }),
-      });
+      };
 
       if (res.error) {
         // Plans not yet configured in Razorpay — show contact fallback
