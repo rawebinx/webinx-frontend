@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
+      "destination": "https://webinx-backend.onrender.com/sitemap.xml"
     },
     {
       "source": "/rss.xml",
-      "destination": "/api/rss"
+      "destination": "https://webinx-backend.onrender.com/rss.xml"
     },
     {
       "source": "/((?!assets/|.*\\..*).*)",
