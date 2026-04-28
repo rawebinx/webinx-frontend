@@ -32,6 +32,7 @@ import PodcastsPage         from "./pages/podcasts";
 import LiveEventsPage       from "./pages/live-events";
 import PricingPage          from "./pages/pricing";
 import MetricsPage          from "./pages/metrics";
+import GearPage             from '@/pages/gear';
 
 function NotFound() {
   return (
@@ -75,6 +76,7 @@ function AppContent() {
           <Route path="/embed/:slug"          component={EmbedPage} />
           <Route path="/pricing"             component={PricingPage} />
           <Route path="/metrics"             component={MetricsPage} />
+          <Route path="/gear"                 component={GearPage} />
           <Route path="/about"               component={AboutPage} />
           <Route path="/contact"             component={ContactPage} />
           <Route path="/privacy"             component={PrivacyPage} />
