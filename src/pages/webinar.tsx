@@ -1,5 +1,11 @@
 // src/pages/webinar.tsx
-// WebinX — Webinar Detail Page — production version
+// WebinX — Webinar Detail Page — production version (slug-fix patch)
+// Changes from previous version:
+//  1. Converted .then() chain → async/await (fixes "Event not found" when
+//     getRelatedEvents throws — the event was loaded but error was overwritten)
+//  2. Related-events errors are swallowed silently (non-critical)
+//  3. Null guards on event.tags, event.host_name, event.sector_slug
+//  4. sector_slug fallback chain fixed
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'wouter';
@@ -41,7 +47,7 @@ function EventSchema({ event, regUrl }: { event: WebinarEvent; regUrl: string | 
     eventStatus: 'https://schema.org/EventScheduled',
     organizer: {
       '@type': 'Person',
-      name: event.host_name,
+      name: event.host_name ?? 'Unknown Host',
     },
     ...(regUrl ? { url: regUrl } : {}),
     isAccessibleForFree: !event.ticket_price_inr,
@@ -88,12 +94,12 @@ function SocialShare({ event }: { event: WebinarEvent }) {
     [event.slug]
   );
 
-  const handleCopy = useCallback(async () => {
+  const handleCopy = useCallback(async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(`https://webinx.in/webinar/${event.slug}`);
       alert('Link copied!');
     } catch {
-      // fallback
+      // fallback — clipboard blocked in some contexts
     }
   }, [event.slug]);
 
@@ -153,7 +159,7 @@ function AlertForm({ eventSlug }: { eventSlug: string }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: React.FormEvent): Promise<void> => {
       e.preventDefault();
       if (!email.trim() || state === 'loading') return;
       setState('loading');
@@ -269,23 +275,53 @@ export default function WebinarPage() {
   const [error, setError] = useState<string | null>(null);
   const [wishlisted, setWishlisted] = useState(false);
 
+  // ── FIX: converted from .then() chain to async/await ──────────────────────
+  // Root cause of "Event not found" false-positive:
+  //   .then(ev => ...).then(rel => ...).catch(err => setError(...))
+  //   If getRelatedEvents() threw, setError fired and hid the loaded event.
+  // Fix: wrap in async/await; related errors are swallowed (non-critical).
   useEffect(() => {
     if (!slug) return;
-    setLoading(true);
-    setError(null);
 
-    getEventBySlug(slug)
-      .then(ev => {
+    let cancelled = false;
+
+    const load = async (): Promise<void> => {
+      setLoading(true);
+      setError(null);
+      setEvent(null);
+      setRelated([]);
+
+      try {
+        const ev = await getEventBySlug(slug);
+
+        if (cancelled) return;
+
         setEvent(ev);
         setWishlisted(isWishlisted(ev.slug));
-        return getRelatedEvents(ev.slug, ev.sector_slug ?? undefined);
-      })
-      .then(rel => setRelated(rel.slice(0, 3)))
-      .catch(err => setError(String(err)))
-      .finally(() => setLoading(false));
+
+        // Related events are non-critical — failure must never block the page
+        try {
+          const rel = await getRelatedEvents(ev.slug, ev.sector_slug ?? undefined);
+          if (!cancelled) setRelated((rel ?? []).slice(0, 3));
+        } catch {
+          // silently ignore — user still sees the event
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void load();
+
+    // Cleanup: if slug changes mid-flight, discard stale results
+    return () => { cancelled = true; };
   }, [slug]);
 
-  const handleWishlist = useCallback(() => {
+  const handleWishlist = useCallback((): void => {
     if (!event) return;
     const added = toggleLocalWishlist(event.slug);
     setWishlisted(added);
@@ -308,11 +344,24 @@ export default function WebinarPage() {
     );
   }
 
-  const sector = getSectorConfig(event.sector_slug ?? event.sector_name);
+  // ── FIX: safe fallbacks for all nullable fields ───────────────────────────
+  const sectorKey = event.sector_slug ?? event.sector_name ?? '';
+  const sector = getSectorConfig(sectorKey);
   const regUrl = getBestRegistrationUrl(event);
   const countdown = getCountdownLabel(event.start_time);
   const calendarUrl = buildCalendarUrl(event);
-  const platform = detectPlatform(event.event_url ?? event.registration_url);
+  const platform = detectPlatform(event.event_url ?? event.registration_url ?? null);
+
+  // ── FIX: null-safe host initials ──────────────────────────────────────────
+  const hostName = event.host_name ?? 'Unknown Host';
+  const hostInitials = hostName
+    .split(' ')
+    .slice(0, 2)
+    .map((w: string) => w[0] ?? '')
+    .join('');
+
+  // ── FIX: null-safe tags ───────────────────────────────────────────────────
+  const tags: string[] = Array.isArray(event.tags) ? event.tags : [];
 
   const canonicalUrl = `https://webinx.in/webinar/${event.slug}`;
   const ogImage = event.thumbnail_url ?? 'https://webinx.in/og-default.jpg';
@@ -361,9 +410,14 @@ export default function WebinarPage() {
             <span>›</span>
             <Link href="/webinars" style={{ color: '#6B7280', textDecoration: 'none' }}>Webinars</Link>
             <span>›</span>
-            <Link href={`/sector/${event.sector_slug}`} style={{ color: sector.color, textDecoration: 'none' }}>
-              {sector.emoji} {sector.name}
-            </Link>
+            {/* ── FIX: only render sector link if sector_slug is not null ── */}
+            {event.sector_slug ? (
+              <Link href={`/sector/${event.sector_slug}`} style={{ color: sector.color, textDecoration: 'none' }}>
+                {sector.emoji} {sector.name}
+              </Link>
+            ) : (
+              <span style={{ color: sector.color }}>{sector.emoji} {sector.name}</span>
+            )}
             <span>›</span>
             <span style={{ color: '#374151' }}>{event.title.slice(0, 40)}{event.title.length > 40 ? '…' : ''}</span>
           </nav>
@@ -407,7 +461,7 @@ export default function WebinarPage() {
               </span>
             )}
 
-            <span style={{ fontSize: 12.5, color: '#9CA3AF' }}>👁 {event.view_count} views</span>
+            <span style={{ fontSize: 12.5, color: '#9CA3AF' }}>👁 {event.view_count ?? 0} views</span>
           </div>
         </div>
       </div>
@@ -420,11 +474,12 @@ export default function WebinarPage() {
           {/* Host card */}
           <div style={{ background: '#f9fafb', border: '1px solid #E5E7EB', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: sector.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
-              {event.host_name.split(' ').slice(0,2).map(w => w[0]).join('')}
+              {/* ── FIX: null-safe initials ── */}
+              {hostInitials || '?'}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{event.host_name}</span>
+                <span style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{hostName}</span>
                 {event.host_is_verified && (
                   <span style={{ background: '#0D4F6B', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>✓ VERIFIED</span>
                 )}
@@ -476,12 +531,12 @@ export default function WebinarPage() {
             </div>
           )}
 
-          {/* Tags */}
-          {event.tags.length > 0 && (
+          {/* Tags — FIX: null-safe tags array */}
+          {tags.length > 0 && (
             <div style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', marginBottom: 10 }}>Topics covered</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {event.tags.map(tag => (
+                {tags.map(tag => (
                   <span key={tag} style={{ background: '#F3F4F6', color: '#374151', fontSize: 13, padding: '5px 12px', borderRadius: 8 }}>{tag}</span>
                 ))}
               </div>
@@ -567,14 +622,12 @@ export default function WebinarPage() {
 
             {/* Secondary actions */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {/* Add to calendar */}
               <a href={calendarUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
                 <button style={{ width: '100%', padding: '9px 0', background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                   📅 Calendar
                 </button>
               </a>
 
-              {/* Wishlist */}
               <button
                 onClick={handleWishlist}
                 style={{ padding: '9px 0', background: wishlisted ? '#fff1f2' : 'transparent', border: `1.5px solid ${wishlisted ? '#f43f5e' : '#E5E7EB'}`, borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: wishlisted ? '#f43f5e' : '#374151', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
@@ -618,9 +671,11 @@ export default function WebinarPage() {
           <div style={{ maxWidth: 1080, margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>Related Events</h2>
-              <Link href={`/sector/${event.sector_slug}`} style={{ fontSize: 14, color: '#0D4F6B', fontWeight: 600, textDecoration: 'none' }}>
-                View all {sector.name} events →
-              </Link>
+              {event.sector_slug && (
+                <Link href={`/sector/${event.sector_slug}`} style={{ fontSize: 14, color: '#0D4F6B', fontWeight: 600, textDecoration: 'none' }}>
+                  View all {sector.name} events →
+                </Link>
+              )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
               {related.map(rel => (
