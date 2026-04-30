@@ -4,7 +4,6 @@ import {
   Home,
   Video,
   Mic,
-  MapPin,
   Users,
   Sparkles,
   Heart,
@@ -12,6 +11,7 @@ import {
   Menu,
   X,
   Star,
+  MapPin,
 } from 'lucide-react';
 
 /* ─── Wishlist count (reads localStorage) ─── */
@@ -44,15 +44,17 @@ interface NavLink {
 }
 
 const CONTENT_TABS: NavLink[] = [
-  { label: 'Webinars', href: '/webinars' },
-  { label: 'Podcasts', href: '/podcasts', isNew: true },
+  { label: 'Webinars',    href: '/webinars' },
+  { label: 'Podcasts',    href: '/podcasts',    isNew: true },
   { label: 'Live Events', href: '/live-events', isNew: true },
 ];
 
+// FIX: '/gear' → '/host-tools' and '/upcoming' → '/trending-topics'
+// (both are valid routes in App.tsx; /gear and /upcoming do not exist)
 const NAV_LINKS: NavLink[] = [
-  { label: 'Hosts', href: '/host' },
-  { label: '🛠 Tools', href: '/gear' },
-  { label: '🚀 Roadmap', href: '/upcoming' },
+  { label: 'Hosts',    href: '/top-hosts'       },
+  { label: '🛠 Tools', href: '/host-tools'      },
+  { label: '📈 Trending', href: '/trending-topics' },
 ];
 
 /* ─── Mobile bottom tab definition ─── */
@@ -91,9 +93,9 @@ export default function Navbar(): JSX.Element {
   );
 
   const BOTTOM_TABS: BottomTab[] = [
-    { label: 'Home', href: '/', icon: <Home size={20} strokeWidth={1.75} /> },
-    { label: 'Explore', href: '/webinars', icon: <Video size={20} strokeWidth={1.75} />, matchPrefix: '/webinar' },
-    { label: 'AI', href: '/ai-search', icon: <Sparkles size={20} strokeWidth={1.75} /> },
+    { label: 'Home',    href: '/',          icon: <Home  size={20} strokeWidth={1.75} /> },
+    { label: 'Explore', href: '/webinars',  icon: <Video size={20} strokeWidth={1.75} />, matchPrefix: '/webinar' },
+    { label: 'AI',      href: '/ai-search', icon: <Sparkles size={20} strokeWidth={1.75} /> },
     {
       label: 'Saved',
       href: '/wishlist',
@@ -112,6 +114,17 @@ export default function Navbar(): JSX.Element {
       ),
     },
     { label: 'Host', href: '/host', icon: <Users size={20} strokeWidth={1.75} /> },
+  ];
+
+  // FIX: Mobile menu — single source of truth; no duplicate entries.
+  // Previously spread CONTENT_TABS + NAV_LINKS then added /upcoming and /gear
+  // again explicitly, causing duplicates.
+  const MOBILE_MENU_LINKS: NavLink[] = [
+    ...CONTENT_TABS,
+    ...NAV_LINKS,
+    { label: '✨ AI Search',    href: '/ai-search'   },
+    { label: '🗺 City Events',  href: '/city/mumbai' },
+    { label: '🛠 Host Tools',   href: '/host-tools'  },
   ];
 
   return (
@@ -138,8 +151,7 @@ export default function Navbar(): JSX.Element {
                 height={32}
                 className="h-8 w-auto object-contain"
                 style={{ maxWidth: 120 }}
-                onError={(e) => {
-                  /* Fallback to SVG text logo if image missing */
+                onError={(e): void => {
                   (e.target as HTMLImageElement).style.display = 'none';
                   const next = (e.target as HTMLImageElement).nextSibling as HTMLElement | null;
                   if (next) next.style.display = 'flex';
@@ -150,10 +162,8 @@ export default function Navbar(): JSX.Element {
                 className="items-center gap-0.5 text-xl font-bold tracking-tight hidden"
                 style={{ color: 'var(--wx-teal)', fontFamily: 'var(--font-display)' }}
               >
-                WeBin
-                <span style={{ color: 'var(--wx-gold)' }}>X</span>
+                WeBin<span style={{ color: 'var(--wx-gold)' }}>X</span>
               </span>
-
             </Link>
 
             {/* Content type tabs */}
@@ -278,6 +288,7 @@ export default function Navbar(): JSX.Element {
         style={{
           background: 'rgba(255,255,255,0.97)',
           backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           borderBottom: scrolled ? '1px solid var(--wx-border)' : '1px solid transparent',
           boxShadow: scrolled ? 'var(--shadow-sm)' : 'none',
           transition: 'border-color 200ms ease, box-shadow 200ms ease',
@@ -292,23 +303,26 @@ export default function Navbar(): JSX.Element {
               height={28}
               className="h-7 w-auto object-contain"
               style={{ maxWidth: 100 }}
-              onError={(e) => {
+              onError={(e): void => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
-
           </Link>
 
           <div className="flex items-center gap-2">
-            <Link href="/get-featured" className="wx-btn-primary" style={{ padding: '0.4rem 0.875rem', fontSize: '0.8rem' }}>
+            <Link
+              href="/get-featured"
+              className="wx-btn-primary"
+              style={{ padding: '0.4rem 0.875rem', fontSize: '0.8rem' }}
+            >
               <Star size={11} fill="var(--wx-gold)" stroke="none" />
               Feature
             </Link>
             <button
-              onClick={() => setMobileOpen((v) => !v)}
+              onClick={(): void => setMobileOpen((v) => !v)}
               className="p-2 rounded-lg"
               style={{ color: 'var(--wx-ink)' }}
-              aria-label="Menu"
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -325,7 +339,7 @@ export default function Navbar(): JSX.Element {
               boxShadow: 'var(--shadow-lg)',
             }}
           >
-            {[...CONTENT_TABS, ...NAV_LINKS, { label: '✨ AI Search', href: '/ai-search' }, { label: '🗺 Upcoming Features', href: '/upcoming' }, { label: '🛠 Host Tools & Gear', href: '/gear' }].map((link) => (
+            {MOBILE_MENU_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -338,8 +352,10 @@ export default function Navbar(): JSX.Element {
               >
                 <span className="flex items-center gap-2">
                   {link.label}
-                  {'isNew' in link && link.isNew && (
-                    <span className="wx-badge wx-badge-gold" style={{ fontSize: '0.6rem' }}>NEW</span>
+                  {link.isNew && (
+                    <span className="wx-badge wx-badge-gold" style={{ fontSize: '0.6rem' }}>
+                      NEW
+                    </span>
                   )}
                 </span>
                 <ChevronRight size={15} style={{ color: 'var(--wx-muted-light)' }} />
@@ -369,6 +385,7 @@ export default function Navbar(): JSX.Element {
         style={{
           background: 'rgba(255,255,255,0.97)',
           backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           borderTop: '1px solid var(--wx-border)',
           boxShadow: '0 -4px 20px rgb(0 0 0 / 0.06)',
           paddingBottom: 'env(safe-area-inset-bottom)',
@@ -384,7 +401,7 @@ export default function Navbar(): JSX.Element {
             <Link
               key={tab.href}
               href={tab.href}
-              className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 transition-all"
+              className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 transition-all relative"
               style={{ textDecoration: 'none' }}
             >
               <span
