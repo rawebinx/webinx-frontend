@@ -8,6 +8,7 @@ import { useState, useCallback } from 'react';
 import { Link } from 'wouter';
 import {
   type WebinarEvent,
+  type SectorConfig,
   getBestRegistrationUrl,
   getCountdownLabel,
   formatEventDate,
@@ -394,7 +395,7 @@ function HostAvatar({
 
 interface ThumbnailProps {
   event: WebinarEvent;
-  sector: ReturnType<typeof getSectorConfig>;
+  sector: SectorConfig;
 }
 
 function EventThumbnail({ event, sector }: ThumbnailProps): JSX.Element {
@@ -406,7 +407,7 @@ function EventThumbnail({ event, sector }: ThumbnailProps): JSX.Element {
       ? 'Podcast'
       : event.content_type === 'live_event'
       ? 'Live Event'
-      : event.sector_name || 'General';
+      : sector.name;    // 'AI' from SECTOR_CONFIG, not 'Ai' from DB
   const sectorEmoji =
     event.content_type === 'podcast'
       ? '🎙'
@@ -505,7 +506,7 @@ export function WebinarCard({
   const [wishlisted, setWishlisted] = useState<boolean>(() => isWishlisted(event.slug));
   const [wishlistPending, setWishlistPending] = useState<boolean>(false);
 
-  const sector     = getSectorConfig(event.sector_slug ?? event.sector_name);
+  const sector: SectorConfig = getSectorConfig(event.sector_slug ?? event.sector_name);
   const regUrl     = getBestRegistrationUrl(event);
   const countdown  = event.start_time ? getCountdownLabel(event.start_time) : null;
   const platform   = detectPlatform(event.event_url ?? event.registration_url);
