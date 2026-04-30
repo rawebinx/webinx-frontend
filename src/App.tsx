@@ -54,36 +54,53 @@ function AppContent() {
       {!isEmbed && <Navbar />}
       <main className="flex-1">
         <Switch>
+          {/* ── Core pages ──────────────────────────────────────── */}
           <Route path="/"                     component={Home} />
           <Route path="/webinars"             component={WebinarsPage} />
           <Route path="/podcasts"             component={PodcastsPage} />
           <Route path="/live-events"          component={LiveEventsPage} />
+
+          {/* ── Event detail (parameterised — must stay specific) ── */}
           <Route path="/webinar/:slug"        component={WebinarPage} />
           <Route path="/category/:slug"       component={CategoryPage} />
           <Route path="/sector/:slug"         component={SectorPage} />
           <Route path="/city/:city"           component={CityPage} />
-          <Route path="/submit-webinar"       component={SubmitWebinarPage} />
+          <Route path="/certificate/:slug"    component={CertificatePage} />
+          <Route path="/embed/:slug"          component={EmbedPage} />
+
+          {/* ── Host pages ──────────────────────────────────────── */}
           <Route path="/host"                 component={HostPage} />
           <Route path="/hosts/:slug"          component={HostDetailPage} />
+          <Route path="/host-tools"           component={HostToolsPage} />
+          <Route path="/submit-webinar"       component={SubmitWebinarPage} />
+
+          {/* ── Discovery & search ──────────────────────────────── */}
           <Route path="/wishlist"             component={WishlistPage} />
+          <Route path="/ai-search"            component={AISearchPage} />
+          <Route path="/trending-topics"      component={TrendingTopicsPage} />
+
+          {/* ── Growth & monetisation ───────────────────────────── */}
           <Route path="/top-hosts"            component={LeaderboardPage} />
           <Route path="/mention-webinx"       component={RewardClaimPage} />
           <Route path="/get-featured"         component={GetFeaturedPage} />
-          <Route path="/certificate/:slug"    component={CertificatePage} />
-          <Route path="/ai-search"            component={AISearchPage} />
-          <Route path="/admin"                component={AdminPage} />
-          <Route path="/host-tools"           component={HostToolsPage} />
-          <Route path="/trending-topics"      component={TrendingTopicsPage} />
-          <Route path="/embed/:slug"          component={EmbedPage} />
-          <Route path="/pricing"             component={PricingPage} />
-          <Route path="/metrics"             component={MetricsPage} />
+          <Route path="/pricing"              component={PricingPage} />
+          <Route path="/metrics"              component={MetricsPage} />
           <Route path="/gear"                 component={GearPage} />
+
+          {/* ── Product & company ───────────────────────────────── */}
+          <Route path="/upcoming"             component={UpcomingPage} />
           <Route path="/about"               component={AboutPage} />
           <Route path="/contact"             component={ContactPage} />
           <Route path="/privacy"             component={PrivacyPage} />
           <Route path="/terms"               component={TermsPage} />
+
+          {/* ── Admin ───────────────────────────────────────────── */}
+          <Route path="/admin"               component={AdminPage} />
+
+          {/* ── SEO catch-all — MUST be last named route ────────── */}
           <Route path="/:slug"               component={SeoPage} />
-          <Route path="/upcoming"            component={UpcomingPage} />
+
+          {/* ── 404 ─────────────────────────────────────────────── */}
           <Route component={NotFound} />
         </Switch>
       </main>
