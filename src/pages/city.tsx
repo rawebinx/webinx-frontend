@@ -5,6 +5,24 @@ import { Helmet } from 'react-helmet-async';
 import WebinarCard from '../components/webinar-card';
 import { getCityEvents } from '../lib/api';
 import type { WebinarEvent } from '../lib/api';
+import React from 'react';
+// ── Per-card error boundary — prevents one bad card crashing the whole page ──
+class CardErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return null; // silently skip bad cards
+    return this.props.children;
+  }
+}
+
+
 
 const CITY_META: Record<string, { emoji: string; desc: string }> = {
   mumbai:    { emoji: '🌊', desc: 'India\'s financial capital' },
@@ -182,11 +200,12 @@ export default function CityPage(): JSX.Element {
                   </div>
                 ) : (
                   events.map(event => (
-                    <WebinarCard
-                      key={event.id ?? event.slug}
-                      event={event}
-                      variant={event.is_featured ? 'featured' : 'default'}
-                    />
+                    <CardErrorBoundary key={event.id ?? event.slug}>
+                      <WebinarCard
+                        event={event}
+                        variant={event.is_featured ? 'featured' : 'default'}
+                      />
+                    </CardErrorBoundary>
                   ))
                 )}
               </div>
