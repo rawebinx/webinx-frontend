@@ -136,10 +136,22 @@ export default function CityPage(): JSX.Element {
     <>
       <Helmet>
         <title>{pageTitle}</title>
-        <meta name="description" content={`Discover free webinars and knowledge events in ${cityName}. ${meta.desc}. Updated daily.`} />
+        <meta name="description" content={`Discover free webinars and knowledge events in ${cityName}. ${meta.desc} · Free online events updated daily on WebinX.`} />
         <link rel="canonical" href={canonicalUrl} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:title"       content={pageTitle} />
+        <meta property="og:description" content={`Free webinars and live events in ${cityName}. ${meta.desc} Updated daily.`} />
+        <meta property="og:url"         content={canonicalUrl} />
+        <meta name="twitter:card"       content="summary_large_image" />
+        {/* BreadcrumbList structured data — enables rich results for city event pages */}
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home',             item: 'https://www.webinx.in' },
+            { '@type': 'ListItem', position: 2, name: 'Events',           item: 'https://www.webinx.in/webinars' },
+            { '@type': 'ListItem', position: 3, name: `${cityName} Events`, item: canonicalUrl },
+          ],
+        })}</script>
       </Helmet>
 
       <div className="has-bottom-nav">
