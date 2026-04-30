@@ -23,11 +23,19 @@ export default async function handler(req, res) {
 
   // Static pages
   const staticPages = [
-    { loc: BASE_URL,                  priority: "1.0", changefreq: "daily"   },
-    { loc: `${BASE_URL}/webinars`,    priority: "0.9", changefreq: "daily"   },
-    { loc: `${BASE_URL}/about`,       priority: "0.5", changefreq: "monthly" },
-    { loc: `${BASE_URL}/contact`,     priority: "0.5", changefreq: "monthly" },
-    { loc: `${BASE_URL}/rss.xml`,     priority: "0.3", changefreq: "daily"   },
+    { loc: BASE_URL,                        priority: "1.0", changefreq: "daily"   },
+    { loc: `${BASE_URL}/webinars`,           priority: "0.9", changefreq: "daily"   },
+    { loc: `${BASE_URL}/podcasts`,           priority: "0.8", changefreq: "daily"   },
+    { loc: `${BASE_URL}/live-events`,        priority: "0.8", changefreq: "daily"   },
+    { loc: `${BASE_URL}/for-hosts`,          priority: "0.8", changefreq: "monthly" },
+    { loc: `${BASE_URL}/gear`,               priority: "0.7", changefreq: "weekly"  },
+    { loc: `${BASE_URL}/upcoming`,           priority: "0.6", changefreq: "weekly"  },
+    { loc: `${BASE_URL}/metrics`,            priority: "0.6", changefreq: "daily"   },
+    { loc: `${BASE_URL}/pricing`,            priority: "0.7", changefreq: "monthly" },
+    { loc: `${BASE_URL}/ai-search`,          priority: "0.8", changefreq: "daily"   },
+    { loc: `${BASE_URL}/submit-webinar`,     priority: "0.8", changefreq: "monthly" },
+    { loc: `${BASE_URL}/about`,              priority: "0.5", changefreq: "monthly" },
+    { loc: `${BASE_URL}/contact`,            priority: "0.5", changefreq: "monthly" },
   ];
 
   // SEO city pages
@@ -38,6 +46,27 @@ export default async function handler(req, res) {
   const cityPages = CITIES.map((city) => ({
     loc: `${BASE_URL}/city/${city}`,
     priority: "0.7",
+    changefreq: "daily",
+  }));
+
+  // SEO sector × city combination pages (long-tail keywords)
+  const SECTORS = ["ai", "finance", "marketing", "startup", "hr", "technology", "healthcare", "education"];
+  const SEO_CITIES = ["india", "mumbai", "delhi", "bangalore", "hyderabad", "chennai", "pune"];
+  const sectorCityPages = [];
+  for (const sector of SECTORS) {
+    for (const city of SEO_CITIES) {
+      sectorCityPages.push({
+        loc: `${BASE_URL}/webinars/${sector}-${city}`,
+        priority: city === "india" ? "0.8" : "0.7",
+        changefreq: "daily",
+      });
+    }
+  }
+
+  // Sector pages
+  const sectorPages = SECTORS.map((sector) => ({
+    loc: `${BASE_URL}/sector/${sector}`,
+    priority: "0.8",
     changefreq: "daily",
   }));
 
@@ -72,7 +101,7 @@ export default async function handler(req, res) {
     console.error("Sitemap backend fetch failed:", err?.message);
   }
 
-  const allPages = [...staticPages, ...cityPages, ...eventPages];
+  const allPages = [...staticPages, ...cityPages, ...sectorPages, ...sectorCityPages, ...eventPages];
 
   const urlTags = allPages
     .map((p) => `
