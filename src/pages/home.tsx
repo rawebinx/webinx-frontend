@@ -933,12 +933,12 @@ export default function HomePage(): JSX.Element {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
               {[
-                { emoji: '🛠', title: 'Tools & Gear', desc: '17 hand-picked tools for Indian creators', href: '/gear', color: '#0D4F6B' },
-                { emoji: '🚀', title: 'Our Roadmap', desc: '33+ features we're building next', href: '/upcoming', color: '#7c3aed' },
-                { emoji: '📊', title: 'Live Metrics', desc: 'Real numbers, no spin. Fully public.', href: '/metrics', color: '#15803d' },
-                { emoji: '✨', title: 'AI Search', desc: 'Ask anything in plain English', href: '/ai-search', color: '#d97706' },
-                { emoji: '🎤', title: 'Host Tools', desc: 'AI tools to grow your audience', href: '/host-tools', color: '#dc2626' },
-                { emoji: '⭐', title: 'Get Featured', desc: 'Reach thousands of learners', href: '/get-featured', color: '#E8B44A' },
+                { emoji: "🛠", title: "Tools & Gear", desc: "17 hand-picked tools for Indian creators", href: '/gear', color: '#0D4F6B' },
+                { emoji: "🚀", title: "Our Roadmap", desc: "33+ features we're building next", href: '/upcoming', color: '#7c3aed' },
+                { emoji: "📊", title: "Live Metrics", desc: "Real numbers, no spin. Fully public.", href: '/metrics', color: '#15803d' },
+                { emoji: "✨", title: "AI Search", desc: "Ask anything in plain English", href: '/ai-search', color: '#d97706' },
+                { emoji: "🎤", title: "Host Tools", desc: "AI tools to grow your audience", href: '/host-tools', color: '#dc2626' },
+                { emoji: "⭐", title: "Get Featured", desc: "Reach thousands of learners", href: '/get-featured', color: '#E8B44A' },
               ].map((item) => (
                 <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
                   <div
