@@ -486,20 +486,23 @@ export default function HomePage(): JSX.Element {
                 </span>
               </div>
 
-              {/* Logo — replace with <img> when /logo-wordmark.png is present */}
+              {/* Logo — img loads in production; h1 is hidden by default, shown if img 404s */}
               <div className="flex justify-center mb-5 animate-fade-up animate-delay-100">
                 <img
                   src="/logo-wordmark.png"
                   alt="WeBinX"
                   className="h-14 md:h-16 w-auto object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
+                  onError={(e): void => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                    const fallback = img.nextSibling as HTMLElement | null;
+                    if (fallback) fallback.style.display = 'block';
                   }}
                 />
-                {/* Fallback wordmark */}
+                {/* Fallback wordmark — hidden until img fails */}
                 <h1
                   className="text-5xl md:text-7xl font-bold tracking-tight"
-                  style={{ color: 'var(--wx-teal)', fontFamily: 'var(--font-display)', lineHeight: 1 }}
+                  style={{ color: 'var(--wx-teal)', fontFamily: 'var(--font-display)', lineHeight: 1, display: 'none' }}
                 >
                   WeBin<span style={{ color: 'var(--wx-gold)' }}>X</span>
                 </h1>
