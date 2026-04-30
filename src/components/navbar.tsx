@@ -153,10 +153,7 @@ export default function Navbar(): JSX.Element {
                 WeBin
                 <span style={{ color: 'var(--wx-gold)' }}>X</span>
               </span>
-              {/* BETA badge */}
-              <span className="wx-badge wx-badge-amber" style={{ fontSize: '0.6rem', letterSpacing: '0.1em' }}>
-                BETA
-              </span>
+              
             </Link>
 
             {/* Content type tabs */}
