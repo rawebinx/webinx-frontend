@@ -33,6 +33,7 @@ import LiveEventsPage       from "./pages/live-events";
 import PricingPage          from "./pages/pricing";
 import MetricsPage          from "./pages/metrics";
 import GearPage             from '@/pages/gear';
+import UpcomingPage         from '@/pages/upcoming';
 
 function NotFound() {
   return (
@@ -82,6 +83,7 @@ function AppContent() {
           <Route path="/privacy"             component={PrivacyPage} />
           <Route path="/terms"               component={TermsPage} />
           <Route path="/:slug"               component={SeoPage} />
+          <Route path="/upcoming"            component={UpcomingPage} />
           <Route component={NotFound} />
         </Switch>
       </main>
