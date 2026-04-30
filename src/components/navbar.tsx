@@ -49,12 +49,13 @@ const CONTENT_TABS: NavLink[] = [
   { label: 'Live Events', href: '/live-events', isNew: true },
 ];
 
-// FIX: '/gear' → '/host-tools' and '/upcoming' → '/trending-topics'
-// (both are valid routes in App.tsx; /gear and /upcoming do not exist)
+// /top-hosts = LeaderboardPage (browse ranked hosts)
+// /gear      = GearPage        (tools & gear for creators — valid route in App.tsx)
+// /upcoming  = UpcomingPage    (product roadmap — valid route in App.tsx)
 const NAV_LINKS: NavLink[] = [
-  { label: 'Hosts',    href: '/top-hosts'       },
-  { label: '🛠 Tools', href: '/host-tools'      },
-  { label: '📈 Trending', href: '/trending-topics' },
+  { label: 'Hosts',       href: '/top-hosts' },
+  { label: '🛠 Tools',   href: '/gear'       },
+  { label: '🚀 Roadmap', href: '/upcoming'   },
 ];
 
 /* ─── Mobile bottom tab definition ─── */
@@ -122,9 +123,9 @@ export default function Navbar(): JSX.Element {
   const MOBILE_MENU_LINKS: NavLink[] = [
     ...CONTENT_TABS,
     ...NAV_LINKS,
-    { label: '✨ AI Search',    href: '/ai-search'   },
-    { label: '🗺 City Events',  href: '/city/mumbai' },
-    { label: '🛠 Host Tools',   href: '/host-tools'  },
+    { label: '✨ AI Search',   href: '/ai-search'   },
+    { label: '🛠 Host Tools',  href: '/host-tools'  },
+    { label: '📈 Trending',    href: '/trending-topics' },
   ];
 
   return (
