@@ -1,11 +1,10 @@
 // src/pages/webinar.tsx
-// WebinX — Webinar Detail Page — production version (slug-fix patch)
-// Changes from previous version:
-//  1. Converted .then() chain → async/await (fixes "Event not found" when
-//     getRelatedEvents throws — the event was loaded but error was overwritten)
-//  2. Related-events errors are swallowed silently (non-critical)
-//  3. Null guards on event.tags, event.host_name, event.sector_slug
-//  4. sector_slug fallback chain fixed
+// WebinX — Webinar Detail Page — v2
+// Changes from v1:
+//  1. Responsive layout — mobile-first single column → lg: two-column sidebar
+//  2. Explicit JSX.Element return types on all sub-components
+//  3. Responsive hero padding, responsive related events grid
+//  4. All existing functionality preserved (JSON-LD, OG, schema, wishlist, alerts, share)
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'wouter';
@@ -29,9 +28,15 @@ import {
 import WebinarCard from '@/components/webinar-card';
 import AffiliateToolsSection from '@/components/AffiliateToolCard';
 
-// ─── Schema.org Event Markup ──────────────────────────────────────────────────
+// ─── Schema.org Event JSON-LD ─────────────────────────────────────────────────
 
-function EventSchema({ event, regUrl }: { event: WebinarEvent; regUrl: string | null }) {
+function EventSchema({
+  event,
+  regUrl,
+}: {
+  event: WebinarEvent;
+  regUrl: string | null;
+}): JSX.Element {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Event',
@@ -45,10 +50,7 @@ function EventSchema({ event, regUrl }: { event: WebinarEvent; regUrl: string | 
         ? 'https://schema.org/OfflineEventAttendanceMode'
         : 'https://schema.org/OnlineEventAttendanceMode',
     eventStatus: 'https://schema.org/EventScheduled',
-    organizer: {
-      '@type': 'Person',
-      name: event.host_name ?? 'Unknown Host',
-    },
+    organizer: { '@type': 'Person', name: event.host_name ?? 'Unknown Host' },
     ...(regUrl ? { url: regUrl } : {}),
     isAccessibleForFree: !event.ticket_price_inr,
     inLanguage: 'en-IN',
@@ -76,22 +78,22 @@ function EventSchema({ event, regUrl }: { event: WebinarEvent; regUrl: string | 
 
 // ─── Social Share ─────────────────────────────────────────────────────────────
 
-function SocialShare({ event }: { event: WebinarEvent }) {
-  const url = encodeURIComponent(`https://webinx.in/webinar/${event.slug}`);
+function SocialShare({ event }: { event: WebinarEvent }): JSX.Element {
+  const url  = encodeURIComponent(`https://webinx.in/webinar/${event.slug}`);
   const text = encodeURIComponent(`${event.title} — check out this webinar on WeBinX!`);
 
   const shareLinks = {
-    twitter: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+    twitter:  `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
     whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${event.title}\n${decodeURIComponent(url)}`)}`,
   };
 
   const handleShare = useCallback(
-    (platform: keyof typeof shareLinks) => {
+    (platform: keyof typeof shareLinks): void => {
       window.open(shareLinks[platform], '_blank', 'noopener,noreferrer,width=600,height=400');
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [event.slug]
+    [event.slug],
   );
 
   const handleCopy = useCallback(async (): Promise<void> => {
@@ -99,26 +101,16 @@ function SocialShare({ event }: { event: WebinarEvent }) {
       await navigator.clipboard.writeText(`https://webinx.in/webinar/${event.slug}`);
       alert('Link copied!');
     } catch {
-      // fallback — clipboard blocked in some contexts
+      // clipboard blocked in some contexts — silent fallback
     }
   }, [event.slug]);
 
   const btnStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    padding: '8px 0',
-    border: '1px solid #E5E7EB',
-    borderRadius: 9,
-    background: '#fff',
-    fontSize: 12,
-    fontWeight: 600,
-    cursor: 'pointer',
-    flex: 1,
-    color: '#374151',
-    fontFamily: 'inherit',
-    transition: 'border-color 0.15s, background 0.15s',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+    padding: '8px 0', border: '1px solid #E5E7EB', borderRadius: 9,
+    background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+    flex: 1, color: '#374151', fontFamily: 'inherit',
+    transition: 'border-color 0.15s, color 0.15s',
   };
 
   return (
@@ -127,24 +119,24 @@ function SocialShare({ event }: { event: WebinarEvent }) {
         Share this event
       </div>
       <div style={{ display: 'flex', gap: 7 }}>
-        <button style={btnStyle} onClick={() => handleShare('twitter')}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#1DA1F2'; (e.currentTarget as HTMLElement).style.color = '#1DA1F2'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+        <button style={btnStyle} onClick={(): void => handleShare('twitter')}
+          onMouseEnter={(e): void => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#1DA1F2'; el.style.color = '#1DA1F2'; }}
+          onMouseLeave={(e): void => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#E5E7EB'; el.style.color = '#374151'; }}>
           𝕏
         </button>
-        <button style={btnStyle} onClick={() => handleShare('linkedin')}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0A66C2'; (e.currentTarget as HTMLElement).style.color = '#0A66C2'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+        <button style={btnStyle} onClick={(): void => handleShare('linkedin')}
+          onMouseEnter={(e): void => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#0A66C2'; el.style.color = '#0A66C2'; }}
+          onMouseLeave={(e): void => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#E5E7EB'; el.style.color = '#374151'; }}>
           in
         </button>
-        <button style={btnStyle} onClick={() => handleShare('whatsapp')}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#25D366'; (e.currentTarget as HTMLElement).style.color = '#25D366'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+        <button style={btnStyle} onClick={(): void => handleShare('whatsapp')}
+          onMouseEnter={(e): void => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#25D366'; el.style.color = '#25D366'; }}
+          onMouseLeave={(e): void => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#E5E7EB'; el.style.color = '#374151'; }}>
           WA
         </button>
-        <button style={btnStyle} onClick={handleCopy}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0D4F6B'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; }}>
+        <button style={btnStyle} onClick={(): void => { void handleCopy(); }}
+          onMouseEnter={(e): void => { (e.currentTarget as HTMLElement).style.borderColor = '#0D4F6B'; }}
+          onMouseLeave={(e): void => { (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB'; }}>
           🔗
         </button>
       </div>
@@ -152,10 +144,10 @@ function SocialShare({ event }: { event: WebinarEvent }) {
   );
 }
 
-// ─── Alert Form ───────────────────────────────────────────────────────────────
+// ─── Reminder Alert Form ──────────────────────────────────────────────────────
 
-function AlertForm({ eventSlug }: { eventSlug: string }) {
-  const [email, setEmail] = useState('');
+function AlertForm({ eventSlug }: { eventSlug: string }): JSX.Element {
+  const [email, setEmail] = useState<string>('');
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   const handleSubmit = useCallback(
@@ -170,7 +162,7 @@ function AlertForm({ eventSlug }: { eventSlug: string }) {
         setState('error');
       }
     },
-    [email, eventSlug, state]
+    [email, eventSlug, state],
   );
 
   if (state === 'done') {
@@ -186,41 +178,30 @@ function AlertForm({ eventSlug }: { eventSlug: string }) {
       <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>
         🔔 Get reminder before event
       </div>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 0 }}>
+      <form onSubmit={(e): void => { void handleSubmit(e); }} style={{ display: 'flex', gap: 0 }}>
         <input
           type="email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e): void => setEmail(e.target.value)}
           placeholder="your@email.com"
           required
           style={{
-            flex: 1,
-            padding: '9px 12px',
-            border: '1.5px solid #E5E7EB',
-            borderRight: 'none',
-            borderRadius: '9px 0 0 9px',
-            fontSize: 13,
-            fontFamily: 'inherit',
-            outline: 'none',
-            color: '#111827',
+            flex: 1, padding: '9px 12px',
+            border: '1.5px solid #E5E7EB', borderRight: 'none',
+            borderRadius: '9px 0 0 9px', fontSize: 13,
+            fontFamily: 'inherit', outline: 'none', color: '#111827',
           }}
         />
         <button
           type="submit"
           disabled={state === 'loading'}
           style={{
-            padding: '9px 14px',
-            background: '#0D4F6B',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '0 9px 9px 0',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
+            padding: '9px 14px', background: '#0D4F6B', color: '#fff', border: 'none',
+            borderRadius: '0 9px 9px 0', fontSize: 12, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
-          {state === 'loading' ? '...' : 'Notify'}
+          {state === 'loading' ? '…' : 'Notify'}
         </button>
       </form>
       {state === 'error' && (
@@ -232,7 +213,7 @@ function AlertForm({ eventSlug }: { eventSlug: string }) {
 
 // ─── Skeleton Loader ──────────────────────────────────────────────────────────
 
-function SkeletonLoader() {
+function SkeletonLoader(): JSX.Element {
   const pulse: React.CSSProperties = {
     background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
     backgroundSize: '200% 100%',
@@ -241,16 +222,11 @@ function SkeletonLoader() {
   };
   return (
     <>
-      <style>{`
-        @keyframes skeleton-pulse {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 24px' }}>
+      <style>{`@keyframes skeleton-pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+      <div className="wx-container py-8">
         <div style={{ ...pulse, height: 32, width: '60%', marginBottom: 16 }} />
         <div style={{ ...pulse, height: 20, width: '40%', marginBottom: 32 }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-10">
           <div>
             <div style={{ ...pulse, height: 240, marginBottom: 20 }} />
             <div style={{ ...pulse, height: 16, marginBottom: 10 }} />
@@ -266,22 +242,17 @@ function SkeletonLoader() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function WebinarPage() {
+export default function WebinarPage(): JSX.Element {
   const { slug } = useParams<{ slug: string }>();
 
-  const [event, setEvent] = useState<WebinarEvent | null>(null);
-  const [related, setRelated] = useState<WebinarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [wishlisted, setWishlisted] = useState(false);
+  const [event,     setEvent]     = useState<WebinarEvent | null>(null);
+  const [related,   setRelated]   = useState<WebinarEvent[]>([]);
+  const [loading,   setLoading]   = useState<boolean>(true);
+  const [error,     setError]     = useState<string | null>(null);
+  const [wishlisted, setWishlisted] = useState<boolean>(false);
 
-  // ── FIX: converted from .then() chain to async/await ──────────────────────
-  // Root cause of "Event not found" false-positive:
-  //   .then(ev => ...).then(rel => ...).catch(err => setError(...))
-  //   If getRelatedEvents() threw, setError fired and hid the loaded event.
-  // Fix: wrap in async/await; related errors are swallowed (non-critical).
-  useEffect(() => {
-    if (!slug) return;
+  useEffect((): (() => void) => {
+    if (!slug) return (): void => {};
 
     let cancelled = false;
 
@@ -293,7 +264,6 @@ export default function WebinarPage() {
 
       try {
         const ev = await getEventBySlug(slug);
-
         if (cancelled) return;
 
         setEvent(ev);
@@ -307,18 +277,14 @@ export default function WebinarPage() {
           // silently ignore — user still sees the event
         }
       } catch (err: unknown) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : String(err));
-        }
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
     void load();
-
-    // Cleanup: if slug changes mid-flight, discard stale results
-    return () => { cancelled = true; };
+    return (): void => { cancelled = true; };
   }, [slug]);
 
   const handleWishlist = useCallback((): void => {
@@ -344,27 +310,18 @@ export default function WebinarPage() {
     );
   }
 
-  // ── FIX: safe fallbacks for all nullable fields ───────────────────────────
-  const sectorKey = event.sector_slug ?? event.sector_name ?? '';
-  const sector = getSectorConfig(sectorKey);
-  const regUrl = getBestRegistrationUrl(event);
-  const countdown = getCountdownLabel(event.start_time);
+  // Safe derived values
+  const sectorKey  = event.sector_slug ?? event.sector_name ?? '';
+  const sector     = getSectorConfig(sectorKey);
+  const regUrl     = getBestRegistrationUrl(event);
+  const countdown  = getCountdownLabel(event.start_time);
   const calendarUrl = buildCalendarUrl(event);
-  const platform = detectPlatform(event.event_url ?? event.registration_url ?? null);
-
-  // ── FIX: null-safe host initials ──────────────────────────────────────────
-  const hostName = event.host_name ?? 'Unknown Host';
-  const hostInitials = hostName
-    .split(' ')
-    .slice(0, 2)
-    .map((w: string) => w[0] ?? '')
-    .join('');
-
-  // ── FIX: null-safe tags ───────────────────────────────────────────────────
+  const platform   = detectPlatform(event.event_url ?? event.registration_url ?? null);
+  const hostName   = event.host_name ?? 'Unknown Host';
+  const hostInitials = hostName.split(' ').slice(0, 2).map((w: string) => w[0] ?? '').join('');
   const tags: string[] = Array.isArray(event.tags) ? event.tags : [];
-
-  const canonicalUrl = `https://webinx.in/webinar/${event.slug}`;
-  const ogImage = event.thumbnail_url ?? 'https://webinx.in/og-default.jpg';
+  const canonicalUrl  = `https://webinx.in/webinar/${event.slug}`;
+  const ogImage       = event.thumbnail_url ?? 'https://webinx.in/og-default.jpg';
   const ogDescription = event.description?.slice(0, 160) ?? event.title;
 
   const ctaLabel =
@@ -382,35 +339,34 @@ export default function WebinarPage() {
         <title>{event.title} | WeBinX</title>
         <meta name="description" content={ogDescription} />
         <link rel="canonical" href={canonicalUrl} />
-        <meta property="og:title" content={`${event.title} | WeBinX`} />
+        <meta property="og:title"       content={`${event.title} | WeBinX`} />
         <meta property="og:description" content={ogDescription} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="event" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={event.title} />
+        <meta property="og:image"       content={ogImage} />
+        <meta property="og:url"         content={canonicalUrl} />
+        <meta property="og:type"        content="event" />
+        <meta name="twitter:card"       content="summary_large_image" />
+        <meta name="twitter:title"      content={event.title} />
         <meta name="twitter:description" content={ogDescription} />
-        <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:image"      content={ogImage} />
       </Helmet>
 
       <EventSchema event={event} regUrl={regUrl} />
 
-      {/* Hero Band */}
+      {/* ── Hero Band — responsive padding ── */}
       <div
         style={{
           background: `linear-gradient(135deg, ${sector.bg} 0%, #fff 100%)`,
           borderBottom: `3px solid ${sector.border}`,
-          padding: '32px 40px 28px',
+          padding: 'clamp(1.5rem, 4vw, 2rem) 0',
         }}
       >
-        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+        <div className="wx-container">
           {/* Breadcrumb */}
-          <nav style={{ fontSize: 12.5, color: '#9CA3AF', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <nav style={{ fontSize: 12.5, color: '#9CA3AF', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <Link href="/" style={{ color: '#6B7280', textDecoration: 'none' }}>Home</Link>
             <span>›</span>
             <Link href="/webinars" style={{ color: '#6B7280', textDecoration: 'none' }}>Webinars</Link>
             <span>›</span>
-            {/* ── FIX: only render sector link if sector_slug is not null ── */}
             {event.sector_slug ? (
               <Link href={`/sector/${event.sector_slug}`} style={{ color: sector.color, textDecoration: 'none' }}>
                 {sector.emoji} {sector.name}
@@ -419,33 +375,28 @@ export default function WebinarPage() {
               <span style={{ color: sector.color }}>{sector.emoji} {sector.name}</span>
             )}
             <span>›</span>
-            <span style={{ color: '#374151' }}>{event.title.slice(0, 40)}{event.title.length > 40 ? '…' : ''}</span>
+            <span style={{ color: '#374151' }}>
+              {event.title.slice(0, 40)}{event.title.length > 40 ? '…' : ''}
+            </span>
           </nav>
 
-          {/* Title + badges */}
+          {/* Title + featured badge */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#111827', lineHeight: 1.3, flex: 1 }}>
+            <h1 style={{ fontSize: 'clamp(1.4rem, 3vw, 1.75rem)', fontWeight: 800, color: '#111827', lineHeight: 1.3, flex: 1, margin: 0 }}>
               {event.title}
             </h1>
             {event.is_featured && (
-              <span style={{ background: '#E8B44A', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 8, flexShrink: 0, marginTop: 6 }}>
+              <span style={{ background: '#E8B44A', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 8, flexShrink: 0, marginTop: 4 }}>
                 ★ Featured
               </span>
             )}
           </div>
 
           {/* Meta row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <span
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                background: sector.bg, color: sector.color, fontWeight: 600, fontSize: 13,
-                padding: '5px 12px', borderRadius: 8,
-              }}
-            >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: sector.bg, color: sector.color, fontWeight: 600, fontSize: 13, padding: '5px 12px', borderRadius: 8 }}>
               {sector.emoji} {sector.name}
             </span>
-
             <span style={{ fontSize: 13.5, color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
               📅 {formatEventDate(event.start_time)}
               {countdown && (
@@ -454,31 +405,28 @@ export default function WebinarPage() {
                 </span>
               )}
             </span>
-
             {platform !== 'other' && (
               <span style={{ background: '#f3f4f6', color: '#374151', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 7 }}>
                 {PLATFORM_LABELS[platform]}
               </span>
             )}
-
             <span style={{ fontSize: 12.5, color: '#9CA3AF' }}>👁 {event.view_count ?? 0} views</span>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 40px 64px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 40, alignItems: 'start' }}>
+      {/* ── Main Content — RESPONSIVE: single col mobile → 2-col desktop ── */}
+      <div className="wx-container grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-10 items-start py-8 lg:py-12 pb-16">
 
         {/* LEFT — Content */}
         <div>
           {/* Host card */}
-          <div style={{ background: '#f9fafb', border: '1px solid #E5E7EB', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+          <div style={{ background: '#f9fafb', border: '1px solid #E5E7EB', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28, flexWrap: 'wrap' }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: sector.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
-              {/* ── FIX: null-safe initials ── */}
               {hostInitials || '?'}
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{hostName}</span>
                 {event.host_is_verified && (
                   <span style={{ background: '#0D4F6B', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>✓ VERIFIED</span>
@@ -520,43 +468,39 @@ export default function WebinarPage() {
           {event.content_type === 'live_event' && (event.venue_name || event.venue_city) && (
             <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: 16, marginBottom: 24 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginBottom: 8 }}>📍 Venue</div>
-              {event.venue_name && <div style={{ fontWeight: 600, color: '#111827' }}>{event.venue_name}</div>}
+              {event.venue_name    && <div style={{ fontWeight: 600, color: '#111827' }}>{event.venue_name}</div>}
               {event.venue_address && <div style={{ fontSize: 13.5, color: '#6B7280', marginTop: 4 }}>{event.venue_address}</div>}
-              {event.venue_city && <div style={{ fontSize: 13, color: '#f97316', fontWeight: 600, marginTop: 4 }}>{event.venue_city}</div>}
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                {event.is_hybrid && <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Hybrid</span>}
-                {event.is_online && <span style={{ background: '#ecfdf5', color: '#065f46', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Online Available</span>}
+              {event.venue_city    && <div style={{ fontSize: 13, color: '#f97316', fontWeight: 600, marginTop: 4 }}>{event.venue_city}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                {event.is_hybrid     && <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Hybrid</span>}
+                {event.is_online     && <span style={{ background: '#ecfdf5', color: '#065f46', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>Online Available</span>}
                 {event.max_attendees && <span style={{ background: '#f3f4f6', color: '#6B7280', fontSize: 11, padding: '3px 8px', borderRadius: 6 }}>Max {event.max_attendees} attendees</span>}
               </div>
             </div>
           )}
 
-          {/* Tags — FIX: null-safe tags array */}
+          {/* Tags */}
           {tags.length > 0 && (
             <div style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', marginBottom: 10 }}>Topics covered</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {tags.map(tag => (
-                  <span key={tag} style={{ background: '#F3F4F6', color: '#374151', fontSize: 13, padding: '5px 12px', borderRadius: 8 }}>{tag}</span>
+                {tags.map((tag) => (
+                  <span key={tag} style={{ background: '#F3F4F6', color: '#374151', fontSize: 13, padding: '5px 12px', borderRadius: 8 }}>
+                    {tag}
+                  </span>
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* RIGHT — Sticky Sidebar */}
-        <aside>
+        {/* RIGHT — Sticky Sidebar: sticky only on lg+ to avoid mobile weirdness */}
+        <aside className="lg:sticky" style={{ top: 80 }}>
           <div
             style={{
-              position: 'sticky',
-              top: 80,
-              background: '#fff',
-              border: '1px solid #E5E7EB',
-              borderRadius: 18,
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 16,
+              background: '#fff', border: '1px solid #E5E7EB',
+              borderRadius: 18, padding: '20px',
+              display: 'flex', flexDirection: 'column', gap: 16,
               boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             }}
           >
@@ -580,42 +524,17 @@ export default function WebinarPage() {
               <a href={regUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
                 <button
                   style={{
-                    width: '100%',
-                    padding: '14px',
-                    background: '#0D4F6B',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 12,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
+                    width: '100%', padding: '14px', background: '#0D4F6B', color: '#fff',
+                    border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   }}
                 >
-                  {event.content_type === 'podcast' ? '▶ ' : '📹 '}
-                  {ctaLabel} ↗
+                  {event.content_type === 'podcast' ? '▶ ' : '📹 '}{ctaLabel} ↗
                 </button>
               </a>
             ) : (
-              <button
-                disabled
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: '#f3f4f6',
-                  color: '#9CA3AF',
-                  border: 'none',
-                  borderRadius: 12,
-                  fontSize: 14,
-                  cursor: 'not-allowed',
-                  fontFamily: 'inherit',
-                }}
-                title="No registration link available"
-              >
+              <button disabled style={{ width: '100%', padding: '14px', background: '#f3f4f6', color: '#9CA3AF', border: 'none', borderRadius: 12, fontSize: 14, cursor: 'not-allowed', fontFamily: 'inherit' }}>
                 Registration Not Available
               </button>
             )}
@@ -627,7 +546,6 @@ export default function WebinarPage() {
                   📅 Calendar
                 </button>
               </a>
-
               <button
                 onClick={handleWishlist}
                 style={{ padding: '9px 0', background: wishlisted ? '#fff1f2' : 'transparent', border: `1.5px solid ${wishlisted ? '#f43f5e' : '#E5E7EB'}`, borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: wishlisted ? '#f43f5e' : '#374151', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
@@ -636,7 +554,7 @@ export default function WebinarPage() {
               </button>
             </div>
 
-            {/* Certificate link */}
+            {/* Certificate */}
             <Link href={`/certificate/${event.slug}`}>
               <button style={{ width: '100%', padding: '9px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: '#92400e', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 🎖 Get Certificate
@@ -665,20 +583,21 @@ export default function WebinarPage() {
         </aside>
       </div>
 
-      {/* Related Events */}
+      {/* ── Related Events — responsive grid ── */}
       {related.length > 0 && (
-        <div style={{ background: '#f9fafb', padding: '48px 40px', borderTop: '1px solid #E5E7EB' }}>
-          <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>Related Events</h2>
+        <div style={{ background: '#f9fafb', padding: 'clamp(2rem, 5vw, 3rem) 0', borderTop: '1px solid #E5E7EB' }}>
+          <div className="wx-container">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>Related Events</h2>
               {event.sector_slug && (
                 <Link href={`/sector/${event.sector_slug}`} style={{ fontSize: 14, color: '#0D4F6B', fontWeight: 600, textDecoration: 'none' }}>
                   View all {sector.name} events →
                 </Link>
               )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-              {related.map(rel => (
+            {/* Responsive grid: 1 col mobile → 2 col sm → 3 col lg */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
+              {related.map((rel) => (
                 <WebinarCard key={rel.id} event={rel} />
               ))}
             </div>
