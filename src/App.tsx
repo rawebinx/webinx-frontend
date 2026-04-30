@@ -1,4 +1,5 @@
 // src/App.tsx — WebinX Router
+import { useEffect } from "react";
 import { Router, Switch, Route, useLocation } from "wouter";
 
 import { Navbar }           from "./components/navbar";
@@ -35,6 +36,16 @@ import MetricsPage          from "./pages/metrics";
 import GearPage             from '@/pages/gear';
 import UpcomingPage         from '@/pages/upcoming';
 
+
+// ── Scroll to top on every route change ─────────────────────────────────────
+function ScrollToTop(): null {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location]);
+  return null;
+}
+
 function NotFound() {
   return (
     <div className="max-w-lg mx-auto px-4 py-20 text-center">
@@ -52,6 +63,7 @@ function AppContent() {
   return (
     <div className="min-h-screen flex flex-col">
       {!isEmbed && <Navbar />}
+        <ScrollToTop />
       <main className="flex-1">
         <Switch>
           {/* ── Core pages ──────────────────────────────────────── */}
