@@ -153,7 +153,7 @@ export default function Navbar(): JSX.Element {
                 WeBin
                 <span style={{ color: 'var(--wx-gold)' }}>X</span>
               </span>
-              
+
             </Link>
 
             {/* Content type tabs */}
@@ -296,7 +296,7 @@ export default function Navbar(): JSX.Element {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
-            <span className="wx-badge wx-badge-amber" style={{ fontSize: '0.58rem' }}>BETA</span>
+
           </Link>
 
           <div className="flex items-center gap-2">
