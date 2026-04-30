@@ -921,6 +921,56 @@ export default function HomePage(): JSX.Element {
           </section>
         )}
 
+
+        {/* ─── Explore WebinX ─── */}
+        <section className="wx-section" style={{ background: 'var(--wx-surface)', borderTop: '1px solid var(--wx-border)' }}>
+          <div className="wx-container">
+            <div className="text-center mb-8">
+              <h2 className="wx-section-title">Explore WebinX</h2>
+              <p style={{ fontSize: 14, color: 'var(--wx-muted)', marginTop: 6 }}>
+                Everything we've built for India's knowledge creators
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {[
+                { emoji: '🛠', title: 'Tools & Gear', desc: '17 hand-picked tools for Indian creators', href: '/gear', color: '#0D4F6B' },
+                { emoji: '🚀', title: 'Our Roadmap', desc: '33+ features we're building next', href: '/upcoming', color: '#7c3aed' },
+                { emoji: '📊', title: 'Live Metrics', desc: 'Real numbers, no spin. Fully public.', href: '/metrics', color: '#15803d' },
+                { emoji: '✨', title: 'AI Search', desc: 'Ask anything in plain English', href: '/ai-search', color: '#d97706' },
+                { emoji: '🎤', title: 'Host Tools', desc: 'AI tools to grow your audience', href: '/host-tools', color: '#dc2626' },
+                { emoji: '⭐', title: 'Get Featured', desc: 'Reach thousands of learners', href: '/get-featured', color: '#E8B44A' },
+              ].map((item) => (
+                <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                  <div
+                    style={{
+                      background: '#fff',
+                      border: '1.5px solid var(--wx-border)',
+                      borderRadius: 14,
+                      padding: '16px 18px',
+                      transition: 'all 0.18s',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = item.color;
+                      (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                      (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 16px ${item.color}22`;
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--wx-border)';
+                      (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                      (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>{item.emoji}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 3 }}>{item.title}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--wx-muted)', lineHeight: 1.4 }}>{item.desc}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ─── Newsletter ─── */}
         <NewsletterSection />
 
