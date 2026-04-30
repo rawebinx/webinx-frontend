@@ -51,6 +51,8 @@ const CONTENT_TABS: NavLink[] = [
 
 const NAV_LINKS: NavLink[] = [
   { label: 'Hosts', href: '/host' },
+  { label: '🛠 Tools', href: '/gear' },
+  { label: '🚀 Roadmap', href: '/upcoming' },
 ];
 
 /* ─── Mobile bottom tab definition ─── */
@@ -128,7 +130,7 @@ export default function Navbar(): JSX.Element {
       >
         <div className="wx-container">
           <nav className="flex items-center gap-6 h-16">
-            {/* Logo — Beta badge removed */}
+            {/* Logo */}
             <Link href="/" className="flex items-center gap-2 flex-shrink-0 group">
               <img
                 src="/logo-wordmark.png"
@@ -137,6 +139,7 @@ export default function Navbar(): JSX.Element {
                 className="h-8 w-auto object-contain"
                 style={{ maxWidth: 120 }}
                 onError={(e) => {
+                  /* Fallback to SVG text logo if image missing */
                   (e.target as HTMLImageElement).style.display = 'none';
                   const next = (e.target as HTMLImageElement).nextSibling as HTMLElement | null;
                   if (next) next.style.display = 'flex';
@@ -149,6 +152,10 @@ export default function Navbar(): JSX.Element {
               >
                 WeBin
                 <span style={{ color: 'var(--wx-gold)' }}>X</span>
+              </span>
+              {/* BETA badge */}
+              <span className="wx-badge wx-badge-amber" style={{ fontSize: '0.6rem', letterSpacing: '0.1em' }}>
+                BETA
               </span>
             </Link>
 
@@ -280,7 +287,7 @@ export default function Navbar(): JSX.Element {
         }}
       >
         <div className="flex items-center justify-between px-4 h-14">
-          {/* Logo — Beta badge removed */}
+          {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
             <img
               src="/logo-wordmark.png"
@@ -292,6 +299,7 @@ export default function Navbar(): JSX.Element {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
+            <span className="wx-badge wx-badge-amber" style={{ fontSize: '0.58rem' }}>BETA</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -320,7 +328,7 @@ export default function Navbar(): JSX.Element {
               boxShadow: 'var(--shadow-lg)',
             }}
           >
-            {[...CONTENT_TABS, ...NAV_LINKS, { label: '✨ AI Search', href: '/ai-search' }].map((link) => (
+            {[...CONTENT_TABS, ...NAV_LINKS, { label: '✨ AI Search', href: '/ai-search' }, { label: '🗺 Upcoming Features', href: '/upcoming' }, { label: '🛠 Host Tools & Gear', href: '/gear' }].map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
