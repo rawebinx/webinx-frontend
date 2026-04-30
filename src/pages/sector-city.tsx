@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'wouter';
 import { Helmet } from 'react-helmet-async';
 import WebinarCard from '../components/webinar-card';
-import { apiFetch } from '../lib/api';
+import { getEvents } from '../lib/api';
 import type { WebinarEvent } from '../lib/api';
 
 // ── Sector config ─────────────────────────────────────────────────────────────
@@ -144,11 +144,13 @@ export default function SectorCityPage(): JSX.Element {
     setError(null);
     try {
       // Use existing /api/events with sector filter; city is text-based match
-      const cityParam = cityKey !== 'india' ? `&q=${encodeURIComponent(cityName)}` : '';
-      const data = await apiFetch<WebinarEvent[]>(
-        `/api/events?sector=${sectorKey}&limit=24${cityParam}`
-      );
-      setEvents(Array.isArray(data) ? data : []);
+      const result = await getEvents({
+        sector: sectorKey,
+        limit: 24,
+        q: cityKey !== 'india' ? cityName : undefined,
+      });
+      const eventsArr = Array.isArray(result) ? result : (result as { events?: WebinarEvent[] }).events ?? [];
+      setEvents(eventsArr);
     } catch (e) {
       setError('Failed to load events.');
     } finally {
