@@ -35,6 +35,8 @@ import PricingPage          from "./pages/pricing";
 import MetricsPage          from "./pages/metrics";
 import GearPage             from '@/pages/gear';
 import UpcomingPage         from '@/pages/upcoming';
+import SectorCityPage       from '@/pages/sector-city';
+import ForHostsPage         from '@/pages/for-hosts';
 
 
 // ── Scroll to top on every route change ─────────────────────────────────────
@@ -108,6 +110,10 @@ function AppContent() {
 
           {/* ── Admin ───────────────────────────────────────────── */}
           <Route path="/admin"               component={AdminPage} />
+
+          {/* ── SEO long-tail pages ─────────────────────────────── */}
+          <Route path="/webinars/:combo"      component={SectorCityPage} />
+          <Route path="/for-hosts"            component={ForHostsPage} />
 
           {/* ── SEO catch-all — MUST be last named route ────────── */}
           <Route path="/:slug"               component={SeoPage} />
