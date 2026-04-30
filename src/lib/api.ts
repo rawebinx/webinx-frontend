@@ -413,8 +413,14 @@ export async function getLeaderboard(): Promise<Host[]> {
 // ─── City ─────────────────────────────────────────────────────────────────────
 
 export async function getCityEvents(city: string): Promise<WebinarEvent[]> {
-  const raw = await apiFetch<{ events: unknown[] }>(`/api/cities/${encodeURIComponent(city)}`);
-  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+  // API returns a plain array (not {events:[...]}) — handle both shapes safely
+  const raw = await apiFetch<unknown>(`/api/cities/${encodeURIComponent(city)}`);
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { events?: unknown[] })?.events)
+    ? (raw as { events: unknown[] }).events
+    : [];
+  return list.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 // ─── Leads + Alerts ───────────────────────────────────────────────────────────
