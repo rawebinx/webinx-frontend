@@ -35,6 +35,7 @@ const SubmitWebinarPage = lazy(() => import("./pages/submit-webinar"));
 // Discovery
 const WishlistPage     = lazy(() => import("./pages/wishlist"));
 const AISearchPage     = lazy(() => import("./pages/ai-search"));
+const BlogWebinarAttendees = lazy(() => import('@/pages/blog-webinar-attendees'));
 const TrendingTopicsPage = lazy(() => import("./pages/trending-topics"));
 
 // Growth & monetisation
@@ -129,7 +130,7 @@ function AppContent(): JSX.Element {
             <Route path="/webinars"          component={WebinarsPage} />
             <Route path="/podcasts"          component={PodcastsPage} />
             <Route path="/live-events"       component={LiveEventsPage} />
-
+            <Route path="/blog/get-more-webinar-attendees" component={BlogWebinarAttendees} />
             {/* ── Event detail (specific params — must stay before catch-all) */}
             <Route path="/webinar/:slug"     component={WebinarPage} />
             <Route path="/category/:slug"    component={CategoryPage} />
