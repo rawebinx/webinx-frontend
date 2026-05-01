@@ -1,7 +1,7 @@
 // src/pages/host-detail.tsx — WebinX Host Detail Page v2
 // Verified badge, improved layout, uses api.ts (fixed getHost/getHostEvents).
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "wouter";
 import { Helmet } from "react-helmet-async";
 import { getHost, getHostEvents } from "../lib/api";
@@ -32,6 +32,127 @@ function HostInitials({ name }: { name: string }) {
       style={{ background: "linear-gradient(135deg, #7c3aed, #6366f1)" }}
     >
       {initials || "?"}
+    </div>
+  );
+}
+
+// ─── Embed CTA ────────────────────────────────────────────────────────────────
+// Shows "Add this widget to your website" section on host profile.
+// Channel 11: every host who embeds becomes a passive WebinX distributor.
+
+function EmbedCTA({ hostSlug, hostName }: { hostSlug: string; hostName: string }): JSX.Element {
+  const [copied, setCopied] = useState<boolean>(false);
+  const embedUrl   = `https://www.webinx.in/embed/${hostSlug}`;
+  const iframeCode = `<iframe src="${embedUrl}" width="100%" height="500" frameborder="0" style="border-radius:12px;max-width:420px;" title="${hostName} — Upcoming Webinars on WebinX"></iframe>`;
+
+  const handleCopy = useCallback((): void => {
+    navigator.clipboard.writeText(iframeCode).then((): void => {
+      setCopied(true);
+      setTimeout((): void => setCopied(false), 2500);
+    }).catch((): void => {
+      // Fallback for browsers without clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = iframeCode;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout((): void => setCopied(false), 2500);
+    });
+  }, [iframeCode]);
+
+  return (
+    <div
+      style={{
+        marginTop: 40,
+        background: '#F9FAFB',
+        border: '1.5px solid #E5E7EB',
+        borderRadius: 16,
+        padding: 'clamp(1.25rem, 3vw, 1.75rem)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 28, flexShrink: 0 }}>📎</span>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: '0 0 4px' }}>
+            Embed your events on your website
+          </h3>
+          <p style={{ fontSize: 13.5, color: '#6B7280', margin: 0, lineHeight: 1.6 }}>
+            Add a live "Upcoming Webinars" widget to your website in 30 seconds.
+            Visitors stay on your site while you keep them updated automatically.
+          </p>
+        </div>
+      </div>
+
+      {/* Code block */}
+      <div
+        style={{
+          background: '#111827',
+          borderRadius: 10,
+          padding: '14px 16px',
+          marginBottom: 12,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <code
+          style={{
+            fontSize: 11.5,
+            color: '#9FE1CB',
+            fontFamily: 'monospace',
+            display: 'block',
+            overflowX: 'auto',
+            whiteSpace: 'pre',
+            lineHeight: 1.65,
+          }}
+        >
+          {iframeCode}
+        </code>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          onClick={handleCopy}
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            padding: '9px 20px',
+            borderRadius: 9,
+            border: 'none',
+            background: copied ? '#10b981' : '#0D4F6B',
+            color: '#fff',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            transition: 'background 0.2s',
+            flexShrink: 0,
+          }}
+        >
+          {copied ? '✓ Copied!' : 'Copy Embed Code'}
+        </button>
+        <a
+          href={embedUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            padding: '8px 20px',
+            borderRadius: 9,
+            border: '1.5px solid #E5E7EB',
+            color: '#374151',
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
+        >
+          Preview Widget →
+        </a>
+      </div>
+
+      <p style={{ fontSize: 12, color: '#9CA3AF', margin: '12px 0 0', lineHeight: 1.5 }}>
+        The widget auto-updates whenever you add new events on WebinX. Works on any website, WordPress, Webflow, Wix, or HTML page.
+      </p>
     </div>
   );
 }
@@ -186,10 +307,15 @@ export default function HostDetailPage() {
                 {events.map((event) => (
                   <WebinarCard
                     key={event.slug || event.id}
-                    webinar={{ ...event, is_verified: host.is_verified }}
+                    event={{ ...event, is_verified: host.is_verified }}
                   />
                 ))}
               </div>
+            )}
+
+            {/* ── Embed CTA ── */}
+            {host && (
+              <EmbedCTA hostSlug={slug ?? ''} hostName={host.name} />
             )}
           </>
         )}
