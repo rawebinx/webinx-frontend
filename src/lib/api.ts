@@ -82,10 +82,11 @@ export interface Host {
   linkedin?: string | null;
   avatar_url?: string | null;
   is_verified: boolean;
-  plan_tier?: 'free' | 'pro' | 'scale';
+  plan_tier?: 'free' | 'pro' | 'scale' | 'agency';
   event_count: number;
   total_views?: number;
   total_saves?: number;
+  total_clicks?: number;
   score?: number;
   rank?: number;
 }
@@ -344,13 +345,23 @@ export async function getTrendingEvents(): Promise<WebinarEvent[]> {
 
 export async function getRelatedEvents(slug: string, sectorSlug?: string): Promise<WebinarEvent[]> {
   const qs = sectorSlug ? `?sector=${sectorSlug}&exclude=${slug}` : `?exclude=${slug}`;
-  const raw = await apiFetch<{ events: unknown[] }>(`/api/related${qs}`);
-  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+  const raw = await apiFetch<unknown>(`/api/related${qs}`);
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { events?: unknown[] })?.events)
+    ? (raw as { events: unknown[] }).events
+    : [];
+  return list.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function searchEvents(q: string): Promise<WebinarEvent[]> {
-  const raw = await apiFetch<{ events: unknown[] }>(`/api/search?q=${encodeURIComponent(q)}`);
-  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+  const raw = await apiFetch<unknown>(`/api/search?q=${encodeURIComponent(q)}`);
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { events?: unknown[] })?.events)
+    ? (raw as { events: unknown[] }).events
+    : [];
+  return list.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function aiSearch(q: string): Promise<WebinarEvent[]> {
@@ -380,20 +391,35 @@ export async function getStats(): Promise<PlatformStats> {
 }
 
 export async function getSectors(): Promise<Sector[]> {
-  const raw = await apiFetch<{ sectors: unknown[] }>('/api/sectors');
-  return raw.sectors as Sector[];
+  const raw = await apiFetch<unknown>('/api/sectors');
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { sectors?: unknown[] })?.sectors)
+    ? (raw as { sectors: unknown[] }).sectors
+    : [];
+  return list as Sector[];
 }
 
 export async function getCategories(): Promise<Array<{ id: number; name: string; slug: string }>> {
-  const raw = await apiFetch<{ categories: unknown[] }>('/api/categories');
-  return raw.categories as Array<{ id: number; name: string; slug: string }>;
+  const raw = await apiFetch<unknown>('/api/categories');
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { categories?: unknown[] })?.categories)
+    ? (raw as { categories: unknown[] }).categories
+    : [];
+  return list as Array<{ id: number; name: string; slug: string }>;
 }
 
 // ─── Hosts ────────────────────────────────────────────────────────────────────
 
 export async function getHosts(): Promise<Host[]> {
-  const raw = await apiFetch<{ hosts: unknown[] }>('/api/hosts');
-  return raw.hosts as Host[];
+  const raw = await apiFetch<unknown>('/api/hosts');
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { hosts?: unknown[] })?.hosts)
+    ? (raw as { hosts: unknown[] }).hosts
+    : [];
+  return list as Host[];
 }
 
 export async function getHostBySlug(slug: string): Promise<Host> {
@@ -401,13 +427,23 @@ export async function getHostBySlug(slug: string): Promise<Host> {
 }
 
 export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
-  const raw = await apiFetch<{ events: unknown[] }>(`/api/hosts/${slug}/events`);
-  return raw.events.map(e => normalizeEvent(e as Record<string, unknown>));
+  const raw = await apiFetch<unknown>(`/api/hosts/${slug}/events`);
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { events?: unknown[] })?.events)
+    ? (raw as { events: unknown[] }).events
+    : [];
+  return list.map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function getLeaderboard(): Promise<Host[]> {
-  const raw = await apiFetch<{ hosts: unknown[] }>('/api/hosts/leaderboard');
-  return raw.hosts as Host[];
+  const raw = await apiFetch<unknown>('/api/hosts/leaderboard');
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { hosts?: unknown[] })?.hosts)
+    ? (raw as { hosts: unknown[] }).hosts
+    : [];
+  return list as Host[];
 }
 
 // ─── City ─────────────────────────────────────────────────────────────────────
@@ -450,8 +486,13 @@ export async function toggleWishlist(
 }
 
 export async function getWishlistDemand(): Promise<WishlistDemand[]> {
-  const raw = await apiFetch<{ topics: unknown[] }>('/api/wishlist/demand');
-  return raw.topics as WishlistDemand[];
+  const raw = await apiFetch<unknown>('/api/wishlist/demand');
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { topics?: unknown[] })?.topics)
+    ? (raw as { topics: unknown[] }).topics
+    : [];
+  return list as WishlistDemand[];
 }
 
 export async function saveWishlistTopic(data: {
@@ -508,8 +549,13 @@ export async function generateContent(data: {
 // ─── Trending Topics ──────────────────────────────────────────────────────────
 
 export async function getTrendingTopics(): Promise<WishlistDemand[]> {
-  const raw = await apiFetch<{ topics: unknown[] }>('/api/trending-topics');
-  return raw.topics as WishlistDemand[];
+  const raw = await apiFetch<unknown>('/api/trending-topics');
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { topics?: unknown[] })?.topics)
+    ? (raw as { topics: unknown[] }).topics
+    : [];
+  return list as WishlistDemand[];
 }
 
 // ─── Certificate ─────────────────────────────────────────────────────────────
@@ -527,8 +573,13 @@ export async function getEmbedData(hostSlug: string): Promise<Record<string, unk
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
 
 export async function getPipelineStatus(): Promise<PipelineRun[]> {
-  const raw = await apiFetch<{ runs: unknown[] }>('/api/pipeline/status');
-  return raw.runs as PipelineRun[];
+  const raw = await apiFetch<unknown>('/api/pipeline/status');
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { runs?: unknown[] })?.runs)
+    ? (raw as { runs: unknown[] }).runs
+    : [];
+  return list as PipelineRun[];
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
