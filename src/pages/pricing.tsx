@@ -17,6 +17,63 @@ import {
 } from 'lucide-react';
 import { API_BASE } from '@/lib/api';
 
+// ─── Launch Offer Config ──────────────────────────────────────────────────────
+// Change LAUNCH_ENDS to extend or remove the offer.
+// Bonus days are added to plan_expires_at in the backend webhook.
+
+const LAUNCH_ENDS = new Date('2026-05-31T23:59:59+05:30');
+
+const LAUNCH_BONUS: Record<string, { days: number; label: string; pct: string }> = {
+  pro:    { days: 6,  label: '+6 days FREE',  pct: '20%' },
+  scale:  { days: 15, label: '+15 days FREE', pct: '25%' },
+  agency: { days: 30, label: '+30 days FREE', pct: '33%' },
+};
+
+function useLaunchActive(): { active: boolean; daysLeft: number } {
+  const now      = new Date();
+  const daysLeft = Math.ceil((LAUNCH_ENDS.getTime() - now.getTime()) / 86_400_000);
+  return { active: daysLeft > 0, daysLeft };
+}
+
+// ─── Launch Banner ────────────────────────────────────────────────────────────
+
+function LaunchBanner(): JSX.Element | null {
+  const { active, daysLeft } = useLaunchActive();
+  if (!active) return null;
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(90deg, #E8B44A 0%, #F5C96A 50%, #E8B44A 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'goldShimmer 3s linear infinite',
+        padding: '11px 16px',
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: 700,
+        color: '#0f1923',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        boxShadow: '0 2px 8px rgba(232,180,74,0.35)',
+      }}
+    >
+      🚀 Launch Offer — Subscribe today and get up to{' '}
+      <span style={{ textDecoration: 'underline', textDecorationStyle: 'wavy' }}>33% more days FREE</span>
+      {' '}· Ends in{' '}
+      <span
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          background: 'rgba(0,0,0,0.12)', borderRadius: 6,
+          padding: '1px 8px', fontSize: 13, fontWeight: 800,
+        }}
+      >
+        {daysLeft}d
+      </span>
+    </div>
+  );
+}
+
 // ─── Razorpay subscription types ──────────────────────────────────────────────
 
 interface SubscriptionResponse {
@@ -246,6 +303,11 @@ function PlanCheckoutModal({
             <div style={{ fontSize: 13.5, color: '#6B7280' }}>
               ₹{plan.price.toLocaleString('en-IN')}/month · Billed monthly · Cancel anytime
             </div>
+            {LAUNCH_BONUS[plan.id] && useLaunchActive().active && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 8, padding: '3px 10px', marginTop: 6, fontSize: 12.5, fontWeight: 700, color: '#92400E' }}>
+                🎁 Launch offer: {LAUNCH_BONUS[plan.id].label} added automatically
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -396,6 +458,12 @@ function PlanCard({ plan, loading, onSelect }: PlanCardProps): JSX.Element {
         <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
           {plan.price === 0 ? 'No credit card required' : 'Billed monthly · Cancel anytime'}
         </div>
+        {/* Launch offer pill on paid plans */}
+        {LAUNCH_BONUS[plan.id] && useLaunchActive().active && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 20, padding: '3px 10px', marginTop: 8, fontSize: 12, fontWeight: 700, color: '#92400E' }}>
+            🎁 {LAUNCH_BONUS[plan.id].label} free · Launch offer
+          </div>
+        )}
       </div>
 
       {/* CTA Button */}
@@ -536,8 +604,11 @@ export default function PricingPage(): JSX.Element {
         <meta name="description" content="WebinX host plans from Free to Agency. Verified badge, AI tools, email blasts, analytics. India's knowledge events platform." />
         {/* Razorpay SDK — preloaded for faster checkout open */}
         <script src="https://checkout.razorpay.com/v1/checkout.js" async />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes fadeIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }`}</style>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes fadeIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } } @keyframes goldShimmer { 0%{background-position:0% 0%} 100%{background-position:200% 0%} }`}</style>
       </Helmet>
+
+      {/* Launch offer sticky banner */}
+      <LaunchBanner />
 
       {/* ── Checkout Modal — shows when user clicks a paid plan ── */}
       {checkoutPlan && (
