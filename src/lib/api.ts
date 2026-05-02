@@ -346,22 +346,18 @@ export async function getTrendingEvents(): Promise<WebinarEvent[]> {
 export async function getRelatedEvents(slug: string, sectorSlug?: string): Promise<WebinarEvent[]> {
   const qs = sectorSlug ? `?sector=${sectorSlug}&exclude=${slug}` : `?exclude=${slug}`;
   const raw = await apiFetch<unknown>(`/api/related${qs}`);
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { events?: unknown[] })?.events)
-    ? (raw as { events: unknown[] }).events
-    : [];
-  return list.map(e => normalizeEvent(e as Record<string, unknown>));
+    : (((raw as Record<string, unknown>).events ?? []) as unknown[]);
+  return (list as unknown[]).map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function searchEvents(q: string): Promise<WebinarEvent[]> {
   const raw = await apiFetch<unknown>(`/api/search?q=${encodeURIComponent(q)}`);
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { events?: unknown[] })?.events)
-    ? (raw as { events: unknown[] }).events
-    : [];
-  return list.map(e => normalizeEvent(e as Record<string, unknown>));
+    : (((raw as Record<string, unknown>).events ?? []) as unknown[]);
+  return (list as unknown[]).map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function aiSearch(q: string): Promise<WebinarEvent[]> {
@@ -392,21 +388,17 @@ export async function getStats(): Promise<PlatformStats> {
 
 export async function getSectors(): Promise<Sector[]> {
   const raw = await apiFetch<unknown>('/api/sectors');
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { sectors?: unknown[] })?.sectors)
-    ? (raw as { sectors: unknown[] }).sectors
-    : [];
+    : (((raw as Record<string, unknown>).sectors ?? []) as unknown[]);
   return list as Sector[];
 }
 
 export async function getCategories(): Promise<Array<{ id: number; name: string; slug: string }>> {
   const raw = await apiFetch<unknown>('/api/categories');
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { categories?: unknown[] })?.categories)
-    ? (raw as { categories: unknown[] }).categories
-    : [];
+    : (((raw as Record<string, unknown>).categories ?? []) as unknown[]);
   return list as Array<{ id: number; name: string; slug: string }>;
 }
 
@@ -414,11 +406,9 @@ export async function getCategories(): Promise<Array<{ id: number; name: string;
 
 export async function getHosts(): Promise<Host[]> {
   const raw = await apiFetch<unknown>('/api/hosts');
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { hosts?: unknown[] })?.hosts)
-    ? (raw as { hosts: unknown[] }).hosts
-    : [];
+    : (((raw as Record<string, unknown>).hosts ?? []) as unknown[]);
   return list as Host[];
 }
 
@@ -428,21 +418,17 @@ export async function getHostBySlug(slug: string): Promise<Host> {
 
 export async function getHostEvents(slug: string): Promise<WebinarEvent[]> {
   const raw = await apiFetch<unknown>(`/api/hosts/${slug}/events`);
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { events?: unknown[] })?.events)
-    ? (raw as { events: unknown[] }).events
-    : [];
-  return list.map(e => normalizeEvent(e as Record<string, unknown>));
+    : (((raw as Record<string, unknown>).events ?? []) as unknown[]);
+  return (list as unknown[]).map(e => normalizeEvent(e as Record<string, unknown>));
 }
 
 export async function getLeaderboard(): Promise<Host[]> {
   const raw = await apiFetch<unknown>('/api/hosts/leaderboard');
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { hosts?: unknown[] })?.hosts)
-    ? (raw as { hosts: unknown[] }).hosts
-    : [];
+    : (((raw as Record<string, unknown>).hosts ?? []) as unknown[]);
   return list as Host[];
 }
 
@@ -487,11 +473,9 @@ export async function toggleWishlist(
 
 export async function getWishlistDemand(): Promise<WishlistDemand[]> {
   const raw = await apiFetch<unknown>('/api/wishlist/demand');
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { topics?: unknown[] })?.topics)
-    ? (raw as { topics: unknown[] }).topics
-    : [];
+    : (((raw as Record<string, unknown>).topics ?? []) as unknown[]);
   return list as WishlistDemand[];
 }
 
@@ -550,11 +534,9 @@ export async function generateContent(data: {
 
 export async function getTrendingTopics(): Promise<WishlistDemand[]> {
   const raw = await apiFetch<unknown>('/api/trending-topics');
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { topics?: unknown[] })?.topics)
-    ? (raw as { topics: unknown[] }).topics
-    : [];
+    : (((raw as Record<string, unknown>).topics ?? []) as unknown[]);
   return list as WishlistDemand[];
 }
 
@@ -574,11 +556,9 @@ export async function getEmbedData(hostSlug: string): Promise<Record<string, unk
 
 export async function getPipelineStatus(): Promise<PipelineRun[]> {
   const raw = await apiFetch<unknown>('/api/pipeline/status');
-  const list: unknown[] = Array.isArray(raw)
+  const list = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as { runs?: unknown[] })?.runs)
-    ? (raw as { runs: unknown[] }).runs
-    : [];
+    : (((raw as Record<string, unknown>).runs ?? []) as unknown[]);
   return list as PipelineRun[];
 }
 
