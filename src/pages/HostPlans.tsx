@@ -1,5 +1,29 @@
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch } from "../lib/api";
+import { API_BASE } from "../lib/api";
+
+async function hostFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const url = `${API_BASE}${path}`;
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as T;
+    } catch (err) {
+      clearTimeout(timer);
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  throw lastError ?? new Error("Request failed");
+}
 
 // ── Plan data ─────────────────────────────────────────────────────────────────
 
@@ -208,7 +232,7 @@ function CheckoutModal({ plan, onClose, onSuccess }: {
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error("Could not load payment gateway. Please refresh.");
 
-      const data = await apiFetch<{ subscription_id: string; razorpay_key_id: string }>(
+      const data = await hostFetch<{ subscription_id: string; razorpay_key_id: string }>(
         "/api/host/subscribe",
         {
           method: "POST",
@@ -229,7 +253,7 @@ function CheckoutModal({ plan, onClose, onSuccess }: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handler: async (response: any) => {
           try {
-            const verify = await apiFetch<{ status: string; plan_tier: string }>(
+            const verify = await hostFetch<{ status: string; plan_tier: string }>(
               "/api/host/subscribe/verify",
               {
                 method: "POST",
