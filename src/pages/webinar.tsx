@@ -50,22 +50,39 @@ function EventSchema({
         ? 'https://schema.org/OfflineEventAttendanceMode'
         : 'https://schema.org/OnlineEventAttendanceMode',
     eventStatus: 'https://schema.org/EventScheduled',
-    organizer: { '@type': 'Person', name: event.host_name ?? 'Unknown Host' },
+    organizer: {
+      '@type': 'Organization',
+      name: event.host_name ?? 'WebinX',
+      url: `https://webinx.in/hosts/${event.host_slug ?? ''}`,
+    },
     ...(regUrl ? { url: regUrl } : {}),
+    offers: {
+      '@type': 'Offer',
+      url: regUrl ?? `https://webinx.in/webinar/${event.slug}`,
+      price: event.ticket_price_inr ?? 0,
+      priceCurrency: 'INR',
+      availability: 'https://schema.org/InStock',
+      validFrom: event.created_at ?? new Date().toISOString(),
+      ...(event.ticket_price_inr
+        ? {}
+        : { description: 'Free to attend' }),
+    },
     isAccessibleForFree: !event.ticket_price_inr,
     inLanguage: 'en-IN',
-    ...(event.venue_name
+    location: event.venue_name
       ? {
-          location: {
-            '@type': 'Place',
-            name: event.venue_name,
-            address: event.venue_address ?? event.venue_city ?? '',
-          },
+          '@type': 'Place',
+          name: event.venue_name,
+          address: event.venue_address ?? event.venue_city ?? '',
         }
-      : {}),
+      : {
+          '@type': 'VirtualLocation',
+          url: regUrl ?? `https://webinx.in/webinar/${event.slug}`,
+        },
     image: event.thumbnail_url
       ? [event.thumbnail_url]
       : ['https://webinx.in/og-default.jpg'],
+    keywords: [event.sector_name ?? '', event.content_type ?? 'webinar', 'India'].filter(Boolean).join(', '),
   };
 
   return (
