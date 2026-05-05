@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import type { JSX } from "react";
 import { apiFetch } from "../lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
