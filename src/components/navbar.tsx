@@ -126,6 +126,7 @@ export default function Navbar(): JSX.Element {
     { label: '✨ AI Search',   href: '/ai-search'   },
     { label: '🛠 Host Tools',  href: '/host-tools'  },
     { label: '📈 Trending',    href: '/trending-topics' },
+    { label: '⭐ Upgrade Plan', href: '/host-plans'  },
   ];
 
   return (
@@ -262,6 +263,19 @@ export default function Navbar(): JSX.Element {
                 }}
               >
                 List Free →
+              </Link>
+
+              {/* Upgrade Plan */}
+              <Link
+                href="/host-plans"
+                className="text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+                style={{
+                  color: 'var(--wx-gold)',
+                  border: '1.5px solid var(--wx-gold)',
+                  textDecoration: 'none',
+                }}
+              >
+                ⭐ Upgrade
               </Link>
 
               {/* Get Featured */}
