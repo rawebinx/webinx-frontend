@@ -56,6 +56,9 @@ const TermsPage        = lazy(() => import("./pages/terms"));
 // Admin
 const AdminPage        = lazy(() => import("./pages/admin"));
 
+// Host plans / subscriptions
+const HostPlans        = lazy(() => import("./pages/HostPlans"));
+
 // SEO long-tail
 const SectorCityPage   = lazy(() => import("@/pages/sector-city"));
 const ForHostsPage     = lazy(() => import("@/pages/for-hosts"));
@@ -171,6 +174,9 @@ function AppContent(): JSX.Element {
             {/* ── SEO long-tail ────────────────────────────────────── */}
             <Route path="/webinars/:combo"   component={SectorCityPage} />
             <Route path="/for-hosts"         component={ForHostsPage} />
+
+            {/* ── Host plans & subscriptions ──────────────────────── */}
+            <Route path="/host-plans"        component={HostPlans} />
 
             {/* ── SEO catch-all — MUST be last named route ────────── */}
             <Route path="/:slug"             component={SeoPage} />
