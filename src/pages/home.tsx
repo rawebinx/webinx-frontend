@@ -44,14 +44,14 @@ const SECTOR_ICONS: Record<string, string> = {
   ai: '🤖', technology: '💻', finance: '💹', marketing: '📣',
   startup: '🚀', hr: '🤝', healthcare: '🏥', education: '🎓',
   general: '📋', government: '🏛️', manufacturing: '🏭', msme: '🏪',
-  spirituality: '🪔',
+  spirituality: '🪔', sports: '🏏', politics: '🗳️',
 };
 
 const SECTOR_COLORS: Record<string, string> = {
   ai: '#6366f1', technology: '#3b82f6', finance: '#10b981', marketing: '#f97316',
   startup: '#8b5cf6', hr: '#f43f5e', healthcare: '#14b8a6', education: '#f59e0b',
   general: '#6b7280', government: '#64748b', manufacturing: '#d97706',
-  msme: '#0891b2', spirituality: '#b45309',
+  msme: '#0891b2', spirituality: '#b45309', sports: '#16a34a', politics: '#dc2626',
 };
 
 const CITIES = [
@@ -66,16 +66,18 @@ const CITIES = [
 ];
 
 const FALLBACK_SECTORS = [
-  { id:1,  slug:'ai',           name:'AI',                    event_count:68 },
-  { id:3,  slug:'finance',      name:'Finance',               event_count:22 },
-  { id:4,  slug:'hr',           name:'HR',                    event_count:19 },
+  { id:1,  slug:'ai',           name:'AI & Machine Learning', event_count:68 },
+  { id:3,  slug:'finance',      name:'Finance & Investing',   event_count:22 },
+  { id:4,  slug:'hr',           name:'HR & People',           event_count:19 },
   { id:5,  slug:'startup',      name:'Startup',               event_count:16 },
-  { id:6,  slug:'marketing',    name:'Marketing',             event_count:12 },
-  { id:7,  slug:'general',      name:'General',               event_count:8  },
-  { id:8,  slug:'healthcare',   name:'Healthcare',            event_count:6  },
-  { id:9,  slug:'technology',   name:'Technology',            event_count:5  },
-  { id:10, slug:'education',    name:'Education',             event_count:4  },
-  { id:11, slug:'spirituality', name:'Spirituality & Dharma', event_count:0  },
+  { id:6,  slug:'marketing',    name:'Marketing & Growth',    event_count:12 },
+  { id:7,  slug:'healthcare',   name:'Healthcare',            event_count:8  },
+  { id:8,  slug:'technology',   name:'Technology',            event_count:7  },
+  { id:9,  slug:'education',    name:'Education',             event_count:6  },
+  { id:10, slug:'spirituality', name:'Spirituality & Dharma', event_count:0  },
+  { id:11, slug:'sports',       name:'Sports',                event_count:0  },
+  { id:12, slug:'politics',     name:'Politics & Policy',     event_count:0  },
+  { id:13, slug:'general',      name:'General',               event_count:8  },
 ];
 
 const PLACEHOLDER_PHRASES = [
