@@ -263,7 +263,7 @@ export function cacheClear(prefix?: string): void {
 
 // ─── Core Fetch ───────────────────────────────────────────────────────────────
 
-async function apiFetch<T>(path: string, options?: RequestInit, skipCache = false): Promise<T> {
+export async function apiFetch<T>(path: string, options?: RequestInit, skipCache = false): Promise<T> {
   const url = `${API_BASE}${path}`;
   const cacheKey = `${options?.method ?? 'GET'}:${url}`;
 
