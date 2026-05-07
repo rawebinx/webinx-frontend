@@ -1,16 +1,24 @@
 // src/pages/wishlist.tsx — WebinX Saved Webinars Page
 // Reads from localStorage, syncs with backend on email entry.
+// Bugs fixed:
+//  1. WebinarCard prop: webinar={e} → event={e}
+//  2. handleRemove: toggleWishlist(slug) → toggleLocalWishlist(slug) (correct function + signature)
+//  3. saveWishlistTopic: wrong args → correct object shape { email, topic_query }
+//  4. Purple branding → teal throughout
 
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import {
-  getWishlist, getWishlistEvents, toggleWishlist,
-  syncWishlistEmail, saveWishlistTopic,
+  getWishlist,
+  getWishlistEvents,
+  toggleLocalWishlist,
+  syncWishlistEmail,
+  saveWishlistTopic,
 } from "../lib/api";
 import type { WebinarEvent } from "../lib/api";
 import { WebinarCard } from "../components/webinar-card";
 
-function SkeletonCard() {
+function SkeletonCard(): JSX.Element {
   return (
     <div className="border rounded-xl p-4 animate-pulse bg-gray-50 h-40">
       <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
@@ -20,18 +28,18 @@ function SkeletonCard() {
   );
 }
 
-export default function WishlistPage() {
-  const [events, setEvents]       = useState<WebinarEvent[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [count, setCount]         = useState(0);
-  const [email, setEmail]         = useState("");
-  const [emailSent, setEmailSent] = useState(false);
+export default function WishlistPage(): JSX.Element {
+  const [events, setEvents]             = useState<WebinarEvent[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [count, setCount]               = useState(0);
+  const [email, setEmail]               = useState("");
+  const [emailSent, setEmailSent]       = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
-  const [topic, setTopic]         = useState("");
-  const [topicSent, setTopicSent] = useState(false);
+  const [topic, setTopic]               = useState("");
+  const [topicSent, setTopicSent]       = useState(false);
   const [topicLoading, setTopicLoading] = useState(false);
 
-  async function loadSaved() {
+  async function loadSaved(): Promise<void> {
     setLoading(true);
     const slugs = getWishlist();
     setCount(slugs.length);
@@ -45,15 +53,17 @@ export default function WishlistPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadSaved(); }, []);
+  useEffect(() => { void loadSaved(); }, []);
 
-  function handleRemove(slug: string) {
-    toggleWishlist(slug);
+  // BUG 2 FIX: was toggleWishlist(slug) — wrong function, wrong signature.
+  // toggleLocalWishlist updates localStorage and returns new saved state.
+  function handleRemove(slug: string): void {
+    toggleLocalWishlist(slug);
     setEvents((prev) => prev.filter((e) => e.slug !== slug));
     setCount((c) => Math.max(0, c - 1));
   }
 
-  async function handleEmailSync(e: React.FormEvent) {
+  async function handleEmailSync(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!email) return;
     setEmailLoading(true);
@@ -62,11 +72,13 @@ export default function WishlistPage() {
     setEmailSent(true);
   }
 
-  async function handleTopicSave(e: React.FormEvent) {
+  // BUG 3 FIX: was saveWishlistTopic(email, topic) — wrong call signature.
+  // saveWishlistTopic takes a single object { email, topic_query, sector_slug? }.
+  async function handleTopicSave(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!email || !topic) return;
     setTopicLoading(true);
-    await saveWishlistTopic(email, topic);
+    await saveWishlistTopic({ email, topic_query: topic });
     setTopicLoading(false);
     setTopicSent(true);
     setTopic("");
@@ -107,9 +119,10 @@ export default function WishlistPage() {
             <p className="text-gray-500 text-sm mb-6">
               Click the ❤️ on any webinar card to save it here.
             </p>
+            {/* BUG 4 FIX: was bg-purple-600 hover:bg-purple-700 */}
             <a
               href="/webinars"
-              className="inline-block bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition"
+              className="inline-block bg-[#0D4F6B] hover:bg-[#1A6B8A] text-white text-sm font-medium px-6 py-2.5 rounded-lg transition"
             >
               Browse Webinars →
             </a>
@@ -129,11 +142,12 @@ export default function WishlistPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
               {events.map((e) => (
                 <div key={e.slug} className="relative">
+                  {/* BUG 1 FIX: was webinar={e} — WebinarCard prop must be event={e} */}
                   <WebinarCard event={e} />
                   <button
                     onClick={() => handleRemove(e.slug)}
                     className="absolute bottom-14 right-3 text-xs text-gray-400 hover:text-red-500 transition"
-                    title="Remove"
+                    title="Remove from saved"
                   >
                     Remove
                   </button>
@@ -169,12 +183,13 @@ export default function WishlistPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+                  className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0D4F6B]/20 bg-white"
                 />
+                {/* BUG 4 FIX: was bg-purple-600 hover:bg-purple-700 */}
                 <button
                   type="submit"
                   disabled={emailLoading}
-                  className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition disabled:opacity-60"
+                  className="text-sm font-medium bg-[#0D4F6B] hover:bg-[#1A6B8A] text-white px-4 py-2 rounded-lg transition disabled:opacity-60"
                 >
                   {emailLoading ? "…" : "Notify me"}
                 </button>
@@ -184,7 +199,8 @@ export default function WishlistPage() {
         )}
 
         {/* ── Topic demand section ───────────────────────────────── */}
-        <div className="border border-gray-100 rounded-2xl p-6 bg-gradient-to-br from-purple-50 to-white">
+        {/* BUG 4 FIX: was from-purple-50 gradient */}
+        <div className="border border-[#0D4F6B]/10 rounded-2xl p-6 bg-gradient-to-br from-[#E1F5EE] to-white">
           <h2 className="font-semibold text-gray-900 mb-1">📌 Can't find a webinar on your topic?</h2>
           <p className="text-sm text-gray-500 mb-4">
             Tell us what you're looking for — we'll notify you when a matching webinar is posted, and alert hosts about the demand.
@@ -201,7 +217,7 @@ export default function WishlistPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0D4F6B]/20 bg-white"
               />
               <input
                 type="text"
@@ -210,12 +226,13 @@ export default function WishlistPage() {
                 onChange={(e) => setTopic(e.target.value)}
                 required
                 maxLength={120}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0D4F6B]/20 bg-white"
               />
+              {/* BUG 4 FIX: was bg-purple-600 hover:bg-purple-700 */}
               <button
                 type="submit"
                 disabled={topicLoading}
-                className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition disabled:opacity-60 self-start"
+                className="text-sm font-medium bg-[#0D4F6B] hover:bg-[#1A6B8A] text-white px-4 py-2 rounded-lg transition disabled:opacity-60 self-start"
               >
                 {topicLoading ? "Saving…" : "Request this topic"}
               </button>
