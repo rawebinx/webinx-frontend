@@ -608,6 +608,242 @@ function EmbedHelper(): JSX.Element {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// INSTRUCTIONS: Add this block to src/pages/host-tools.tsx
+//
+// Step A — Add to imports (top of file, after existing imports):
+//   import { useState, useCallback, useEffect } from 'react';    ← already has useState, useCallback; add useEffect
+//   import { API_BASE } from '@/lib/api';                       ← already imported
+//
+// Step B — Paste the PlanBanner component below ANYWHERE before the line:
+//   export default function HostToolsPage()
+//
+// Step C — Inside HostToolsPage JSX, find the <TitleOptimizer /> line.
+//   Add <PlanBanner /> on the line ABOVE it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PLAN_LABELS: Record<string, { label: string; color: string; bg: string; emoji: string }> = {
+  free:   { label: 'Free',   color: '#6B7280', bg: '#F3F4F6', emoji: '🆓' },
+  pro:    { label: 'Pro',    color: '#0D4F6B', bg: '#E1F5EE', emoji: '⚡' },
+  scale:  { label: 'Scale',  color: '#7C3AED', bg: '#EEF2FF', emoji: '🚀' },
+  agency: { label: 'Agency', color: '#92400E', bg: '#FEF3C7', emoji: '🏢' },
+};
+
+interface HostInfo {
+  name: string;
+  plan_tier: string;
+  is_verified: boolean;
+  tool_calls_today: number;
+}
+
+function PlanBanner(): JSX.Element {
+  const [open, setOpen]         = useState(false);
+  const [email, setEmail]       = useState(() => sessionStorage.getItem('webinx_host_email') ?? '');
+  const [host, setHost]         = useState<HostInfo | null>(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
+
+  // Auto-fetch if email already saved in session
+  useEffect(() => {
+    const saved = sessionStorage.getItem('webinx_host_email');
+    if (saved) void fetchPlan(saved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchPlan = useCallback(async (emailArg?: string): Promise<void> => {
+    const target = (emailArg ?? email).trim().toLowerCase();
+    if (!target || !target.includes('@')) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/host/me`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: target }),
+      });
+      if (res.status === 404) {
+        setError('No host account found for this email. List your first event at /submit-webinar.');
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.data) {
+        setHost(data.data as HostInfo);
+        sessionStorage.setItem('webinx_host_email', target);
+        setOpen(false);
+      } else {
+        setError(data.error ?? 'Could not load plan info.');
+      }
+    } catch {
+      setError('Network error — please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [email]);
+
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    await fetchPlan();
+  }
+
+  const planMeta = PLAN_LABELS[host?.plan_tier ?? 'free'] ?? PLAN_LABELS.free;
+
+  // ── If host loaded: show compact plan badge ───────────────────────────────
+  if (host) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 10,
+          padding: '12px 16px',
+          background: planMeta.bg,
+          border: `1.5px solid ${planMeta.color}30`,
+          borderRadius: 12,
+          marginBottom: '1.25rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>{planMeta.emoji}</span>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: planMeta.color }}>
+              {host.name} · {planMeta.label} Plan
+              {host.is_verified && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: '#0D4F6B',
+                    color: '#fff',
+                    padding: '1px 6px',
+                    borderRadius: 8,
+                  }}
+                >
+                  ✓ Verified
+                </span>
+              )}
+            </p>
+            <p style={{ margin: 0, fontSize: 11.5, color: '#6B7280' }}>
+              {host.tool_calls_today} AI tool uses today
+              {host.plan_tier === 'free' ? ' · 2/day limit' : host.plan_tier === 'pro' ? ' · 30/day limit' : ' · unlimited'}
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {host.plan_tier === 'free' && (
+            <a
+              href="/host-plans"
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                padding: '6px 14px',
+                background: '#0D4F6B',
+                color: '#fff',
+                borderRadius: 8,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Upgrade ↗
+            </a>
+          )}
+          <button
+            onClick={() => { setHost(null); sessionStorage.removeItem('webinx_host_email'); }}
+            style={{ fontSize: 11, color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            Switch
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Not loaded: show collapsible prompt ───────────────────────────────────
+  return (
+    <div
+      style={{
+        border: '1.5px solid #E5E7EB',
+        borderRadius: 12,
+        marginBottom: '1.25rem',
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '11px 16px',
+          background: '#F9FAFB',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 13,
+          color: '#374151',
+          fontWeight: 600,
+          fontFamily: 'var(--font-sans)',
+        }}
+      >
+        <span>🏷️ Check your host plan &amp; tool limits</span>
+        <span style={{ fontSize: 11, color: '#9CA3AF' }}>{open ? '▲ Hide' : '▼ Show'}</span>
+      </button>
+
+      {open && (
+        <form
+          onSubmit={(e) => { void handleSubmit(e); }}
+          style={{ padding: '12px 16px 14px', background: '#fff', display: 'flex', gap: 8 }}
+        >
+          <input
+            type="email"
+            placeholder="your host email (e.g. events@company.com)"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              fontSize: 13,
+              border: '1.5px solid #E5E7EB',
+              borderRadius: 8,
+              outline: 'none',
+              fontFamily: 'var(--font-sans)',
+            }}
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '8px 18px',
+              background: '#0D4F6B',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              opacity: loading ? 0.6 : 1,
+              fontFamily: 'var(--font-sans)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {loading ? '…' : 'Check →'}
+          </button>
+        </form>
+      )}
+      {open && error && (
+        <p style={{ margin: '0 16px 12px', fontSize: 12, color: '#DC2626' }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// END OF COMPONENT TO ADD
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function HostToolsPage(): JSX.Element {
   return (
