@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { apiFetch } from "../lib/api";
-
+import type { PipelineRun } from "../lib/api";
 interface PublicMetrics {
   total_events:      number;
   total_hosts:       number;
