@@ -1,8 +1,8 @@
 // src/App.tsx — WebinX Router
-// v2: React.lazy + Suspense for all page routes.
-// Each page is now a separate JS chunk — initial bundle drops from 502KB → ~80KB.
-// Layout components (Navbar, Footer, ScrollToTop, NotFound) remain static
-// because they are needed immediately on every render.
+// v3: Added /topic/:topic, /skill/:skill, /stats routes (Knowledge Graph Phase 2+3).
+// React.lazy + Suspense for all page routes.
+// Each page is a separate JS chunk — initial bundle stays ~80KB.
+// Layout components (Navbar, Footer, ScrollToTop, NotFound) remain static.
 
 import { lazy, Suspense, useEffect } from "react";
 import { Router, Switch, Route, useLocation } from "wouter";
@@ -64,16 +64,17 @@ const SectorCityPage   = lazy(() => import("@/pages/sector-city"));
 const ForHostsPage     = lazy(() => import("@/pages/for-hosts"));
 const SeoPage          = lazy(() => import("./pages/seo"));
 
+// Knowledge Graph — Phase 2/3 (NEW)
+const TopicPage        = lazy(() => import("./pages/topic"));
+const SkillPage        = lazy(() => import("./pages/skill"));
+const StatsPage        = lazy(() => import("./pages/stats"));
+
 // ── Page loading skeleton ────────────────────────────────────────────────────
-// Shown while any lazy chunk is downloading. Uses the same shimmer pattern
-// as the rest of the app so the transition feels native.
 function PageSkeleton(): JSX.Element {
   return (
     <div className="wx-container py-10 md:py-14">
-      {/* Page title placeholder */}
       <div className="skeleton h-7 w-52 rounded-xl mb-2" />
       <div className="skeleton h-4 w-80 rounded mb-8" />
-      {/* Card grid placeholder */}
       <div
         style={{
           display: 'grid',
@@ -123,8 +124,6 @@ function AppContent(): JSX.Element {
       {!isEmbed && <Navbar />}
       <ScrollToTop />
 
-      {/* Suspense wraps the entire Switch so any lazy page triggers the
-          PageSkeleton while its chunk downloads (~50–150ms on fast 4G). */}
       <main className="flex-1">
         <Suspense fallback={<PageSkeleton />}>
           <Switch>
@@ -134,13 +133,18 @@ function AppContent(): JSX.Element {
             <Route path="/podcasts"          component={PodcastsPage} />
             <Route path="/live-events"       component={LiveEventsPage} />
             <Route path="/blog/get-more-webinar-attendees" component={BlogWebinarAttendees} />
-            {/* ── Event detail (specific params — must stay before catch-all) */}
+
+            {/* ── Event detail ────────────────────────────────────── */}
             <Route path="/webinar/:slug"     component={WebinarPage} />
             <Route path="/category/:slug"    component={CategoryPage} />
             <Route path="/sector/:slug"      component={SectorPage} />
             <Route path="/city/:city"        component={CityPage} />
             <Route path="/certificate/:slug" component={CertificatePage} />
             <Route path="/embed/:slug"       component={EmbedPage} />
+
+            {/* ── Knowledge Graph SEO — MUST be before /:slug ─────── */}
+            <Route path="/topic/:topic"      component={TopicPage} />
+            <Route path="/skill/:skill"      component={SkillPage} />
 
             {/* ── Host pages ──────────────────────────────────────── */}
             <Route path="/host"              component={HostPage} />
@@ -162,6 +166,7 @@ function AppContent(): JSX.Element {
             <Route path="/gear"              component={GearPage} />
 
             {/* ── Product & company ───────────────────────────────── */}
+            <Route path="/stats"             component={StatsPage} />
             <Route path="/upcoming"          component={UpcomingPage} />
             <Route path="/about"             component={AboutPage} />
             <Route path="/contact"           component={ContactPage} />
@@ -174,11 +179,9 @@ function AppContent(): JSX.Element {
             {/* ── SEO long-tail ────────────────────────────────────── */}
             <Route path="/webinars/:combo"   component={SectorCityPage} />
             <Route path="/for-hosts"         component={ForHostsPage} />
-
-            {/* ── Host plans & subscriptions ──────────────────────── */}
             <Route path="/host-plans"        component={HostPlans} />
 
-            {/* ── SEO catch-all — MUST be last named route ────────── */}
+            {/* ── SEO catch-all — MUST be second-to-last ───────────── */}
             <Route path="/:slug"             component={SeoPage} />
 
             {/* ── 404 ─────────────────────────────────────────────── */}
