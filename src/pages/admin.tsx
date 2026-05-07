@@ -94,19 +94,20 @@ export default function AdminPage() {
             <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
             <p className="text-gray-500 text-sm mt-1">WebinX internal tools</p>
           </div>
+          {/* BUG 3 FIX: was focus:ring-purple-300, bg-purple-600 hover:bg-purple-700 */}
           <form onSubmit={handleLogin} className="space-y-3">
             <input
               type="password"
               placeholder="Admin password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D4F6B]/20"
               autoFocus
             />
             {authErr && <p className="text-sm text-red-500">{authErr}</p>}
             <button
               type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-sm transition"
+              className="w-full bg-[#0D4F6B] hover:bg-[#1A6B8A] text-white font-semibold py-2.5 rounded-lg text-sm transition"
             >
               Login →
             </button>
@@ -160,14 +161,14 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Tabs — BUG 3 FIX: was border-purple-600 text-purple-700 */}
         <div className="flex gap-1 mb-6 border-b border-gray-100">
           {(["overview", "rewards", "leads"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`text-sm font-medium px-4 py-2 border-b-2 transition capitalize ${
-                tab === t ? "border-purple-600 text-purple-700" : "border-transparent text-gray-500 hover:text-gray-700"
+                tab === t ? "border-[#0D4F6B] text-[#0D4F6B]" : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
               {t === "rewards" ? `Rewards ${rewards.length > 0 ? `(${rewards.length} pending)` : ""}` : t.charAt(0).toUpperCase() + t.slice(1)}
@@ -229,8 +230,9 @@ export default function AdminPage() {
                       {r.webinar_title && <p className="text-sm text-gray-700 mt-1">"{r.webinar_title}"</p>}
                       <p className="text-xs text-gray-400 mt-1 capitalize">Mention: {r.mention_type}</p>
                       {r.evidence_url && (
+                        // BUG 3 FIX: was text-purple-600
                         <a href={r.evidence_url} target="_blank" rel="noopener noreferrer"
-                           className="text-xs text-purple-600 hover:underline mt-1 block">
+                           className="text-xs text-[#0D4F6B] hover:underline mt-1 block">
                           View evidence →
                         </a>
                       )}
