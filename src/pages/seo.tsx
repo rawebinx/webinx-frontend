@@ -75,7 +75,7 @@ export default function SeoPage() {
         {events && events.length === 0 && (
           <div className="text-center py-16 text-gray-500">
             <p className="text-lg mb-2">No webinars found for this topic.</p>
-            <a href="/webinars" className="text-purple-600 hover:underline text-sm">
+            <a href="/webinars" className="text-[#0D4F6B] hover:underline text-sm">
               Browse all webinars →
             </a>
           </div>
@@ -84,7 +84,8 @@ export default function SeoPage() {
         {events && events.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {events.map((e) => (
-              <WebinarCard key={e.id || e.slug} webinar={e} />
+              // BUG 1 FIX: was webinar={e}, must be event={e}
+              <WebinarCard key={e.id || e.slug} event={e} />
             ))}
           </div>
         )}
@@ -113,7 +114,7 @@ export default function SeoPage() {
                 <a
                   key={r.slug}
                   href={`/sector/${r.slug}`}
-                  className="text-xs font-medium px-3 py-1.5 border border-gray-200 rounded-full text-gray-600 hover:border-purple-400 hover:text-purple-700 transition"
+                  className="text-xs font-medium px-3 py-1.5 border border-gray-200 rounded-full text-gray-600 hover:border-[#0D4F6B] hover:text-[#0D4F6B] transition"
                 >
                   {r.label}
                 </a>
