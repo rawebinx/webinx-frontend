@@ -3,7 +3,7 @@
 // API_BASE from api.ts for ContentGenerator (different schema), explicit return types,
 // no any, teal brand throughout (purple removed).
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Sparkles, Copy, Check, ArrowRight } from 'lucide-react';
 import { optimizeTitle, enhanceDescription, API_BASE } from '@/lib/api';
@@ -900,6 +900,7 @@ export default function HostToolsPage(): JSX.Element {
 
           {/* Tools */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <PlanBanner />
             <TitleOptimizer />
             <DescriptionEnhancer />
             <ContentGenerator />
