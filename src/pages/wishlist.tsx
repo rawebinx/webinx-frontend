@@ -129,7 +129,7 @@ export default function WishlistPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
               {events.map((e) => (
                 <div key={e.slug} className="relative">
-                  <WebinarCard webinar={e} />
+                  <WebinarCard event={e} />
                   <button
                     onClick={() => handleRemove(e.slug)}
                     className="absolute bottom-14 right-3 text-xs text-gray-400 hover:text-red-500 transition"
