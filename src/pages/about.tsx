@@ -83,6 +83,8 @@ export default function AboutPage() {
                   get in touch
                 </Link>
                 . We welcome partnerships with platforms, colleges, and communities.
+                🏆 Featured on: [ProductHunt] [TechBaseDirectory]
+                ⚡ Built with: [Vercel] [Render] [Razorpay] [Claude AI]
               </p>
             </section>
           </div>
