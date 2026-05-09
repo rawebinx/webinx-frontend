@@ -8,8 +8,7 @@ import { Helmet } from 'react-helmet-async';
 import { Sparkles, Copy, Check, ArrowRight } from 'lucide-react';
 import { optimizeTitle, enhanceDescription, API_BASE } from '@/lib/api';
 import { UpgradeBanner } from "../components/UpgradeBanner";
-// then inside the JSX, as first child of main:
-<UpgradeBanner />
+
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 function useCopyToClipboard(): [number | boolean, (text: string, idx?: number) => void] {
@@ -902,6 +901,7 @@ export default function HostToolsPage(): JSX.Element {
 
           {/* Tools */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <UpgradeBanner />
             <PlanBanner />
             <TitleOptimizer />
             <DescriptionEnhancer />
