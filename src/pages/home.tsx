@@ -23,7 +23,9 @@ import {
   captureLead,
 } from '../lib/api';
 import type { WebinarEvent, Sector, PlatformStats } from '../lib/api';
-
+import { TodaySection } from "../components/TodaySection";
+// Then inside JSX, after the stats bar (before Featured Events):
+<TodaySection />
 
 
 
