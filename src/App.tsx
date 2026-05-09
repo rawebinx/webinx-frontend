@@ -182,6 +182,7 @@ function AppContent(): JSX.Element {
             <Route path="/host-plans"        component={HostPlans} />
 
             {/* ── SEO catch-all — MUST be second-to-last ───────────── */}
+            <Route path="/speaker/:speaker" component={SpeakerPage} />
             <Route path="/:slug"             component={SeoPage} />
 
             {/* ── 404 ─────────────────────────────────────────────── */}
