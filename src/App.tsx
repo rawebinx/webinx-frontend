@@ -68,6 +68,7 @@ const SeoPage          = lazy(() => import("./pages/seo"));
 const TopicPage        = lazy(() => import("./pages/topic"));
 const SkillPage        = lazy(() => import("./pages/skill"));
 const StatsPage        = lazy(() => import("./pages/stats"));
+const SpeakerPage      = lazy(() => import("./pages/speaker"));
 
 // ── Page loading skeleton ────────────────────────────────────────────────────
 function PageSkeleton(): JSX.Element {
