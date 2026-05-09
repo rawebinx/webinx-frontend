@@ -1,464 +1,291 @@
-import { useState, useEffect, useCallback } from "react";
-import { API_BASE } from "../lib/api";
+/**
+ * HostPlans.tsx
+ * ─────────────────────────────────────────────────────────────────
+ * Pricing page for host SaaS plans.
+ * After successful Razorpay subscription, redirects to:
+ *   /host-tools?upgraded=true&plan=<tier>
+ *
+ * Uses apiFetch (3-retry, 20s timeout) — never raw fetch.
+ */
 
-async function hostFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE}${path}`;
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
-    try {
-      const res = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
-      });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return (await res.json()) as T;
-    } catch (err) {
-      clearTimeout(timer);
-      lastError = err instanceof Error ? err : new Error(String(err));
-      if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-    }
-  }
-  throw lastError ?? new Error("Request failed");
+import { useState, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
+import { Link, useLocation } from "wouter";
+import { apiFetch } from "../lib/api";
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface Plan {
+  id:          "free" | "pro" | "scale" | "agency";
+  name:        string;
+  price:       number;          // INR/month, 0 = free
+  badge:       string;
+  description: string;
+  features:    string[];
+  razorpayPlanId: string | null;
+  highlight:   boolean;
 }
 
-// ── Plan data ─────────────────────────────────────────────────────────────────
+interface SubscriptionResponse {
+  subscription_id: string;
+  razorpay_key:    string;
+  plan_tier:       string;
+}
 
-const PLANS = [
+// ── Plan definitions ───────────────────────────────────────────────────────
+
+const PLANS: Plan[] = [
   {
-    id: "free" as const,
-    name: "Free",
-    price: 0,
-    razorpayPlanId: null as string | null,
-    tagline: "Get discovered",
-    badge: null as string | null,
+    id:          "free",
+    name:        "Free",
+    price:       0,
+    badge:       "🌱",
+    description: "Get discovered by India's knowledge community.",
+    razorpayPlanId: null,
+    highlight:   false,
     features: [
-      "List up to 3 events",
-      "Basic event page",
-      "WebinX directory listing",
-      "Email support",
+      "List unlimited events",
+      "Basic profile page",
+      "Standard search placement",
+      "Community support",
     ],
-    cta: "Start Free",
-    highlighted: false,
   },
   {
-    id: "pro" as const,
-    name: "Pro",
-    price: 299,
-    razorpayPlanId: "plan_SiSCYOPw71rhfV" as string | null,
-    tagline: "Grow your audience",
-    badge: "Launch Offer" as string | null,
+    id:          "pro",
+    name:        "Pro",
+    price:       299,
+    badge:       "⚡",
+    description: "For active hosts who want more reach and tools.",
+    razorpayPlanId: "plan_SiSCYOPw71rhfV",
+    highlight:   true,
     features: [
-      "Unlimited event listings",
-      "Priority search placement",
-      "Featured badge on listings",
-      "Analytics dashboard",
-      "Email digest inclusion",
-      "Host profile page",
+      "Everything in Free",
+      "Priority placement in search",
+      "AI Title Optimizer",
+      "AI Description Enhancer",
+      "Weekly digest inclusion",
+      "Event analytics dashboard",
+      "Founding rate — locked for life",
     ],
-    cta: "Get Pro",
-    highlighted: false,
   },
   {
-    id: "scale" as const,
-    name: "Scale",
-    price: 799,
-    razorpayPlanId: "plan_SiSD5gjqmaSGpa" as string | null,
-    tagline: "Built for serious hosts",
-    badge: "Most Popular" as string | null,
+    id:          "scale",
+    name:        "Scale",
+    price:       799,
+    badge:       "🚀",
+    description: "For organizations running multiple events monthly.",
+    razorpayPlanId: "plan_SiSD5gjqmaSGpa",
+    highlight:   false,
     features: [
       "Everything in Pro",
-      "Homepage featured section",
-      "AI Promotion tools",
-      "Embed widget licensing",
-      "Sponsor match alerts",
-      "Priority support",
+      "Branded events section",
+      "Up to 10 team members",
+      "Bulk event submission API",
+      "Custom email digest slot",
+      "Dedicated account support",
     ],
-    cta: "Get Scale",
-    highlighted: true,
   },
   {
-    id: "agency" as const,
-    name: "Agency",
-    price: 1999,
-    razorpayPlanId: "plan_SiSDbwxhLMC2Sa" as string | null,
-    tagline: "For teams & enterprises",
-    badge: "Best Value" as string | null,
+    id:          "agency",
+    name:        "Agency",
+    price:       1999,
+    badge:       "🏢",
+    description: "For platforms and agencies managing multiple brands.",
+    razorpayPlanId: "plan_SiSDbwxhLMC2Sa",
+    highlight:   false,
     features: [
       "Everything in Scale",
-      "Multiple team seats",
-      "White-label embed",
-      "Custom analytics reports",
-      "Dedicated account manager",
-      "SLA guarantee",
+      "Unlimited team members",
+      "White-label embed widget",
+      "Revenue share on ticket sales",
+      "B2B intelligence reports",
+      "Priority feature requests",
     ],
-    cta: "Get Agency",
-    highlighted: false,
   },
 ];
 
-type Plan = typeof PLANS[number];
+// ── Component ──────────────────────────────────────────────────────────────
 
-// ── Razorpay loader (no global declaration needed) ────────────────────────────
+export default function HostPlans() {
+  const [, navigate]     = useLocation();
+  const [loading, setLoading]   = useState<string | null>(null);
+  const [error,   setError]     = useState<string | null>(null);
 
-function loadRazorpayScript(): Promise<boolean> {
-  return new Promise((resolve) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((window as any).Razorpay) { resolve(true); return; }
-    const s = document.createElement("script");
-    s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload  = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
-}
+  const handleUpgrade = useCallback(async (plan: Plan) => {
+    if (!plan.razorpayPlanId) return;
 
-// ── Plan Card ─────────────────────────────────────────────────────────────────
+    setError(null);
+    setLoading(plan.id);
 
-function PlanCard({ plan, onSelect, loading }: {
-  plan: Plan;
-  onSelect: (p: Plan) => void;
-  loading: boolean;
-}) {
-  const isFree = plan.id === "free";
-  return (
-    <div
-      style={{
-        position: "relative",
-        background: plan.highlighted ? "#0D4F6B" : "#ffffff",
-        border: plan.highlighted ? "2px solid #E8B44A" : "1.5px solid #e5e7eb",
-        borderRadius: 16,
-        padding: "32px 28px 28px",
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: plan.highlighted
-          ? "0 8px 40px rgba(13,79,107,0.25)"
-          : "0 2px 12px rgba(0,0,0,0.06)",
-        transition: "transform 0.2s, box-shadow 0.2s",
-      }}
-    >
-      {plan.badge && (
-        <div style={{
-          position: "absolute", top: -13, left: "50%",
-          transform: "translateX(-50%)",
-          background: plan.highlighted ? "#E8B44A" : "#0D4F6B",
-          color: plan.highlighted ? "#0D4F6B" : "#ffffff",
-          fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
-          padding: "4px 14px", borderRadius: 20, whiteSpace: "nowrap",
-        }}>
-          {plan.badge}
-        </div>
-      )}
-
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: plan.highlighted ? "#E8B44A" : "#0D4F6B", marginBottom: 4 }}>
-          {plan.name.toUpperCase()}
-        </div>
-        <div style={{ fontSize: 15, color: plan.highlighted ? "rgba(255,255,255,0.75)" : "#6b7280" }}>
-          {plan.tagline}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 24 }}>
-        {isFree ? (
-          <span style={{ fontSize: 36, fontWeight: 800, color: plan.highlighted ? "#fff" : "#111827" }}>Free</span>
-        ) : (
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: plan.highlighted ? "rgba(255,255,255,0.7)" : "#6b7280", marginBottom: 6 }}>₹</span>
-            <span style={{ fontSize: 42, fontWeight: 800, lineHeight: 1, color: plan.highlighted ? "#ffffff" : "#111827" }}>
-              {plan.price.toLocaleString("en-IN")}
-            </span>
-            <span style={{ fontSize: 14, color: plan.highlighted ? "rgba(255,255,255,0.6)" : "#9ca3af", marginBottom: 6 }}>/mo</span>
-          </div>
-        )}
-      </div>
-
-      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 28px", flex: 1 }}>
-        {plan.features.map((f) => (
-          <li key={f} style={{
-            display: "flex", alignItems: "flex-start", gap: 10,
-            marginBottom: 10, fontSize: 14,
-            color: plan.highlighted ? "rgba(255,255,255,0.88)" : "#374151",
-          }}>
-            <span style={{ color: plan.highlighted ? "#E8B44A" : "#0D4F6B", fontSize: 15, marginTop: 1, flexShrink: 0 }}>✓</span>
-            {f}
-          </li>
-        ))}
-      </ul>
-
-      <button
-        onClick={() => onSelect(plan)}
-        disabled={loading}
-        style={{
-          width: "100%", padding: "13px 0", borderRadius: 10,
-          border: isFree && !plan.highlighted ? "1.5px solid #0D4F6B" : "none",
-          background: plan.highlighted ? "#E8B44A" : isFree ? "transparent" : "#0D4F6B",
-          color: plan.highlighted ? "#0D4F6B" : isFree ? "#0D4F6B" : "#ffffff",
-          fontSize: 15, fontWeight: 700,
-          cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.6 : 1,
-          letterSpacing: "0.02em",
-        }}
-      >
-        {plan.cta}{!isFree && " →"}
-      </button>
-    </div>
-  );
-}
-
-// ── Checkout Modal ─────────────────────────────────────────────────────────────
-
-function CheckoutModal({ plan, onClose, onSuccess }: {
-  plan: Plan;
-  onClose: () => void;
-  onSuccess: (tier: string) => void;
-}) {
-  const [name, setName]     = useState("");
-  const [email, setEmail]   = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState("");
-
-  const handlePay = useCallback(async () => {
-    if (!name.trim() || !email.trim()) { setError("Please enter your name and email."); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Please enter a valid email."); return; }
-
-    setLoading(true);
-    setError("");
+    const token = localStorage.getItem("host_token");
+    if (!token) {
+      navigate("/host-login");
+      return;
+    }
 
     try {
-      const loaded = await loadRazorpayScript();
-      if (!loaded) throw new Error("Could not load payment gateway. Please refresh.");
+      // 1. Create subscription on backend
+      const data = await apiFetch<SubscriptionResponse>("/api/host/subscribe", {
+        method:  "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan_id: plan.razorpayPlanId }),
+      });
 
-      const data = await hostFetch<{ subscription_id: string; razorpay_key_id: string }>(
-        "/api/host/subscribe",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan_id: plan.razorpayPlanId, plan_tier: plan.id, name: name.trim(), email: email.trim() }),
-        }
-      );
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // 2. Open Razorpay checkout
       const rzp = new (window as any).Razorpay({
-        key:             data.razorpay_key_id,
+        key:             data.razorpay_key,
         subscription_id: data.subscription_id,
         name:            "WebinX",
         description:     `${plan.name} Plan — ₹${plan.price}/month`,
         image:           "https://www.webinx.in/logo-wordmark.png",
-        prefill:         { name: name.trim(), email: email.trim() },
         theme:           { color: "#0D4F6B" },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        handler: async (response: any) => {
-          try {
-            const verify = await hostFetch<{ status: string; plan_tier: string }>(
-              "/api/host/subscribe/verify",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  razorpay_payment_id:      response.razorpay_payment_id,
-                  razorpay_subscription_id: response.razorpay_subscription_id,
-                  razorpay_signature:       response.razorpay_signature,
-                  email: email.trim(), plan_tier: plan.id,
-                }),
-              }
-            );
-            if (verify.status === "ok") onSuccess(plan.id);
-            else setError("Payment received but verification failed. Email contact@webinx.in.");
-          } catch {
-            setError("Payment received but verification failed. Email contact@webinx.in.");
-          }
+
+        handler: (_response: unknown) => {
+          // 3. Payment success → redirect with context
+          navigate(`/host-tools?upgraded=true&plan=${plan.id}`);
+        },
+
+        modal: {
+          ondismiss: () => {
+            setLoading(null);
+          },
         },
       });
 
-      rzp.on("payment.failed", () => {
-        setError("Payment failed. Please try again.");
-        setLoading(false);
-      });
-
       rzp.open();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
-  }, [name, email, plan, onSuccess]);
+  }, [navigate]);
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{
-        background: "#fff", borderRadius: 18, padding: "36px 32px",
-        width: "100%", maxWidth: 440,
-        boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#0D4F6B", letterSpacing: "0.08em", marginBottom: 4 }}>UPGRADING TO</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>{plan.name} Plan</div>
-            <div style={{ fontSize: 14, color: "#6b7280", marginTop: 2 }}>₹{plan.price.toLocaleString("en-IN")}/month · billed monthly</div>
+    <>
+      <Helmet>
+        <title>Host Plans — WebinX</title>
+        <meta
+          name="description"
+          content="Choose a WebinX host plan. List events free or upgrade for priority placement, AI tools, analytics, and weekly digest inclusion."
+        />
+        <link rel="canonical" href="https://www.webinx.in/host-plans" />
+      </Helmet>
+
+      <main className="max-w-5xl mx-auto px-4 py-16">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <span className="inline-block text-xs font-semibold uppercase tracking-widest
+                           text-teal-700 bg-teal-50 border border-teal-200 rounded-full
+                           px-4 py-1.5 mb-4">
+            Founding Member Pricing — expires June 15
+          </span>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Grow your events on WebinX
+          </h1>
+          <p className="text-gray-500 text-lg max-w-xl mx-auto">
+            India's only dedicated knowledge events marketplace.
+            Start free — upgrade when you're ready.
+          </p>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-8 max-w-xl mx-auto bg-red-50 border border-red-200
+                          rounded-lg px-4 py-3 text-red-700 text-sm text-center">
+            {error}
           </div>
-          <button onClick={onClose} style={{ background: "#f3f4f6", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 16, color: "#6b7280" }}>✕</button>
-        </div>
+        )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {(["Your Name", "Email Address"] as const).map((label) => {
-            const isEmail = label === "Email Address";
-            return (
-              <div key={label}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>{label}</label>
-                <input
-                  type={isEmail ? "email" : "text"}
-                  value={isEmail ? email : name}
-                  onChange={(e) => isEmail ? setEmail(e.target.value) : setName(e.target.value)}
-                  placeholder={isEmail ? "you@company.com" : "Your name"}
-                  style={{
-                    width: "100%", padding: "11px 14px", borderRadius: 10,
-                    border: "1.5px solid #e5e7eb", fontSize: 14, outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-            );
-          })}
-
-          {error && (
-            <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#dc2626" }}>
-              {error}
-            </div>
-          )}
-
-          <button
-            onClick={handlePay}
-            disabled={loading}
-            style={{
-              width: "100%", padding: "14px 0", borderRadius: 10,
-              background: loading ? "#9ca3af" : "#0D4F6B",
-              color: "#fff", border: "none", fontSize: 15, fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer", marginTop: 4,
-            }}
-          >
-            {loading ? "Processing…" : `Pay ₹${plan.price.toLocaleString("en-IN")}/mo — Secure Checkout →`}
-          </button>
-
-          <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af" }}>
-            🔒 Powered by Razorpay · Cancel anytime · No hidden fees
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Success ───────────────────────────────────────────────────────────────────
-
-function SuccessScreen({ tier }: { tier: string }) {
-  return (
-    <div style={{ textAlign: "center", padding: "80px 24px" }}>
-      <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-      <h2 style={{ fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 8 }}>
-        You're on {tier.charAt(0).toUpperCase() + tier.slice(1)}!
-      </h2>
-      <p style={{ fontSize: 16, color: "#6b7280", maxWidth: 380, margin: "0 auto 32px" }}>
-        Your plan is now active. Submit your events and reach thousands of Indian knowledge seekers.
-      </p>
-      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-        <a href="/submit-webinar" style={{ display: "inline-block", padding: "13px 28px", background: "#0D4F6B", color: "#fff", borderRadius: 10, fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
-          Submit Your First Event →
-        </a>
-        <a href="/host" style={{ display: "inline-block", padding: "13px 28px", background: "#f3f4f6", color: "#374151", borderRadius: 10, fontWeight: 600, fontSize: 15, textDecoration: "none" }}>
-          View Host Dashboard
-        </a>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
-export default function HostPlans() {
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [successTier, setSuccessTier]   = useState("");
-
-  useEffect(() => { loadRazorpayScript(); }, []);
-
-  const handleSelect = useCallback((plan: Plan) => {
-    if (plan.id === "free") { window.location.href = "/submit-webinar"; return; }
-    setSelectedPlan(plan);
-  }, []);
-
-  const handleSuccess = useCallback((tier: string) => {
-    setSelectedPlan(null);
-    setSuccessTier(tier);
-  }, []);
-
-  if (successTier) return <SuccessScreen tier={successTier} />;
-
-  return (
-    <div style={{ minHeight: "100vh", background: "#f9fafb" }}>
-      {/* Hero */}
-      <div style={{ background: "#0D4F6B", padding: "64px 24px 56px", textAlign: "center" }}>
-        <div style={{
-          display: "inline-block", background: "rgba(232,180,74,0.15)",
-          border: "1px solid rgba(232,180,74,0.4)", borderRadius: 20,
-          padding: "5px 14px", fontSize: 12, fontWeight: 700,
-          color: "#E8B44A", letterSpacing: "0.08em", marginBottom: 20,
-        }}>
-          🚀 LAUNCH OFFER — Save 40% until June 15, 2026
-        </div>
-        <h1 style={{ fontSize: "clamp(28px,5vw,44px)", fontWeight: 900, color: "#ffffff", margin: "0 0 12px", lineHeight: 1.15 }}>
-          Grow Your Events with WebinX
-        </h1>
-        <p style={{ fontSize: 17, color: "rgba(255,255,255,0.72)", maxWidth: 520, margin: "0 auto", lineHeight: 1.6 }}>
-          India's knowledge events marketplace. Get featured in front of thousands of professionals actively looking for webinars, podcasts & live events.
-        </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "clamp(16px,4vw,40px)", marginTop: 36, flexWrap: "wrap" }}>
-          {[["165+", "Events Listed"], ["81+", "Active Hosts"], ["85+", "Upcoming Events"]].map(([num, label]) => (
-            <div key={label} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: "#E8B44A" }}>{num}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Plans */}
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "48px 20px 80px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 20 }}>
+        {/* Plans grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} onSelect={handleSelect} loading={false} />
-          ))}
-        </div>
+            <div
+              key={plan.id}
+              className={`relative flex flex-col rounded-2xl border p-6
+                ${plan.highlight
+                  ? "border-teal-500 shadow-lg shadow-teal-500/10 bg-white ring-2 ring-teal-500"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+                } transition-all`}
+            >
+              {plan.highlight && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-teal-600 text-white text-xs font-bold
+                                   px-3 py-1 rounded-full">
+                    Most Popular
+                  </span>
+                </div>
+              )}
 
-        {/* Trust strip */}
-        <div style={{ marginTop: 52, display: "flex", flexWrap: "wrap", gap: 20, justifyContent: "center" }}>
-          {[
-            ["💳", "Cancel anytime", "No lock-in. Cancel before next billing date."],
-            ["🔒", "Secure payments", "Processed by Razorpay. We never store card details."],
-            ["⚡", "Instant activation", "Plan goes live the moment payment is confirmed."],
-            ["📧", "Questions?", "Email contact@webinx.in — reply within 4 hours."],
-          ].map(([icon, title, desc]) => (
-            <div key={title as string} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: "16px 20px", maxWidth: 240, flex: "1 1 200px" }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>{icon}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 4 }}>{title}</div>
-              <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>{desc}</div>
+              <div className="mb-4">
+                <span className="text-2xl">{plan.badge}</span>
+                <h2 className="mt-2 text-xl font-bold text-gray-900">{plan.name}</h2>
+                <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
+              </div>
+
+              <div className="mb-6">
+                {plan.price === 0 ? (
+                  <span className="text-3xl font-bold text-gray-900">Free</span>
+                ) : (
+                  <>
+                    <span className="text-3xl font-bold text-gray-900">
+                      ₹{plan.price}
+                    </span>
+                    <span className="text-gray-500 text-sm">/month</span>
+                    {plan.highlight && (
+                      <p className="text-xs text-teal-600 font-medium mt-1">
+                        ↑ ₹499/month after June 15
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <ul className="flex-1 space-y-2 mb-8">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="text-teal-500 mt-0.5 flex-shrink-0">✓</span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {plan.id === "free" ? (
+                <Link
+                  href="/host"
+                  className="block text-center py-3 px-4 rounded-xl border-2
+                             border-gray-200 text-gray-700 font-semibold text-sm
+                             hover:border-teal-500 hover:text-teal-700 transition-colors"
+                >
+                  Get Started Free
+                </Link>
+              ) : (
+                <button
+                  onClick={() => handleUpgrade(plan)}
+                  disabled={loading === plan.id}
+                  className={`w-full py-3 px-4 rounded-xl font-semibold text-sm
+                              transition-all disabled:opacity-60 disabled:cursor-not-allowed
+                    ${plan.highlight
+                      ? "bg-teal-700 hover:bg-teal-800 text-white"
+                      : "bg-gray-900 hover:bg-gray-800 text-white"
+                    }`}
+                >
+                  {loading === plan.id ? "Opening checkout…" : `Upgrade to ${plan.name}`}
+                </button>
+              )}
             </div>
           ))}
         </div>
-      </div>
 
-      {selectedPlan && (
-        <CheckoutModal plan={selectedPlan} onClose={() => setSelectedPlan(null)} onSuccess={handleSuccess} />
-      )}
-    </div>
+        {/* Trust line */}
+        <p className="text-center text-sm text-gray-400 mt-10">
+          Payments secured by Razorpay · Cancel anytime · No hidden fees
+        </p>
+      </main>
+    </>
   );
 }
