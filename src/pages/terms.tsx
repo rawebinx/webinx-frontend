@@ -1,175 +1,55 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
 
-const LAST_UPDATED = "1 April 2025";
-
 export default function TermsPage() {
   return (
     <>
       <Helmet>
-        <title>Terms of Service — Webinx</title>
-        <meta
-          name="description"
-          content="Webinx terms of service: the rules governing use of India's free webinar discovery platform."
-        />
+        <title>Terms of Service — WebinX</title>
+        <meta name="description" content="WebinX Terms of Service — rules for using India's Knowledge Events Marketplace." />
         <link rel="canonical" href="https://www.webinx.in/terms" />
-        <meta property="og:title" content="Terms of Service — Webinx" />
-        <meta property="og:url" content="https://www.webinx.in/terms" />
-        <meta name="robots" content="index, follow" />
       </Helmet>
-
       <main className="max-w-2xl mx-auto px-4 py-16">
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="mb-8 text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-900 transition-colors">
-            Home
-          </Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900">Terms of Service</span>
+        <nav className="mb-8 text-sm text-gray-500">
+          <Link href="/">Home</Link><span className="mx-2">/</span><span className="text-gray-900">Terms</span>
         </nav>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
+        <p className="text-gray-400 text-sm mb-10">Last updated: May 9, 2026</p>
+        <div className="space-y-8 text-gray-700 leading-relaxed text-sm">
 
-        <article>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-          <p className="text-gray-500 text-sm mb-10">Last updated: {LAST_UPDATED}</p>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">1. Acceptance</h2>
+          <p>By using webinx.in ("WebinX", "we", "the platform"), you agree to these terms. If you do not agree, do not use the platform.</p></section>
 
-          <div className="space-y-8 text-gray-700 leading-relaxed text-sm">
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                1. Acceptance of terms
-              </h2>
-              <p>
-                By accessing or using <span className="font-medium">www.webinx.in</span>{" "}
-                (&quot;the Site&quot;), you agree to be bound by these Terms of Service
-                (&quot;Terms&quot;). If you do not agree, please do not use the Site.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">2. What WebinX is</h2>
+          <p>WebinX is an aggregation and discovery platform for webinars, podcasts, and live events in India. We do not host, produce, or guarantee any event listed. All registrations happen on the original host's platform.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                2. Description of service
-              </h2>
-              <p>
-                Webinx is a free event discovery platform that aggregates publicly
-                available webinar and workshop listings. We do not organise, host, or
-                endorse any event listed on the Site. All event details are provided by
-                third-party organisers.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">3. Host accounts and plans</h2>
+          <p>Hosts may list events free or subscribe to paid plans (Pro ₹299/month, Scale ₹799/month, Agency ₹1,999/month). Subscriptions are billed monthly via Razorpay and auto-renew unless cancelled. You may cancel at any time from your account. Refunds are not issued for partial billing periods. Founding member rates are locked for the life of the subscription as long as billing is continuous.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                3. Accuracy of information
-              </h2>
-              <p>
-                Event listings are sourced automatically and may contain errors,
-                outdated information, or broken links. Webinx makes no warranty regarding
-                the accuracy, completeness, or availability of any listed event. Always
-                verify event details on the organiser&apos;s official page before
-                registering.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">4. AI tools</h2>
+          <p>Host tools (Title Optimizer, Description Enhancer, Content Generator) are powered by Anthropic's Claude API. Output is AI-generated and may contain errors. You are responsible for reviewing all AI-generated content before publishing. Usage is subject to fair-use limits by plan tier.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                4. Acceptable use
-              </h2>
-              <p className="mb-3">You agree not to:</p>
-              <ul className="list-disc list-inside space-y-2 text-gray-600">
-                <li>Scrape, crawl, or harvest data from the Site without permission</li>
-                <li>Use the Site for any unlawful purpose</li>
-                <li>
-                  Attempt to interfere with, disrupt, or gain unauthorised access to the
-                  Site or its servers
-                </li>
-                <li>Reproduce or redistribute Webinx content without attribution</li>
-              </ul>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">5. Featured listings and payments</h2>
+          <p>Featured event placements (₹299/7d, ₹799/30d, ₹1,999/90d) are purchased via Razorpay. Payments are non-refundable once the featured slot is activated. Featured placement does not guarantee event attendance or registration numbers.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                5. Third-party links
-              </h2>
-              <p>
-                The Site contains links to third-party platforms. We are not responsible
-                for the content, privacy practices, or availability of those sites. Links
-                do not imply endorsement.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">6. Affiliate program</h2>
+          <p>Affiliates earn 20% recurring commission on referred host subscriptions. Commissions are calculated monthly and paid within 15 days of month end. WebinX reserves the right to withhold commissions for fraudulent referrals. The affiliate program may be modified or discontinued with 30 days' notice.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                6. Intellectual property
-              </h2>
-              <p>
-                The Webinx name, logo, and platform design are the property of Webinx.
-                Event titles, descriptions, and images belong to their respective
-                organisers. You may not reproduce Webinx branding without prior written
-                consent.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">7. Newsletter sponsorships</h2>
+          <p>Sponsored placements in the WebinX weekly digest are clearly labelled "Sponsored." Sponsors are responsible for the accuracy of their advertising content. WebinX reserves the right to reject any sponsorship that violates our content guidelines.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                7. Disclaimer of warranties
-              </h2>
-              <p>
-                The Site is provided &quot;as is&quot; and &quot;as available&quot;
-                without warranties of any kind. We do not warrant that the Site will be
-                uninterrupted, error-free, or free from viruses or other harmful
-                components.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">8. Content and conduct</h2>
+          <p>Hosts must not list events that are misleading, fraudulent, or illegal. WebinX may remove any listing at our discretion. You retain ownership of content you submit; you grant us a licence to display and index it.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                8. Limitation of liability
-              </h2>
-              <p>
-                To the maximum extent permitted by law, Webinx shall not be liable for
-                any indirect, incidental, or consequential damages arising from your use
-                of, or inability to use, the Site or any event listed on it.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">9. Limitation of liability</h2>
+          <p>WebinX is provided "as is." We are not liable for event cancellations, registration failures, or any damages arising from your use of the platform. Our maximum liability in any case is the amount you paid us in the 30 days preceding the claim.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                9. Governing law
-              </h2>
-              <p>
-                These Terms are governed by the laws of India. Any dispute arising from
-                these Terms shall be subject to the exclusive jurisdiction of the courts
-                located in India.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">10. Governing law</h2>
+          <p>These terms are governed by the laws of India. Disputes shall be resolved in courts of Gujarat, India.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                10. Changes to these terms
-              </h2>
-              <p>
-                We may revise these Terms at any time. Continued use of the Site after
-                changes are posted constitutes acceptance of the revised Terms.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                11. Contact
-              </h2>
-              <p>
-                Questions about these Terms?{" "}
-                <Link href="/contact" className="text-blue-600 hover:underline">
-                  Contact us
-                </Link>{" "}
-                or email{" "}
-                <a href="mailto:hello@webinx.in" className="text-blue-600 hover:underline">
-                  hello@webinx.in
-                </a>
-                .
-              </p>
-            </section>
-          </div>
-        </article>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">11. Contact</h2>
+          <p>Questions about these terms: <a href="mailto:contact@webinx.in" className="text-teal-700 hover:underline">contact@webinx.in</a></p></section>
+        </div>
       </main>
     </>
   );
