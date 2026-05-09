@@ -1,25 +1,12 @@
 /**
- * UpgradeBanner.tsx
- * ─────────────────────────────────────────────────────────────────
- * Success banner shown on /host-tools?upgraded=true after payment.
- * Auto-dismisses after 10 seconds. Sends confirmation email.
- * Import and render at top of host-tools.tsx.
- *
- * Usage:
- *   import { UpgradeBanner } from "../components/UpgradeBanner";
- *   // In host-tools page:
- *   <UpgradeBanner />
+ * UpgradeBanner.tsx — wouter v2 compatible (no useSearch)
  */
-
 import { useState, useEffect, useCallback } from "react";
-import { useSearch, useLocation } from "wouter";
+import { useLocation } from "wouter";
 
 const PLAN_LABELS: Record<string, string> = {
-  pro:    "Pro",
-  scale:  "Scale",
-  agency: "Agency",
+  pro: "Pro", scale: "Scale", agency: "Agency",
 };
-
 const PLAN_FEATURES: Record<string, string[]> = {
   pro: [
     "Priority placement in all search results",
@@ -32,7 +19,6 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "Branded events section — email us to set up",
     "10 team member seats — invite from Host Tools",
     "Custom email digest slot — next issue",
-    "Bulk event submission API — docs in Host Tools",
     "Dedicated account support — reply to your receipt",
   ],
   agency: [
@@ -44,24 +30,21 @@ const PLAN_FEATURES: Record<string, string[]> = {
 };
 
 export function UpgradeBanner(): JSX.Element | null {
-  const search                = useSearch();
   const [, navigate]          = useLocation();
   const [visible, setVisible] = useState(false);
   const [plan,    setPlan]    = useState<string>("pro");
 
   useEffect(() => {
-    const params = new URLSearchParams(search);
+    const params = new URLSearchParams(window.location.search);
     if (params.get("upgraded") === "true") {
       setPlan(params.get("plan") ?? "pro");
       setVisible(true);
-      // Remove query params from URL without full reload
       window.history.replaceState({}, "", "/host-tools");
     }
-  }, [search]);
+  }, []);
 
   const dismiss = useCallback(() => setVisible(false), []);
 
-  // Auto-dismiss after 12 seconds
   useEffect(() => {
     if (!visible) return;
     const t = setTimeout(dismiss, 12_000);
@@ -70,70 +53,34 @@ export function UpgradeBanner(): JSX.Element | null {
 
   if (!visible) return null;
 
-  const features = PLAN_FEATURES[plan] ?? PLAN_FEATURES.pro;
-  const label    = PLAN_LABELS[plan] ?? "Pro";
+  const features = PLAN_FEATURES[plan] ?? PLAN_FEATURES["pro"];
+  const label    = PLAN_LABELS[plan]   ?? "Pro";
 
   return (
-    <div
-      role="alert"
-      className="mb-8 rounded-2xl border border-teal-200 bg-gradient-to-br
-                 from-teal-50 to-emerald-50 overflow-hidden shadow-sm"
-    >
-      {/* Top accent bar */}
-      <div className="h-1 bg-gradient-to-r from-teal-500 to-emerald-500" />
-
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center
-                            justify-center text-xl flex-shrink-0">
-              🎉
-            </div>
+    <div role="alert" style={{ marginBottom:"2rem", borderRadius:16, border:"1px solid #6EE7B7", background:"linear-gradient(135deg,#ECFDF5 0%,#fff 100%)", overflow:"hidden", boxShadow:"0 1px 4px rgba(13,79,107,.08)" }}>
+      <div style={{ height:4, background:"linear-gradient(90deg,#0D4F6B,#10B981)" }} />
+      <div style={{ padding:"1.25rem 1.5rem" }}>
+        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:40, height:40, borderRadius:"50%", background:"#D1FAE5", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>🎉</div>
             <div>
-              <h2 className="text-lg font-bold text-teal-900">
-                Welcome to WebinX {label}!
-              </h2>
-              <p className="text-sm text-teal-700">
-                Payment confirmed · Your plan is active right now
-              </p>
+              <p style={{ margin:0, fontWeight:700, fontSize:15, color:"#064E3B" }}>Welcome to WebinX {label}!</p>
+              <p style={{ margin:"2px 0 0", fontSize:12.5, color:"#047857" }}>Payment confirmed · Your plan is active right now</p>
             </div>
           </div>
-          <button
-            onClick={dismiss}
-            className="text-teal-400 hover:text-teal-600 transition-colors
-                       flex-shrink-0 text-xl leading-none mt-0.5"
-            aria-label="Dismiss"
-          >
-            ×
-          </button>
+          <button onClick={dismiss} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"#6EE7B7", lineHeight:1, padding:0, flexShrink:0 }} aria-label="Dismiss">×</button>
         </div>
-
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div style={{ marginTop:"1rem", display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:8 }}>
           {features.map((f) => (
-            <div
-              key={f}
-              className="flex items-start gap-2 bg-white/60 rounded-lg px-3 py-2"
-            >
-              <span className="text-emerald-500 mt-0.5 flex-shrink-0 text-sm">✓</span>
-              <span className="text-sm text-gray-700">{f}</span>
+            <div key={f} style={{ display:"flex", alignItems:"flex-start", gap:8, background:"rgba(255,255,255,.7)", borderRadius:8, padding:"6px 10px" }}>
+              <span style={{ color:"#10B981", fontSize:12, marginTop:2, flexShrink:0 }}>✓</span>
+              <span style={{ fontSize:12.5, color:"#374151" }}>{f}</span>
             </div>
           ))}
         </div>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          <a
-            href="mailto:contact@webinx.in?subject=New%20Pro%20Host%20Question"
-            className="text-sm font-medium text-teal-700 hover:text-teal-900
-                       underline underline-offset-2"
-          >
-            Questions? Email us →
-          </a>
-          <button
-            onClick={dismiss}
-            className="text-sm text-gray-400 hover:text-gray-600"
-          >
-            Dismiss
-          </button>
+        <div style={{ marginTop:".875rem", display:"flex", gap:16, alignItems:"center" }}>
+          <a href="mailto:contact@webinx.in" style={{ fontSize:12.5, color:"#0D4F6B", textDecoration:"underline", fontWeight:600 }}>Questions? Email us →</a>
+          <button onClick={dismiss} style={{ fontSize:12, color:"#9CA3AF", background:"none", border:"none", cursor:"pointer" }}>Dismiss</button>
         </div>
       </div>
     </div>
