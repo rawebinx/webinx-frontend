@@ -1,170 +1,70 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
 
-const LAST_UPDATED = "1 April 2025";
-
 export default function PrivacyPage() {
   return (
     <>
       <Helmet>
-        <title>Privacy Policy — Webinx</title>
-        <meta
-          name="description"
-          content="Webinx privacy policy: what data we collect, how we use it, and your rights as a visitor to India's webinar discovery platform."
-        />
+        <title>Privacy Policy — WebinX</title>
+        <meta name="description" content="WebinX Privacy Policy — how we collect and use your data." />
         <link rel="canonical" href="https://www.webinx.in/privacy" />
-        <meta property="og:title" content="Privacy Policy — Webinx" />
-        <meta property="og:url" content="https://www.webinx.in/privacy" />
-        {/* Tell crawlers this is a policy page */}
-        <meta name="robots" content="index, follow" />
       </Helmet>
-
       <main className="max-w-2xl mx-auto px-4 py-16">
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="mb-8 text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-900 transition-colors">
-            Home
-          </Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900">Privacy Policy</span>
+        <nav className="mb-8 text-sm text-gray-500">
+          <Link href="/">Home</Link><span className="mx-2">/</span><span className="text-gray-900">Privacy</span>
         </nav>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
+        <p className="text-gray-400 text-sm mb-10">Last updated: May 9, 2026</p>
+        <div className="space-y-8 text-gray-700 leading-relaxed text-sm">
 
-        <article className="prose prose-sm prose-gray max-w-none">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
-          <p className="text-gray-500 text-sm mb-10">Last updated: {LAST_UPDATED}</p>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">1. What we collect</h2>
+          <ul className="list-disc list-inside space-y-1 text-gray-600">
+            <li><strong>Email address</strong> — when you subscribe to the digest, register as a host, or set up alerts</li>
+            <li><strong>Event interactions</strong> — events you view, click, or save (used to personalise your experience)</li>
+            <li><strong>Payment data</strong> — processed entirely by Razorpay; we store only your plan tier and subscription status</li>
+            <li><strong>Host profile data</strong> — name, organisation, events you submit</li>
+            <li><strong>Affiliate data</strong> — name, email, referral code, and commission records if you join the affiliate program</li>
+            <li><strong>Usage data</strong> — pages visited, search queries (anonymised, aggregated)</li>
+          </ul></section>
 
-          <div className="space-y-8 text-gray-700 leading-relaxed text-sm">
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">1. Overview</h2>
-              <p>
-                Webinx (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) operates{" "}
-                <span className="font-medium">www.webinx.in</span>. This Privacy Policy
-                explains what information we collect, how we use it, and the choices you
-                have. By using Webinx you agree to the practices described here.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">2. How we use your data</h2>
+          <ul className="list-disc list-inside space-y-1 text-gray-600">
+            <li>Send you the weekly knowledge digest (if subscribed)</li>
+            <li>Personalise event recommendations</li>
+            <li>Process host subscriptions and featured placements</li>
+            <li>Calculate and pay affiliate commissions</li>
+            <li>Send event alerts you've set up</li>
+            <li>Improve our AI tagging and search quality</li>
+            <li>Send transactional emails (receipts, upgrade confirmations)</li>
+          </ul></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                2. Information we collect
-              </h2>
-              <p className="mb-3">
-                We collect information in two ways:
-              </p>
-              <ul className="list-disc list-inside space-y-2 text-gray-600">
-                <li>
-                  <span className="font-medium text-gray-800">Usage data</span> — pages
-                  visited, search queries entered, browser type, and referring URL. This
-                  is collected automatically via server logs and analytics tools.
-                </li>
-                <li>
-                  <span className="font-medium text-gray-800">Contact data</span> — name
-                  and email address when you use the{" "}
-                  <Link href="/contact" className="text-blue-600 hover:underline">
-                    contact form
-                  </Link>
-                  .
-                </li>
-              </ul>
-              <p className="mt-3">
-                We do not require account creation and do not store passwords.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">3. AI processing</h2>
+          <p>Event titles and descriptions are processed by Anthropic's Claude API to extract skills, difficulty levels, and speaker names. No personal user data is sent to Anthropic. Event content submitted by hosts may be processed by AI tools for quality improvement.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                3. How we use your information
-              </h2>
-              <ul className="list-disc list-inside space-y-2 text-gray-600">
-                <li>To operate and improve the Webinx platform</li>
-                <li>To respond to messages you send us</li>
-                <li>To understand which content is most useful</li>
-                <li>To detect and prevent abuse</li>
-              </ul>
-              <p className="mt-3">
-                We do not sell your personal information to third parties.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">4. Data sharing</h2>
+          <p>We do not sell your data. We share data only with:</p>
+          <ul className="list-disc list-inside space-y-1 text-gray-600 mt-2">
+            <li><strong>Razorpay</strong> — payment processing</li>
+            <li><strong>Anthropic</strong> — AI-powered host tools (event content only, no personal data)</li>
+            <li><strong>Render / Vercel</strong> — infrastructure hosting</li>
+            <li><strong>Hostinger</strong> — email delivery</li>
+          </ul></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                4. Cookies &amp; analytics
-              </h2>
-              <p>
-                Webinx uses minimal cookies for analytics (e.g. Vercel Analytics or a
-                privacy-friendly alternative). We do not use advertising cookies or
-                cross-site tracking. You can disable cookies in your browser settings at
-                any time.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">5. Newsletter and digest</h2>
+          <p>If you subscribe to our weekly digest, your email is stored in our database and used only to send you the digest. You can unsubscribe at any time by clicking the unsubscribe link in any digest email or emailing contact@webinx.in.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                5. Third-party links
-              </h2>
-              <p>
-                Event listings link out to third-party platforms such as Eventbrite,
-                Meetup, and KonfHub. We are not responsible for their privacy practices.
-                Please review their policies before registering for an event.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">6. Sponsored content</h2>
+          <p>When you click a sponsored link in our digest or on the platform, the sponsor may set their own cookies. We do not control sponsor data practices. Sponsored placements are clearly labelled.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                6. Data retention
-              </h2>
-              <p>
-                Contact form submissions are retained for up to 12 months. Server logs
-                are rotated every 30 days. You may request deletion of your data by
-                emailing{" "}
-                <a href="mailto:privacy@webinx.in" className="text-blue-600 hover:underline">
-                  privacy@webinx.in
-                </a>
-                .
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">7. Your rights</h2>
+          <p>You may request deletion of your account and data at any time by emailing contact@webinx.in. We will respond within 7 working days.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                7. Your rights
-              </h2>
-              <p>
-                Under applicable Indian data protection law you have the right to access,
-                correct, or delete personal data we hold about you. Contact us at{" "}
-                <a href="mailto:privacy@webinx.in" className="text-blue-600 hover:underline">
-                  privacy@webinx.in
-                </a>{" "}
-                to make a request.
-              </p>
-            </section>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">8. Cookies</h2>
+          <p>We use only functional cookies (session tokens for host login). We do not use advertising or tracking cookies.</p></section>
 
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">
-                8. Changes to this policy
-              </h2>
-              <p>
-                We may update this policy from time to time. When we do, we will revise
-                the &quot;last updated&quot; date at the top of this page. Continued use
-                of Webinx after changes constitutes acceptance.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-base font-semibold text-gray-900 mb-2">9. Contact</h2>
-              <p>
-                Questions about this policy?{" "}
-                <Link href="/contact" className="text-blue-600 hover:underline">
-                  Contact us
-                </Link>{" "}
-                or email{" "}
-                <a href="mailto:privacy@webinx.in" className="text-blue-600 hover:underline">
-                  privacy@webinx.in
-                </a>
-                .
-              </p>
-            </section>
-          </div>
-        </article>
+          <section><h2 className="text-base font-semibold text-gray-900 mb-2">9. Contact</h2>
+          <p>Privacy queries: <a href="mailto:contact@webinx.in" className="text-teal-700 hover:underline">contact@webinx.in</a> — WebinX, Gujarat, India</p></section>
+        </div>
       </main>
     </>
   );
