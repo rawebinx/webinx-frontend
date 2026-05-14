@@ -33,6 +33,11 @@ export default function SeoPage() {
   const pageDesc = meta?.description
     || `Discover free ${sector.replace(/-/g, " ")} webinars and online events in India. Updated daily on WebinX.`;
 
+  // noindex for known empty sectors — avoids crawl budget waste
+  const EMPTY_SECTORS = ["sports", "spirituality", "politics"];
+  const isEmpty = events !== null && events.length === 0;
+  const shouldNoIndex = EMPTY_SECTORS.includes(sector) || isEmpty;
+
   useEffect(() => {
     if (!sector) return;
     setEvents(null);
@@ -51,6 +56,7 @@ export default function SeoPage() {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
         <meta property="og:url" content={`https://www.webinx.in/${rawSlug}`} />
+        {shouldNoIndex && <meta name="robots" content="noindex, nofollow" />}
       </Helmet>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
@@ -84,7 +90,6 @@ export default function SeoPage() {
         {events && events.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {events.map((e) => (
-              // BUG 1 FIX: was webinar={e}, must be event={e}
               <WebinarCard key={e.id || e.slug} event={e} />
             ))}
           </div>
