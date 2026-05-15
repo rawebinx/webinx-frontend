@@ -61,19 +61,7 @@ export function Footer(): JSX.Element {
                 src="/logo-wordmark.png"
                 alt="WeBinX"
                 style={{ height: 24, width: 'auto', objectFit: 'contain' }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
-              <span
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--wx-teal)',
-                  letterSpacing: '-0.5px',
-                }}
-              >
-                WeBin<span style={{ color: 'var(--wx-gold)' }}>X</span>
-              </span>
             </Link>
 
             <p
