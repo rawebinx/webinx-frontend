@@ -43,7 +43,7 @@ export default function SeoPage() {
     setEvents(null);
     setError(false);
     getEvents({ sector, limit: 24 })
-      .then(setEvents)
+      .then((res) => setEvents(res.events ?? []))
       .catch(() => setError(true));
   }, [sector]);
 
