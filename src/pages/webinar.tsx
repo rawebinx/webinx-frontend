@@ -13,6 +13,7 @@ import {
   getEventBySlug,
   getRelatedEvents,
   submitAlert,
+  submitLead,
   buildCalendarUrl,
   getBestRegistrationUrl,
   formatEventDate,
@@ -164,8 +165,9 @@ function SocialShare({ event }: { event: WebinarEvent }): JSX.Element {
 // ─── Reminder Alert Form ──────────────────────────────────────────────────────
 
 function AlertForm({ eventSlug }: { eventSlug: string }): JSX.Element {
-  const [email, setEmail] = useState<string>('');
-  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [email,        setEmail]        = useState<string>('');
+  const [state,        setState]        = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [digestState,  setDigestState]  = useState<'idle' | 'loading' | 'done'>('idle');
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent): Promise<void> => {
@@ -182,14 +184,69 @@ function AlertForm({ eventSlug }: { eventSlug: string }): JSX.Element {
     [email, eventSlug, state],
   );
 
+  const handleDigest = useCallback(async (): Promise<void> => {
+    if (digestState !== 'idle') return;
+    setDigestState('loading');
+    try {
+      await submitLead({ email: email.trim(), utm_source: 'reminder-upsell' });
+      setDigestState('done');
+    } catch {
+      // silent — reminder already set, digest is bonus
+      setDigestState('done');
+    }
+  }, [email, digestState]);
+
+  // ── Post-alert success state with digest upsell ──
   if (state === 'done') {
     return (
-      <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 12, fontSize: 13, color: '#065f46' }}>
-        ✓ You'll be notified before this event starts!
+      <div>
+        {/* Reminder confirmed */}
+        <div style={{
+          background: '#ecfdf5', border: '1px solid #a7f3d0',
+          borderRadius: 10, padding: '10px 12px',
+          fontSize: 13, color: '#065f46', marginBottom: 10,
+        }}>
+          ✓ Reminder set — we'll email you before this event!
+        </div>
+
+        {/* Digest upsell */}
+        {digestState === 'done' ? (
+          <div style={{
+            background: '#eff6ff', border: '1px solid #bfdbfe',
+            borderRadius: 10, padding: '10px 12px',
+            fontSize: 13, color: '#1e40af',
+          }}>
+            ✓ You're on the weekly digest. See you Monday!
+          </div>
+        ) : (
+          <div style={{
+            background: '#f8fafc', border: '1px solid #e2e8f0',
+            borderRadius: 10, padding: '12px',
+          }}>
+            <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#374151', lineHeight: 1.5 }}>
+              📬 Also get India's top webinars every Monday — free digest, no spam.
+            </p>
+            <button
+              onClick={(): void => { void handleDigest(); }}
+              disabled={digestState === 'loading'}
+              style={{
+                width: '100%', padding: '9px',
+                background: '#0D4F6B', color: '#fff',
+                border: 'none', borderRadius: 8,
+                fontSize: 12.5, fontWeight: 700,
+                cursor: digestState === 'loading' ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {digestState === 'loading' ? '…' : 'Yes, send me the digest →'}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
 
+  // ── Default: reminder capture form ──
   return (
     <div>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>
